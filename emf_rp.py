@@ -13,7 +13,6 @@ import csv
 import codecs
 import pandas as pd
 import numpy as np
-# from scipy import spatial
 from PIL import Image, ImageDraw, ImageFont
 import matplotlib.font_manager as font_manager
 import matplotlib.pyplot as plt
@@ -77,7 +76,7 @@ def writeCSV(regFile, resDict):
             DF.loc[cur,i+1] = resDict[key][i]
         cur += 1
     DF.columns = ['Name', 'WordID', 'Word', 'length', 'height', 'baseline', 'line', 'x1_pos', 'y1_pos', 'x2_pos', 'y2_pos', 'b_x1', 'b_y1', 'b_x2', 'b_y2']        
-    DF.sort(column='WordID')
+    DF.sort(columns='WordID')
     DF.to_csv(regFile, index=False)
 
 
@@ -168,7 +167,6 @@ def getStrikeAscents(fontFileName, size):
     (wd_ques, ht_ques) = ttf.getsize(u'?')  # representative of group 5
     (wd_and, ht_and) = ttf.getsize(u'&')    # representative of group 6
     
-    ### FIXME: should also look at other punctuation chars, and digits.    
     return ({u'bdfhijkl|()\"\'': ht_b - ht_o,
              u't': ht_t - ht_o,
              u'ABCDEFGHIJKLMNOPQRSTUVWXYZ': ht_A - ht_o,
@@ -210,7 +208,6 @@ def getStrikeDescents(fontFileName, size):
     (wd_l, ht_l) = ttf.getsize(u'l')    # used as the baseline for "|()_"
     (wd_or, ht_or) = ttf.getsize(u'|')    
 
-    ### FIXME: should also look at other punctuation chars, and digits.
     return ({u'gpqy': ht_o - ht_g, 
              u'j': ht_i - ht_j,
              u'Q@&$': ht_O - ht_Q,
@@ -244,16 +241,16 @@ def getdesasc(w, descents, ascents):
 def cAspect(imgfont, char=STANDARD_CHAR):
     """
     Determine the wd to ht ratio for the letter 'n' in the specified font.
-    >>> fontdict = getfontdict()
-    >>> sfont = fontdict['LucidaConsole']['Regular']
-    >>> ssize = 12
-    >>> sttf = ImageFont.truetype(sfont, ssize)
-    >>> cAspect(sttf)
+    fontdict = getfontdict()
+    sfont = fontdict['LucidaConsole']['Regular']
+    ssize = 12
+    sttf = ImageFont.truetype(sfont, ssize)
+    cAspect(sttf)
     """
     return (float(imgfont.getsize(char)[1])/imgfont.getsize(char)[0])
 
 
-def Praster(fontpath, codeMethod='utf_8', text=[u'The quick brown fox jumps over the lazy dog.', u'The lazy tabby cat sleeps in the sun all afternoon.'],
+def Praster(direct, fontpath, codeMethod='utf_8', text=[u'The quick brown fox jumps over the lazy dog.', u'The lazy tabby cat sleeps in the sun all afternoon.'],
             dim=(1280,1024), fg=(0,0,0), bg=(232,232,232), wfont=None, regfile=True, lmargin=86, tmargin=86, linespace=43, xsz=18, ysz=None, bbox=False, bbox_big=False, 
             ID='test', addspace=18, log=False):
     """
@@ -261,6 +258,7 @@ def Praster(fontpath, codeMethod='utf_8', text=[u'The quick brown fox jumps over
     Intended for single/multiple line texts.
     
     Arguments:
+        direct          : directory storing the bitmap and/or region file
         fontpath        : fully qualified path to font file
         codeMethod      : for linux: utf_8; for Windows: cp1252
         text=[]         : text to be rasterized as a list of lines
@@ -296,16 +294,11 @@ def Praster(fontpath, codeMethod='utf_8', text=[u'The quick brown fox jumps over
 
     if log: 
         import json
-        logfileH = codecs.open("Praster.log", 'wb', encoding=codeMethod)
+        logfileH = codecs.open(direct + '/' + 'Praster.log', 'wb', encoding=codeMethod)
         logfileH.write('ascents\n'); json.dump(ascents, logfileH); logfileH.write('\n')
         logfileH.write('descents\n'); json.dump(descents, logfileH); logfileH.write('\n')
 
-    ### FIXME: Should throw a warning if margins, font size and dim are such that 'text' will not fit on screen.
-    ###        Look into using Pango for that purpose.
-    ### FIXME: Add code to understand glyph size specification in either physical units like cm (given physical 
-    ###        size of display screen) or degrees of physical angle given screen size plus nominal viewing distance.
-
-    ### initialize the image
+    # initialize the image
     img = Image.new('RGB', dim, bg) # 'RGB' specifies 8-bit per channel (32 bit color)
     draw = ImageDraw.Draw(img)
 
@@ -388,7 +381,6 @@ def Praster(fontpath, codeMethod='utf_8', text=[u'The quick brown fox jumps over
             vpos += linespace   # shift to next line
             curline += 1
 
-    # ### apply a watermark
     # ### FIXME: watermark should (?) include more info. Maybe most arguments used in call to Sraster()
     # ### FIXME: need some error checking here.
     # if wfont:
@@ -407,13 +399,12 @@ def Praster(fontpath, codeMethod='utf_8', text=[u'The quick brown fox jumps over
     # ### FIXME: Add Functionality to include full set of arguments to Sraster() in meta data for bitmap files.
     # ### See PIL.ExifTags.TAGS
     
-    ### Wrap up
+    # Wrap up
     if regfile: 
-        #regfileH.close() # close region file
-        writeCSV(ID+".region.csv", resDict)
+        writeCSV(direct + '/' + ID + '.region.csv', resDict)
         
     if log: logfileH.close()  # close log file
-    img.save(ID+".png",'PNG') # write bitmap file
+    img.save(direct + '/' + ID + '.png','PNG') # write bitmap file
 
 
 def Gen_Bitmap_RegFile(direct, fontName, textFileNameList, genmethods=2, codeMethod='utf_8', dim=(1280,1024), fg=(0,0,0), bg=(232,232,232), 
@@ -450,50 +441,50 @@ def Gen_Bitmap_RegFile(direct, fontName, textFileNameList, genmethods=2, codeMet
     
     if genmethods == 0:
         # Simple tests.
-        Praster(fontpath, xsz=xsz, bbox=True, log=True)
-        Praster(fontpath, text=["This is a test.", "This is another."], xsz=xsz)
-        Praster(fontpath, text=["This is a one-liner."], xsz=xsz)
+        Praster(direct, fontpath, xsz=xsz, bbox=True, log=True)
+        Praster(direct, fontpath, text=["This is a test.", "This is another."], xsz=xsz)
+        Praster(direct, fontpath, text=["This is a one-liner."], xsz=xsz)
 
     elif genmethods == 1:
-        # read from a single text file (containing many stories)
+        # first, check whether the text file exists
         txtfile = textFileNameList[0]; realtxtfile = direct + '/' + txtfile
-    
-        infileH = codecs.open(realtxtfile, mode="rb", encoding=codeMethod)
-        print "Read text file: ", infileH.name; lines = infileH.readlines(); infileH.close()
+        if not os.path.isfile(realtxtfile):
+            print txtfile + ' does not exist!'
+        else:
+            # read from a single text file (containing many stories)
+            infileH = codecs.open(realtxtfile, mode="rb", encoding=codeMethod)
+            print "Read text file: ", infileH.name; lines = infileH.readlines(); infileH.close()
+            
+            tmp0 = [ii for ii in lines if not re.match("^#", ii)] # Squeeze out comments: lines that start with '#'
+            tmp1 = ''.join(tmp0)    # join list of strings into one long string
+            tmp2 = re.split(u"\r\n\r\n", tmp1)  
+                   # Split string to lists by delimiter "\r\n\r\n", which corresponds to blank line in original text file (infileH).
+                   # At this point, each list item corresponds to 1, possibly multi-line, string.
+                   # Each list item is to be rendered as a single bitmap.
+            tmp2[len(tmp2)-1] = re.sub(u"\r\n$", u"", tmp2[len(tmp2)-1])    # remove "\r\n" at the ending of the last line
+            tmp3 = [re.split("\r\n", ii) for ii in tmp2]    # split each item into multiple lines, one string per line.
 
-        tmp0 = [ii for ii in lines if not re.match("^#", ii)] # Squeeze out comments: lines that start with '#'
-        tmp1 = ''.join(tmp0)    # join list of strings into one long string
-        tmp2 = re.split(u"\r\n\r\n", tmp1)  
-               # Split string to lists by delimiter "\r\n\r\n", which corresponds to blank line in original text file (infileH).
-               # At this point, each list item corresponds to 1, possibly multi-line, string.
-               # Each list item is to be rendered as a single bitmap.
-        tmp2[len(tmp2)-1] = re.sub(u"\r\n$", u"", tmp2[len(tmp2)-1])    # remove "\r\n" at the ending of the last line
-        tmp3 = [re.split("\r\n", ii) for ii in tmp2]    # split each item into multiple lines, one string per line.
-
-        for i, P in enumerate(tmp3): 
-            s = "storyID = %02.d line = %d" % (i+1, len(P)); print(s)
-            Praster(fontpath, codeMethod=codeMethod, text=P, dim=dim, fg=fg, bg=bg, lmargin=lmargin, tmargin=tmargin, linespace=linespace, 
-                    xsz=xsz, ysz=ysz, bbox=bbox, bbox_big=bbox_big, addspace=addspace, ID=direct+'/'+'story%02.d' % (i+1), log=log)
+            for i, P in enumerate(tmp3): 
+                s = "storyID = %02.d line = %d" % (i+1, len(P)); print(s)
+                Praster(direct, fontpath, codeMethod=codeMethod, text=P, dim=dim, fg=fg, bg=bg, lmargin=lmargin, tmargin=tmargin, linespace=linespace, 
+                        xsz=xsz, ysz=ysz, bbox=bbox, bbox_big=bbox_big, addspace=addspace, ID='story%02.d' % (i+1), log=log)
 
     elif genmethods == 2:
         # read from multiple text files                        
         for txtfile in textFileNameList:
             ID = txtfile.split('.')[0]; realtxtfile = direct + '/' + txtfile
-    
-            infileH = codecs.open(realtxtfile, mode="rb", encoding=codeMethod)
-            print "Read text file: ", infileH.name; lines = infileH.readlines(); infileH.close()
+            if not os.path.isfile(realtxtfile):
+                print ID + ' does not exist!'
+            else:
+                # read from the text file   
+                infileH = codecs.open(realtxtfile, mode="rb", encoding=codeMethod)
+                print "Read text file: ", infileH.name; lines = infileH.readlines(); infileH.close()
 
-            tmp0 = [ii for ii in lines if not re.match("^#", ii)] # Squeeze out comments: lines that start with '#'
-            tmp1 = ''.join(tmp0)    # join list of strings into one long string
-            tmp2 = re.split(u"\r\n\r\n", tmp1)  
-                        # Split string to lists by delimiter "\r\n\r\n", which corresponds to blank line in original text file (infileH).
-                        # At this point, each list item corresponds to 1, possibly multi-line, string.
-                        # Each list item is to be rendered as a single bitmap.
-            tmp2[len(tmp2)-1] = re.sub(u"\r\n$", u"", tmp2[len(tmp2)-1])    # remove "\r\n" at the ending of the last line
-            tmp3 = [re.split("\r\n", ii) for ii in tmp2]    # split each item into multiple lines, one string per line.
-
-            Praster(fontpath, codeMethod=codeMethod, text=P, dim=dim, fg=fg, bg=bg, lmargin=lmargin, tmargin=tmargin, linespace=linespace, 
-                    xsz=xsz, ysz=ysz, bbox=bbox, bbox_big=bbox_big, addspace=addspace, ID=direct+'/'+ID, log=log)
+                tmp0 = [ii for ii in lines if not re.match("^#", ii)] # Squeeze out comments: lines that start with '#'
+                tmp1 = [re.sub(u"\r\n$", u"", ii) for ii in tmp0]    # remove "\r\n" at the ending of each line
+                
+                Praster(direct, fontpath, codeMethod=codeMethod, text=tmp1, dim=dim, fg=fg, bg=bg, lmargin=lmargin, tmargin=tmargin, linespace=linespace, 
+                        xsz=xsz, ysz=ysz, bbox=bbox, bbox_big=bbox_big, addspace=addspace, ID=ID, log=log)
 
 
 # -----------------------------------------------------------------------------
@@ -600,12 +591,12 @@ def gettdur(triallines):
     return endtime - starttime        
 
 
-def updateReg(regfileNameList):
+def updateReg(direct, regfileNameList):
     """
     update old style region file into new style and save
     """
     for trialID in range(len(regfileNameList)):
-        RegDF = pd.read_csv(regfileNameList[trialID], sep=',', header=None)
+        RegDF = pd.read_csv(direct + '/' + regfileNameList[trialID], sep=',', header=None)
         RegDF.columns = ['Name', 'Word', 'length', 'x1_pos', 'y1_pos', 'x2_pos', 'y2_pos']
         # add WordID
         RegDF['WordID'] = range(1,len(RegDF)+1)        
@@ -636,13 +627,14 @@ def updateReg(regfileNameList):
             RegDF.loc[RegDF.line==line,'b_y1'] = max(RegDF.loc[RegDF.line==line,'y1_pos']) - ADD_SPACE
             RegDF.loc[RegDF.line==line,'b_y2'] = min(RegDF.loc[RegDF.line==line,'y2_pos']) + ADD_SPACE
         RegDF = RegDF[['Name', 'WordID', 'Word', 'length', 'height', 'baseline', 'line', 'x1_pos', 'y1_pos', 'x2_pos', 'y2_pos', 'b_x1', 'b_y1', 'b_x2', 'b_y2']]     
-        RegDF.to_csv(regfileNameList[trialID], index=False)            
+        RegDF.to_csv(direct + '/' + regfileNameList[trialID], index=False)            
 
     
-def getRegDF(regfileNameList, trialID):
+def getRegDF(direct, regfileNameList, trialID):
     """
     get the region file data frame from regfileNameList based on trialID
     arguments:
+        direct -- directory storing region files
         regfileNameList -- a list of region file names
         trialID -- current trial ID
     return:
@@ -650,7 +642,7 @@ def getRegDF(regfileNameList, trialID):
     """
     if trialID < 0 or trialID >= len(regfileNameList):
         raise ValueError("invalid trialID! must be within [0, " + str(len(regfileNameList)) + ")")
-    RegDF = pd.read_csv(regfileNameList[trialID], sep=',')
+    RegDF = pd.read_csv(direct + '/' + regfileNameList[trialID], sep=',')
     return RegDF
 
 
@@ -674,7 +666,6 @@ FIXDIFF_RATIO = 0.6    # the ratio of maximum distance between the center of the
 FRONT_RANGE_RATIO = 0.2 # the ratio to check backward crossline saccade or fixation: such saccade or fixation usually starts around the line beginning
 COSDIF_THRES = 0.99 # threshold for identifying forward crossline saccades or fixations based on cosine difference
 Y_RANGE = 60   # the biggest y difference indicating the eyes are crossing lines or moving away from that line (this must be similar to the distance between two lines)
-#Y_RANGE_RATIO = 1.3 # if y axis change too big, it is not a crossline
 FIX_METHOD = 'DIFF' # fixation method: 'DIFF': based on difference in x_axis; 'SAC': based on crosslineSac ('SAC' is preferred since saccade is kinda more accurate!)
 
 
@@ -881,99 +872,6 @@ def lumpFix(Df, endindex, short_index, addtime):
     return Df
 
 
-# functions for getting normal and crossline fixations
-#def calCosDif(vect1, vect2):
-#    """
-#    calculate cosine differences of two vectors
-#    arguments:
-#        vect1, vect2 -- each is a list of two points' coordinates
-#    """
-#    return 1 - spatial.distance.cosine(vect1, vect2)
-#
-#
-#def change2vect(data1, data2, cases):
-#    """
-#    change data into vector for calculating cosine difference
-#    arguments:
-#        data1, data2 -- dataframe or list
-#        cases -- change methods:
-#            1, data1 is crossline information
-#            2, data1 is one row of Saccade data frame
-#            3, data1 and data2 are two rows of Fixation data
-#    """
-#    if cases < 1 or cases > 3:
-#        raise ValueError("change2Vect wrong cases option!")
-#    if cases == 1:
-#        # crossline information
-#        return [data1['p_x'], data1['p_y'], data1['n_x'], data1['n_y']]        
-#    elif cases == 2:
-#        # Saccade data frame
-#        return [data1['x2_pos'], data1['y2_pos'], data1['x1_pos'], data1['x1_pos']]    
-#    elif cases == 3:
-#        # Fixation data
-#        return [data1['x_pos'], data1['y_pos'], data2['x_pos'], data2['y_pos']]
-
-
-#def getCrosslineFix(CrossLineInfo, startline, endline, Df):
-#    """
-#    collect all cross-line fixations in lines
-#    arguments:
-#        CrossLineInfo -- cross line information from region file
-#        startline -- search starting line
-#        endline -- search ending line
-#        Df -- fixation data frame
-#    return:
-#        lines -- list of turples storing cross-line fixations
-#        curline -- the current line in Df
-#    """
-#    lines = []; curline = startline; ind = 0    # curline records the current Fix data, ind records the current CrossLineInfo
-#    while ind < len(CrossLineInfo):
-#        curCross = CrossLineInfo[ind]
-#        FixDistThres = FIXDIFF_RATIO*(curCross['p_x'] - curCross['n_x'])    # set up the maximum fixation distance to be identified as a cross-line fixation
-#        nextline = curline + 1
-#        while nextline < endline-1 and np.absolute(Df.x_pos[curline] - Df.x_pos[nextline]) < FixDistThres and np.absolute(Df.y_pos[curline] - Df.y_pos[nextline]) < Y_RANGE:
-#            curline = nextline; nextline = curline + 1
-#        if nextline < endline:
-#            # find a possible cross-line fixation
-#            if Df.x_pos[curline] - Df.x_pos[nextline] >= FixDistThres:
-#                # record forward cross-line fixation
-#                lines.append((1, curCross['p'], curCross['n'], nextline))
-#                # move curCross to the next
-#                if ind < len(CrossLineInfo) - 1:
-#                    ind += 1; curCross = CrossLineInfo[ind]; FixDistThres = FIXDIFF_RATIO*(curCross['p_x'] - curCross['n_x'])
-#                else:
-#                    break
-#            elif Df.x_pos[curline] - Df.x_pos[nextline] <= -FixDistThres:
-#                # move curCross to the back
-#                if ind > 0:
-#                    ind -= 1; curCross = CrossLineInfo[ind]; FixDistThres = FIXDIFF_RATIO*(curCross['p_x'] - curCross['n_x'])
-#                # record backward cross-line fixation using previous curCross
-#                lines.append((-1, curCross['n'], curCross['p'], nextline))
-#            elif Df.x_pos[nextline] - Df.x_pos[curline] < 0 and Df.y_pos[nextline] - Df.y_pos[curline] >= Y_RANGE and Df.y_pos[nextline] - Df.y_pos[curline] <= Y_RANGE_RATIO*Y_RANGE:
-#                # record forward cross-line fixation
-#                lines.append((1, curCross['p'], curCross['n'], nextline))
-#                # move curCross to the next
-#                if ind < len(CrossLineInfo) - 1:
-#                    ind += 1; curCross = CrossLineInfo[ind]; FixDistThres = FIXDIFF_RATIO*(curCross['p_x'] - curCross['n_x'])
-#                else:
-#                    break
-#                # keep moving ahead curline until finding a forward fixation
-#                curline += 1; nextline = curline + 1
-#                while nextline < endline-1 and Df.x_pos[nextline] - Df.x_pos[curline] < 0:
-#                    curline += 1; nextline = curline + 1
-#                curline -= 1            
-#        curline += 1
-#        if curline >= endline - 1:
-#            break
-#    # check whether the last recorded line is the forward crossing to the last line in the paragraph
-#    question = False    
-#    if lines[-1][0] == -1 or lines[-1][2] != CrossLineInfo[-1]['n']:
-#        print 'Warning! crlFix do not cover all lines!'
-#        question = True
-#    
-#    return lines, curline, question
-
-
 def mergeFixLines(startline, endline, Df):
     """
     merge continuous rightward and leftward fixations
@@ -1028,19 +926,29 @@ def getCrosslineFix(CrossLineInfo, startline, endline, Df):
         if mergelines[curline][3] == 1 and mergelines[curline][2] <= -FixDistThres:
             # leftward forward crossline fixation
             # further check which fixation is the start of the next line
-            # two criteria: 1) find the first fixation having a big x value change 
-            stl1 = mergelines[curline][1]
+            # two criteria: 
+            # first, if there is one big jump in x value bigger than FixDistThres, use that fixation as the cross line fixation
+            FindOne = False            
+            stl1 = mergelines[curline][0]
             for nextl in range(mergelines[curline][0]+1,mergelines[curline][1]+1):
-                if Df.loc[nextl,'x_pos'] - Df.loc[nextl-1,'x_pos'] <=- FixDistThres:
-                    stl1 = nextl
+                if Df.loc[nextl,'x_pos'] - Df.loc[nextl-1,'x_pos'] <= -FixDistThres:
+                    stl1 = nextl; FindOne = True
                     break
-            # 2) find the fixation having the biggest y value change     
-            stl2 = mergelines[curline][1]; bigY = 0
-            for nextl in range(mergelines[curline][0]+1,mergelines[curline][1]+1):
-                if Df.loc[nextl,'y_pos'] - Df.loc[nextl-1,'y_pos'] > bigY:
-                    bigY = Df.loc[nextl,'y_pos'] - Df.loc[nextl-1,'y_pos']; stl2 = nextl
-            # compare stline1 and stline2
-            lines.append((1, curCross['p'], curCross['n'], min(stl1,stl2)))
+            if FindOne:
+                lines.append((1, curCross['p'], curCross['n'], stl1))
+            else:
+                # second, 1) find the first fixation having the biggest x value change 
+                stl1 = mergelines[curline][0]; bigX = 0
+                for nextl in range(mergelines[curline][0]+1,mergelines[curline][1]+1):
+                    if Df.loc[nextl-1,'x_pos'] - Df.loc[nextl,'x_pos'] > bigX:
+                        bigX = Df.loc[nextl-1,'x_pos'] - Df.loc[nextl,'x_pos']; stl1 = nextl
+                # 2) find the fixation having the biggest y value change     
+                stl2 = mergelines[curline][0]; bigY = 0
+                for nextl in range(mergelines[curline][0]+1,mergelines[curline][1]+1):
+                    if Df.loc[nextl,'y_pos'] - Df.loc[nextl-1,'y_pos'] > bigY:
+                        bigY = Df.loc[nextl,'y_pos'] - Df.loc[nextl-1,'y_pos']; stl2 = nextl
+                # compare stline1 and stline2
+                lines.append((1, curCross['p'], curCross['n'], max(stl1,stl2)))
             # move curCross to the next
             if ind < len(CrossLineInfo) - 1:
                 ind += 1; curCross = CrossLineInfo[ind]; FixDistThres = FIXDIFF_RATIO*(curCross['p_x'] - curCross['n_x'])
@@ -1390,68 +1298,7 @@ def recFix(RegDF, ExpType, trialID, blinklines, fixlines, sampfreq, eyerec, scri
             FixDF.loc[ind,'valid'] = 'no'
     
     return FixDF
-           
 
-# functions for getting normal and crossline saccades    
-#def getCrosslineSac(CrossLineInfo, startline, endline, Df):
-#    """
-#    collect all cross-line saccades in lines
-#    arguments:
-#        CrossLineInfo -- cross line information from region file
-#        startline -- search starting line
-#        endline -- search ending line
-#        Df -- saccade data frame
-#    return:
-#        lines -- list of turples storing cross-line fixations
-#        curline -- last line after searching crossline saccade
-#        question -- whether there is a problem in the data
-#    """
-#    lines = []; curline = startline; ind = 0    # curline records the current Fix data, ind records the current CrossLineInfo
-#    while ind < len(CrossLineInfo):
-#        curCross = CrossLineInfo[ind]
-#        FixDistThres = FIXDIFF_RATIO*(curCross['p_x'] - curCross['n_x'])    # set up the maximum fixation distance to be identified as a cross-line fixation
-#        while curline < endline-1 and np.absolute(Df.x1_pos[curline] - Df.x2_pos[curline]) < FixDistThres and np.absolute(Df.y1_pos[curline] - Df.y2_pos[curline]) < Y_RANGE:
-#            curline += 1
-#        if curline < endline:
-#            # find a cross-line fixation
-#            if Df.x1_pos[curline] - Df.x2_pos[curline] >= FixDistThres:
-#                # record forward cross-line fixation
-#                lines.append((1, curCross['p'], curCross['n'], curline))
-#                # move curCross to the next
-#                if ind < len(CrossLineInfo) - 1:
-#                    ind += 1; curCross = CrossLineInfo[ind]; FixDistThres = FIXDIFF_RATIO*(curCross['p_x'] - curCross['n_x'])
-#                else:
-#                    break
-#            elif Df.x1_pos[curline] - Df.x2_pos[curline] <= -FixDistThres:
-#                # move curCross to the back
-#                if ind > 0:
-#                    ind -= 1; curCross = CrossLineInfo[ind]; FixDistThres = FIXDIFF_RATIO*(curCross['p_x'] - curCross['n_x'])
-#                # record backward cross-line fixation using previous curCross
-#                lines.append((-1, curCross['n'], curCross['p'], curline))
-#            elif Df.x2_pos[curline] - Df.x1_pos[curline] < 0 and Df.y2_pos[curline] - Df.y1_pos[curline] >= Y_RANGE and Df.y2_pos[curline] - Df.y1_pos[curline] <= Y_RANGE_RATIO*Y_RANGE:
-#                # record forward cross-line fixation
-#                lines.append((1, curCross['p'], curCross['n'], curline))
-#                # move curCross to the next
-#                if ind < len(CrossLineInfo) - 1:
-#                    ind += 1; curCross = CrossLineInfo[ind]; FixDistThres = FIXDIFF_RATIO*(curCross['p_x'] - curCross['n_x'])
-#                else:
-#                    break
-#                # keep moving ahead curline until finding a non-crossline fixation
-#                curline += 1
-#                while curline < endline-1 and Df.x2_pos[curline] - Df.x1_pos[curline] < 0:
-#                    curline += 1
-#                curline -= 1
-#        curline += 1
-#        if curline >= endline:
-#            break
-#        
-#    # check whether the last recorded line is the forward crossing to the last line in the paragraph
-#    question = False
-#    if lines[-1][0] == -1 or lines[-1][2] != CrossLineInfo[-1]['n']:
-#        print 'Warning! crlSac do not cover all lines!'
-#        question = True
-#        
-#    return lines, curline, question
 
 def mergeSacLines(startline, endline, Df):
     """
@@ -1507,19 +1354,29 @@ def getCrosslineSac(CrossLineInfo, startline, endline, Df):
         if mergelines[curline][3] == 1 and mergelines[curline][2] <= -FixDistThres:
             # leftward forward crossline fixation
             # further check which fixation is the start of the next line
-            # two criteria: 1) find the first fixation having a big x value change 
-            stl1 = mergelines[curline][1]
-            for nextl in range(mergelines[curline][0]+1,mergelines[curline][1]+1):
-                if Df.loc[nextl,'x2_pos'] - Df.loc[nextl,'x1_pos'] <=- FixDistThres:
-                    stl1 = nextl
+            # two criteria:
+            # first, if one saccade has a big jump in x value bigger than FixDistThres, that saccade is identified as the cross line saccade
+            FindOne = False            
+            stl1 = mergelines[curline][0]
+            for nextl in range(mergelines[curline][0],mergelines[curline][1]+1):
+                if Df.loc[nextl,'x2_pos'] - Df.loc[nextl,'x1_pos'] <= -FixDistThres:
+                    stl1 = nextl; FindOne = True
                     break
-            # 2) find the fixation having the biggest y value change     
-            stl2 = mergelines[curline][1]; bigY = 0
-            for nextl in range(mergelines[curline][0]+1,mergelines[curline][1]+1):
-                if Df.loc[nextl,'y2_pos'] - Df.loc[nextl,'y1_pos'] > bigY:
-                    bigY = Df.loc[nextl,'y2_pos'] - Df.loc[nextl,'y1_pos']; stl2 = nextl
-            # compare stline1 and stline2
-            lines.append((1, curCross['p'], curCross['n'], min(stl1,stl2)))
+            if FindOne:
+                lines.append((1, curCross['p'], curCross['n'], stl1))
+            else:
+                # second, 1) find the first fixation having the biggest x value change 
+                stl1 = mergelines[curline][0]; bigX = 0
+                for nextl in range(mergelines[curline][0],mergelines[curline][1]+1):
+                    if Df.loc[nextl,'x1_pos'] - Df.loc[nextl,'x2_pos'] > bigX:
+                        bigX = Df.loc[nextl,'x1_pos'] - Df.loc[nextl,'x2_pos']; stl1 = nextl
+                # 2) find the fixation having the biggest y value change     
+                stl2 = mergelines[curline][0]; bigY = 0
+                for nextl in range(mergelines[curline][0],mergelines[curline][1]+1):
+                    if Df.loc[nextl,'y2_pos'] - Df.loc[nextl,'y1_pos'] > bigY:
+                        bigY = Df.loc[nextl,'y2_pos'] - Df.loc[nextl,'y1_pos']; stl2 = nextl
+                # compare stline1 and stline2
+                lines.append((1, curCross['p'], curCross['n'], max(stl1,stl2)))
             # move curCross to the next
             if ind < len(CrossLineInfo) - 1:
                 ind += 1; curCross = CrossLineInfo[ind]; FixDistThres = FIXDIFF_RATIO*(curCross['p_x'] - curCross['n_x'])
@@ -1705,28 +1562,44 @@ def rec_Sac_Fix(direct, datafile, regfileNameList, ExpType):
         SacDF -- saccade data in different trials
         FixDF -- fixation data in different trials
     """    
-    f = open(datafile, 'r'); print "Read ASC: ", f.name; lines = f.readlines(); f.close()   # read EMF file    
-    script, sessdate, srcfile = getHeader(lines)    # get header lines    
-    T_idx, T_lines = getTrialReg(lines) # get trial regions
+    # first, check whether the required files are there:
+    datafileExist = True
+    datafileName = direct + '/' + datafile
+    if not os.path.isfile(datafileName):
+        print datafile + ' does not exist!'
+        datafileExist = False
     
-    SacDF = pd.DataFrame(columns=('subj', 'trial_id', 'trial_type', 'sampfreq', 'script', 'sessdate', 'srcfile', 'tdur', 'blinks', 'eye', 'start', 'end', 'duration', 'x1_pos', 'y1_pos', 'x2_pos', 'y2_pos', 'ampl', 'pk', 'line'))
-    FixDF = pd.DataFrame(columns=('subj', 'trial_id', 'trial_type', 'sampfreq', 'script', 'sessdate', 'srcfile', 'tdur', 'blinks', 'eye', 'start', 'end', 'duration', 'x_pos', 'y_pos', 'pup_size', 'valid', 'line'))        
+    regfileExist = True
+    for regfile in regfileNameList:
+        regfileName = direct + '/' + regfile
+        if not os.path.isfile(regfileName):
+            print regfile + ' does not exist!'
+            regfileExist = False
     
-    for ind in range(len(T_lines)):
-        triallines = lines[T_lines[ind,0]+1:T_lines[ind,1]]; trialID = int(T_idx[ind,0].split(' ')[-1])
-        blinklines, fixlines, saclines, sampfreq, eyerec = getBlink_Fix_Sac_SampFreq_EyeRec(triallines); tdur = gettdur(triallines)
-        RegDF = getRegDF(regfileNameList, trialID)  # get region file
-        # read saccade data
-        print "Read Sac: Trial ", str(trialID)
-        SacDFtemp = recSac(RegDF, ExpType, trialID, blinklines, saclines, sampfreq, eyerec, script, sessdate, srcfile, tdur)
-        SacDF = SacDF.append(SacDFtemp, ignore_index=True)
-        # read fixation data
-        print "Read Fix: Trial ", str(trialID)
-        FixDFtemp = recFix(RegDF, ExpType, trialID, blinklines, fixlines, sampfreq, eyerec, script, sessdate, srcfile, tdur)        
-        FixDF = FixDF.append(FixDFtemp, ignore_index=True)
+    # second, process the files
+    if datafileExist and regfileExist:
+        f = open(direct + '/' + datafile, 'r'); print "Read ASC: ", f.name; lines = f.readlines(); f.close()   # read EMF file    
+        script, sessdate, srcfile = getHeader(lines)    # get header lines    
+        T_idx, T_lines = getTrialReg(lines) # get trial regions
     
-    resName = direct + '/' + srcfile.split('.')[0]
-    SacDF.to_csv(resName + '_Sac.csv', index=False); FixDF.to_csv(resName + '_Fix.csv', index=False)
+        SacDF = pd.DataFrame(columns=('subj', 'trial_id', 'trial_type', 'sampfreq', 'script', 'sessdate', 'srcfile', 'tdur', 'blinks', 'eye', 'start', 'end', 'duration', 'x1_pos', 'y1_pos', 'x2_pos', 'y2_pos', 'ampl', 'pk', 'line'))
+        FixDF = pd.DataFrame(columns=('subj', 'trial_id', 'trial_type', 'sampfreq', 'script', 'sessdate', 'srcfile', 'tdur', 'blinks', 'eye', 'start', 'end', 'duration', 'x_pos', 'y_pos', 'pup_size', 'valid', 'line'))        
+    
+        for ind in range(len(T_lines)):
+            triallines = lines[T_lines[ind,0]+1:T_lines[ind,1]]; trialID = int(T_idx[ind,0].split(' ')[-1])
+            blinklines, fixlines, saclines, sampfreq, eyerec = getBlink_Fix_Sac_SampFreq_EyeRec(triallines); tdur = gettdur(triallines)
+            RegDF = getRegDF(direct, regfileNameList, trialID)  # get region file
+            # read saccade data
+            print "Read Sac: Trial ", str(trialID)
+            SacDFtemp = recSac(RegDF, ExpType, trialID, blinklines, saclines, sampfreq, eyerec, script, sessdate, srcfile, tdur)
+            SacDF = SacDF.append(SacDFtemp, ignore_index=True)
+            # read fixation data
+            print "Read Fix: Trial ", str(trialID)
+            FixDFtemp = recFix(RegDF, ExpType, trialID, blinklines, fixlines, sampfreq, eyerec, script, sessdate, srcfile, tdur)        
+            FixDF = FixDF.append(FixDFtemp, ignore_index=True)
+    
+        resName = direct + '/' + srcfile.split('.')[0]
+        SacDF.to_csv(resName + '_Sac.csv', index=False); FixDF.to_csv(resName + '_Fix.csv', index=False)
 
 
 def rec_Sac_Fix_Batch(direct, regfileNameList, ExpType):
@@ -1743,7 +1616,7 @@ def rec_Sac_Fix_Batch(direct, regfileNameList, ExpType):
     ascfiles = []
     for file in os.listdir(direct):
         if fnmatch.fnmatch(file, '*.asc'):
-            ascfiles.append(direct+'/'+file)
+            ascfiles.append(str(file).split('.')[0])
     for asc in ascfiles:
         rec_Sac_Fix(direct, asc, regfileNameList, ExpType)
 
@@ -1762,37 +1635,56 @@ def crl_Sac_Fix(direct, subj, regfileNameList, ExpType):
         FixDF -- fixation data in different trials with updated line numbers
         crlFix -- crossline fixation data in different trials
     """
-    nameSac = direct + '/' + subj + '_Sac.csv'; nameFix = direct + '/' + subj + '_Fix.csv'
-    SacDF = pd.read_csv(nameSac, sep=','); FixDF = pd.read_csv(nameFix, sep=',')    
-    newSacDF = pd.DataFrame(); newFixDF = pd.DataFrame()        
-    crlSac = pd.DataFrame(columns=('subj', 'trial_id', 'eye', 'startline', 'endline', 'SaclineIndex', 'start', 'end', 'duration', 'x1_pos', 'y1_pos', 'x2_pos', 'y2_pos', 'ampl', 'pk'))
-    crlFix = pd.DataFrame(columns=('subj', 'trial_id', 'eye', 'startline', 'endline', 'FixlineIndex', 'start', 'end', 'duration', 'x_pos', 'y_pos', 'pup_size', 'valid'))
-    print "Subj: ", subj
-    
-    for trialID in np.unique(map(int,SacDF.trial_id)):
-        RegDF = getRegDF(regfileNameList, trialID)  # get region file
-        # get saccade data
-        print "Get crlSac: Trial ", str(trialID)
-        SacDFtemp = SacDF[SacDF.trial_id==trialID].reset_index(); crlSactemp, question = getcrlSac(RegDF, SacDFtemp)
-        newSacDF = newSacDF.append(SacDFtemp, ignore_index=True); crlSac = crlSac.append(crlSactemp, ignore_index=True)
-        if RECSTATUS and question:
-            logfile = open(direct + '/log.txt', 'a+')
-            logfile.write('Subj: ' + subj + ' Trial ' + str(trialID) + ' crlSac start/end need check!\n')
-            logfile.close()
+    # first, check whether the required files are there:
+    datafileExist = True
+    datafileName1 = direct + '/' + subj + '_Sac.csv'
+    datafileName2 = direct + '/' + subj + '_Fix.csv'
+    if not os.path.isfile(datafileName1):
+        print subj + '_Sac.csv' + ' does not exist!'
+        datafileExist = False
+    if not os.path.isfile(datafileName2):
+        print subj + '_Fix.csv' + ' does not exist!'
+        datafileExist = False
         
-        # get fixation data
-        print "Get Fix: Trial ", str(trialID)
-        FixDFtemp = FixDF[FixDF.trial_id==trialID].reset_index(); crlFixtemp, question = getcrlFix(RegDF, crlSactemp, FixDFtemp)
-        newFixDF = newFixDF.append(FixDFtemp, ignore_index=True); crlFix = crlFix.append(crlFixtemp, ignore_index=True)
-        if RECSTATUS and question:
-            logfile = open(direct + '/log.txt', 'a+')
-            logfile.write('Subj: ' + subj + ' Trial ' + str(trialID) + ' crlFix start/end need check!\n')  
-            logfile.close()
-            
-    newSacDF.to_csv(nameSac, index=False); newFixDF.to_csv(nameFix, index=False)
+    regfileExist = True
+    for regfile in regfileNameList:
+        regfileName = direct + '/' + regfile
+        if not os.path.isfile(regfileName):
+            print regfile + ' does not exist!'
+            regfileExist = False
     
-    namecrlSac = direct + '/' + subj + '_crlSac.csv'; namecrlFix = direct + '/' + subj + '_crlFix.csv'
-    crlSac.to_csv(namecrlSac, index=False); crlFix.to_csv(namecrlFix, index=False)
+    # second, process the files
+    if datafileExist and regfileExist:
+        nameSac = direct + '/' + subj + '_Sac.csv'; nameFix = direct + '/' + subj + '_Fix.csv'
+        SacDF = pd.read_csv(nameSac, sep=','); FixDF = pd.read_csv(nameFix, sep=',')    
+        newSacDF = pd.DataFrame(); newFixDF = pd.DataFrame()     
+        crlSac = pd.DataFrame(columns=('subj', 'trial_id', 'eye', 'startline', 'endline', 'SaclineIndex', 'start', 'end', 'duration', 'x1_pos', 'y1_pos', 'x2_pos', 'y2_pos', 'ampl', 'pk'))
+        crlFix = pd.DataFrame(columns=('subj', 'trial_id', 'eye', 'startline', 'endline', 'FixlineIndex', 'start', 'end', 'duration', 'x_pos', 'y_pos', 'pup_size', 'valid'))
+        print "Subj: ", subj
+    
+        for trialID in np.unique(map(int,SacDF.trial_id)):
+            RegDF = getRegDF(direct, regfileNameList, trialID)  # get region file
+            # get saccade data
+            print "Get crlSac: Trial ", str(trialID)
+            SacDFtemp = SacDF[SacDF.trial_id==trialID].reset_index(); crlSactemp, question = getcrlSac(RegDF, SacDFtemp)
+            newSacDF = newSacDF.append(SacDFtemp, ignore_index=True); crlSac = crlSac.append(crlSactemp, ignore_index=True)
+            if RECSTATUS and question:
+                logfile = open(direct + '/log.txt', 'a+')
+                logfile.write('Subj: ' + subj + ' Trial ' + str(trialID) + ' crlSac start/end need check!\n')
+                logfile.close()        
+            
+            # get fixation data
+            print "Get Fix: Trial ", str(trialID)
+            FixDFtemp = FixDF[FixDF.trial_id==trialID].reset_index(); crlFixtemp, question = getcrlFix(RegDF, crlSactemp, FixDFtemp)
+            newFixDF = newFixDF.append(FixDFtemp, ignore_index=True); crlFix = crlFix.append(crlFixtemp, ignore_index=True)
+            if RECSTATUS and question:
+                logfile = open(direct + '/log.txt', 'a+')
+                logfile.write('Subj: ' + subj + ' Trial ' + str(trialID) + ' crlFix start/end need check!\n')  
+                logfile.close()
+            
+        newSacDF.to_csv(nameSac, index=False); newFixDF.to_csv(nameFix, index=False)
+        namecrlSac = direct + '/' + subj + '_crlSac.csv'; namecrlFix = direct + '/' + subj + '_crlFix.csv'
+        crlSac.to_csv(namecrlSac, index=False); crlFix.to_csv(namecrlFix, index=False)
 
 
 def crl_Sac_Fix_Batch(direct, regfileNameList, ExpType):
@@ -1810,8 +1702,9 @@ def crl_Sac_Fix_Batch(direct, regfileNameList, ExpType):
     """
     subjlist = []
     for file in os.listdir(direct):
-        if fnmatch.fnmatch(file, '*.asc'):
-            subjlist.append(str(file).split('.')[0])
+        if fnmatch.fnmatch(file, '*_*.csv'):
+            subjlist.append(str(file).split('_')[0])
+    subjlist = np.unique(subjlist)        
     for subj in subjlist:
         crl_Sac_Fix(direct, subj, regfileNameList, ExpType)
         
@@ -1830,44 +1723,60 @@ def reccrl_Sac_Fix(direct, datafile, regfileNameList, ExpType):
         FixDF -- fixation data in different trials
         crlFixDF -- crossline fixation data in different trials
     """
-    # read EMF file
-    f = open(datafile, 'r'); print "Read ASC: ", f.name; lines = f.readlines(); f.close()   # read EMF file    
-    script, sessdate, srcfile = getHeader(lines)    # get header lines    
-    T_idx, T_lines = getTrialReg(lines) # get trial regions
+    # first, check whether the required files are there:
+    datafileExist = True
+    datafileName = direct + '/' + datafile
+    if not os.path.isfile(datafileName):
+        print datafile + ' does not exist!'
+        datafileExist = False
     
-    SacDF = pd.DataFrame(columns=('subj', 'trial_id', 'trial_type', 'sampfreq', 'script', 'sessdate', 'srcfile', 'tdur', 'blinks', 'eye', 'start', 'end', 'duration', 'x1_pos', 'y1_pos', 'x2_pos', 'y2_pos', 'ampl', 'pk', 'line'))
-    FixDF = pd.DataFrame(columns=('subj', 'trial_id', 'trial_type', 'sampfreq', 'script', 'sessdate', 'srcfile', 'tdur', 'blinks', 'eye', 'start', 'end', 'duration', 'x_pos', 'y_pos', 'pup_size', 'valid', 'line'))        
-    crlSac = pd.DataFrame(columns=('subj', 'trial_id', 'eye', 'startline', 'endline', 'SaclineIndex', 'start', 'end', 'duration', 'x1_pos', 'y1_pos', 'x2_pos', 'y2_pos', 'ampl', 'pk'))
-    crlFix = pd.DataFrame(columns=('subj', 'trial_id', 'eye', 'startline', 'endline', 'FixlineIndex', 'start', 'end', 'duration', 'x_pos', 'y_pos', 'pup_size', 'valid'))
+    regfileExist = True
+    for regfile in regfileNameList:
+        regfileName = direct + '/' + regfile
+        if not os.path.isfile(regfileName):
+            print regfile + ' does not exist!'
+            regfileExist = False
     
-    for ind in range(len(T_lines)):
-        triallines = lines[T_lines[ind,0]+1:T_lines[ind,1]]; trialID = int(T_idx[ind,0].split(' ')[-1])
-        blinklines, fixlines, saclines, sampfreq, eyerec = getBlink_Fix_Sac_SampFreq_EyeRec(triallines); tdur = gettdur(triallines)
-        RegDF = getRegDF(regfileNameList, trialID)  # get region file
-        # read saccade data and get crossline saccade
-        print "Read Sac and Get crlSac: Trial ", str(trialID)
-        SacDFtemp = recSac(RegDF, ExpType, trialID, blinklines, saclines, sampfreq, eyerec, script, sessdate, srcfile, tdur)
-        crlSactemp, question = getcrlSac(RegDF, SacDFtemp)
-        SacDF = SacDF.append(SacDFtemp, ignore_index=True); crlSac = crlSac.append(crlSactemp, ignore_index=True)
-        if RECSTATUS and question:
-            logfile = open(direct + '/log.txt', 'a+')
-            logfile.write('Subj: ' + SacDFtemp.subj[0] + ' Trial ' + str(trialID) + ' crlSac start/end need check!\n')
-            logfile.close()
+    # second, process the files
+    if datafileExist and regfileExist:
+        # read EMF file
+        f = open(direct + '/' + datafile, 'r'); print "Read ASC: ", f.name; lines = f.readlines(); f.close()   # read EMF file    
+        script, sessdate, srcfile = getHeader(lines)    # get header lines    
+        T_idx, T_lines = getTrialReg(lines) # get trial regions
+    
+        SacDF = pd.DataFrame(columns=('subj', 'trial_id', 'trial_type', 'sampfreq', 'script', 'sessdate', 'srcfile', 'tdur', 'blinks', 'eye', 'start', 'end', 'duration', 'x1_pos', 'y1_pos', 'x2_pos', 'y2_pos', 'ampl', 'pk', 'line'))
+        FixDF = pd.DataFrame(columns=('subj', 'trial_id', 'trial_type', 'sampfreq', 'script', 'sessdate', 'srcfile', 'tdur', 'blinks', 'eye', 'start', 'end', 'duration', 'x_pos', 'y_pos', 'pup_size', 'valid', 'line'))        
+        crlSac = pd.DataFrame(columns=('subj', 'trial_id', 'eye', 'startline', 'endline', 'SaclineIndex', 'start', 'end', 'duration', 'x1_pos', 'y1_pos', 'x2_pos', 'y2_pos', 'ampl', 'pk'))
+        crlFix = pd.DataFrame(columns=('subj', 'trial_id', 'eye', 'startline', 'endline', 'FixlineIndex', 'start', 'end', 'duration', 'x_pos', 'y_pos', 'pup_size', 'valid'))
+    
+        for ind in range(len(T_lines)):
+            triallines = lines[T_lines[ind,0]+1:T_lines[ind,1]]; trialID = int(T_idx[ind,0].split(' ')[-1])
+            blinklines, fixlines, saclines, sampfreq, eyerec = getBlink_Fix_Sac_SampFreq_EyeRec(triallines); tdur = gettdur(triallines)
+            RegDF = getRegDF(direct, regfileNameList, trialID)  # get region file
+            # read saccade data and get crossline saccade
+            print "Read Sac and Get crlSac: Trial ", str(trialID)
+            SacDFtemp = recSac(RegDF, ExpType, trialID, blinklines, saclines, sampfreq, eyerec, script, sessdate, srcfile, tdur)
+            crlSactemp, question = getcrlSac(RegDF, SacDFtemp)
+            SacDF = SacDF.append(SacDFtemp, ignore_index=True); crlSac = crlSac.append(crlSactemp, ignore_index=True)
+            if RECSTATUS and question:
+                logfile = open(direct + '/log.txt', 'a+')
+                logfile.write('Subj: ' + SacDFtemp.subj[0] + ' Trial ' + str(trialID) + ' crlSac start/end need check!\n')
+                logfile.close()
 
-        # read fixation data and get crossline fixation
-        print "Read Fix and Get crlFix: Trial ", str(trialID)
-        FixDFtemp = recFix(RegDF, ExpType, trialID, blinklines, fixlines, sampfreq, eyerec, script, sessdate, srcfile, tdur)        
-        crlFixtemp, question = getcrlFix(RegDF, crlSactemp, FixDFtemp)
-        FixDF = FixDF.append(FixDFtemp, ignore_index=True); crlFix = crlFix.append(crlFixtemp, ignore_index=True)
-        if RECSTATUS and question:
-            logfile = open(direct + '/log.txt', 'a+')
-            logfile.write('Subj: ' + FixDFtemp.subj[0] + ' Trial ' + str(trialID) + ' crlFix start/end need check!\n')
-            logfile.close()
+            # read fixation data and get crossline fixation
+            print "Read Fix and Get crlFix: Trial ", str(trialID)
+            FixDFtemp = recFix(RegDF, ExpType, trialID, blinklines, fixlines, sampfreq, eyerec, script, sessdate, srcfile, tdur)        
+            crlFixtemp, question = getcrlFix(RegDF, crlSactemp, FixDFtemp)
+            FixDF = FixDF.append(FixDFtemp, ignore_index=True); crlFix = crlFix.append(crlFixtemp, ignore_index=True)
+            if RECSTATUS and question:
+                logfile = open(direct + '/log.txt', 'a+')
+                logfile.write('Subj: ' + FixDFtemp.subj[0] + ' Trial ' + str(trialID) + ' crlFix start/end need check!\n')
+                logfile.close()
     
-    # store fixation and saccade data
-    resName = direct + './' + srcfile.split('.')[0]   
-    SacDF.to_csv(resName + '_Sac.csv', index=False); crlSac.to_csv(resName + '_crlSac.csv')
-    FixDF.to_csv(resName + '_Fix.csv', index=False); crlFix.to_csv(resName + '_crlFix.csv')
+        # store fixation and saccade data
+        resName = direct + './' + srcfile.split('.')[0]   
+        SacDF.to_csv(resName + '_Sac.csv', index=False); crlSac.to_csv(resName + '_crlSac.csv', index=False)
+        FixDF.to_csv(resName + '_Fix.csv', index=False); crlFix.to_csv(resName + '_crlFix.csv', index=False)
         
     
 def reccrl_Sac_Fix_Batch(direct, regfileNameList, ExpType):
@@ -1886,7 +1795,7 @@ def reccrl_Sac_Fix_Batch(direct, regfileNameList, ExpType):
     ascfiles = []
     for file in os.listdir(direct):
         if fnmatch.fnmatch(file, '*.asc'):
-            ascfiles.append(direct+'/'+file)
+            ascfiles.append(str(file))
     for asc in ascfiles:
         reccrl_Sac_Fix(direct, asc, regfileNameList, ExpType)
 
@@ -1936,7 +1845,7 @@ def image_Sac_Fix(direct, subj, bitmapNameList, Sac, crlSac, Fix, crlFix, RegDF,
     if method == 'ALL':
         if PNGmethod == 0:
             # open the bitmap of the paragraph
-            img1 = Image.open(bitmapNameList[trialID]); draw1 = ImageDraw.Draw(img1)      
+            img1 = Image.open(direct + '/' + bitmapNameList[trialID]); draw1 = ImageDraw.Draw(img1)      
         elif PNGmethod == 1:        
             # initialize the image
             img1 = Image.new('RGB', dim, bg) # 'RGB' specifies 8-bit per channel (32 bit color)
@@ -1970,7 +1879,7 @@ def image_Sac_Fix(direct, subj, bitmapNameList, Sac, crlSac, Fix, crlFix, RegDF,
         
         if PNGmethod == 0:        
             # open the bitmap of the paragraph
-            img2 = Image.open(bitmapNameList[trialID]); draw2 = ImageDraw.Draw(img2)
+            img2 = Image.open(direct + '/' + bitmapNameList[trialID]); draw2 = ImageDraw.Draw(img2)
         elif PNGmethod == 1:
             # initialize the image
             img2 = Image.new('RGB', dim, bg) # 'RGB' specifies 8-bit per channel (32 bit color)
@@ -2003,7 +1912,7 @@ def image_Sac_Fix(direct, subj, bitmapNameList, Sac, crlSac, Fix, crlFix, RegDF,
     elif method == 'SAC':
         if PNGmethod == 0:
             # open the bitmap of the paragraph        
-            img = Image.open(bitmapNameList[trialID]); draw = ImageDraw.Draw(img)
+            img = Image.open(direct + '/' + bitmapNameList[trialID]); draw = ImageDraw.Draw(img)
         elif PNGmethod == 1:        
             # initialize the image
             img = Image.new('RGB', dim, bg) # 'RGB' specifies 8-bit per channel (32 bit color)
@@ -2030,7 +1939,7 @@ def image_Sac_Fix(direct, subj, bitmapNameList, Sac, crlSac, Fix, crlFix, RegDF,
     elif method == 'FIX':
         if PNGmethod == 0:
             # open the bitmap of the paragraph        
-            img = Image.open(bitmapNameList[trialID]); draw = ImageDraw.Draw(img)
+            img = Image.open(direct + '/' + bitmapNameList[trialID]); draw = ImageDraw.Draw(img)
         elif PNGmethod == 1:    
             # initialize the image
             img = Image.new('RGB', dim, bg) # 'RGB' specifies 8-bit per channel (32 bit color)
@@ -2082,19 +1991,68 @@ def draw_Sac_Fix(direct, subj, regfileNameList, bitmapNameList, method, PNGmetho
             subj_Fix_trial*.png
             subj_crlFix_trial*.png        
     """
-    # read files
-    nameSac = direct + '/' + subj + '_Sac.csv'; nameFix = direct + '/' + subj + '_Fix.csv' 
-    namecrlSac = direct + '/' + subj + '_crlSac.csv'; namecrlFix = direct + '/' + subj + '_crlFix.csv'
-    SacDF = pd.read_csv(nameSac, sep=','); FixDF = pd.read_csv(nameFix, sep=',')
-    crlSacDF = pd.read_csv(namecrlSac, sep=','); crlFixDF = pd.read_csv(namecrlFix, sep=',')
+    # first, check whether the required files are there:
+    datafileExist = True
+    datafileName1 = direct + '/' + subj + '_Sac.csv'; datafileName2 = direct + '/' + subj + '_Fix.csv' 
+    datafileName3 = direct + '/' + subj + '_crlSac.csv'; datafileName4 = direct + '/' + subj + '_crlFix.csv'
+    if method == 'ALL':
+        if not os.path.isfile(datafileName1):
+            print subj + '_Sac.csv' + ' does not exist!'
+            datafileExist = False
+        elif not os.path.isfile(datafileName2):
+            print subj + '_Fix.csv' + ' does not exist!'
+            datafileExist = False
+        elif not os.path.isfile(datafileName3):
+            print subj + '_crlSac.csv' + ' does not exist!'
+            datafileExist = False
+        elif not os.path.isfile(datafileName4):
+            print subj + '_crlFix.csv' + ' does not exist!'
+            datafileExist = False
+    if method == 'SAC':
+        if not os.path.isfile(datafileName1):
+            print subj + '_Sac.csv' + ' does not exist!'
+            datafileExist = False
+        elif not os.path.isfile(datafileName3):
+            print subj + '_crlSac.csv' + ' does not exist!'
+            datafileExist = False
+    if method == 'FIX':
+        if not os.path.isfile(datafileName2):
+            print subj + '_Fix.csv' + ' does not exist!'
+            datafileExist = False
+        elif not os.path.isfile(datafileName4):
+            print subj + '_crlFix.csv' + ' does not exist!'
+            datafileExist = False   
     
-    # draw fixation and saccade data on a picture
-    for trialID in range(len(regfileNameList)):
-        RegDF = getRegDF(regfileNameList, trialID)  # get region file
-        print "Draw Sac and Fix: Subj: " + subj + ", Trial: " + str(trialID)
-        Sac = SacDF[SacDF.trial_id == trialID].reset_index(); crlSac = crlSacDF[crlSacDF.trial_id == trialID].reset_index()
-        Fix = FixDF[FixDF.trial_id == trialID].reset_index(); crlFix = crlFixDF[crlFixDF.trial_id == trialID].reset_index()    
-        image_Sac_Fix(direct, subj, bitmapNameList, Sac, crlSac, Fix, crlFix, RegDF, trialID, method, PNGmethod)
+    regfileExist = True
+    for regfile in regfileNameList:
+        regfileName = direct + '/' + regfile
+        if not os.path.isfile(regfileName):
+            print regfile + ' does not exist!'
+            regfileExist = False
+
+    if PNGmethod == 0:
+        bitmapExist = True
+        for bitmap in bitmapNameList:
+            bitmapName = direct + '/' + bitmap
+            if not os.path.isfile(bitmapName):
+                print bitmap + ' does not exist!'
+                bitmapExist = False
+            
+    # second, process the files
+    if datafileExist and regfileExist and ((PNGmethod == 0 and bitmapExist) or PNGmethod == 1):
+        # read files
+        nameSac = direct + '/' + subj + '_Sac.csv'; nameFix = direct + '/' + subj + '_Fix.csv' 
+        namecrlSac = direct + '/' + subj + '_crlSac.csv'; namecrlFix = direct + '/' + subj + '_crlFix.csv'
+        SacDF = pd.read_csv(nameSac, sep=','); FixDF = pd.read_csv(nameFix, sep=',')
+        crlSacDF = pd.read_csv(namecrlSac, sep=','); crlFixDF = pd.read_csv(namecrlFix, sep=',')
+    
+        # draw fixation and saccade data on a picture
+        for trialID in range(len(regfileNameList)):
+            RegDF = getRegDF(direct, regfileNameList, trialID)  # get region file
+            print "Draw Sac and Fix: Subj: " + subj + ", Trial: " + str(trialID)
+            Sac = SacDF[SacDF.trial_id == trialID].reset_index(); crlSac = crlSacDF[crlSacDF.trial_id == trialID].reset_index()
+            Fix = FixDF[FixDF.trial_id == trialID].reset_index(); crlFix = crlFixDF[crlFixDF.trial_id == trialID].reset_index()    
+            image_Sac_Fix(direct, subj, bitmapNameList, Sac, crlSac, Fix, crlFix, RegDF, trialID, method, PNGmethod)
 
 
 def draw_Sac_Fix_Batch(direct, regfileNameList, bitmapNameList, method, PNGmethod = 0):
@@ -2121,8 +2079,9 @@ def draw_Sac_Fix_Batch(direct, regfileNameList, bitmapNameList, method, PNGmetho
     """
     subjlist = []
     for file in os.listdir(direct):
-        if fnmatch.fnmatch(file, '*.asc'):
-            subjlist.append(file.split('.')[0])
+        if fnmatch.fnmatch(file, '*_*.csv'):
+            subjlist.append(str(file).split('_')[0])
+    subjlist = np.unique(subjlist)        
     for subj in subjlist:
         draw_Sac_Fix(direct, subj, regfileNameList, bitmapNameList, method, PNGmethod)
 
@@ -2289,7 +2248,7 @@ def chk_rp_reg(FixDF, EMF, stFix, endFix, curEMF):
                region are not counted. If fpregres == 0 then rpurt == fpurt.
         rpcount: The number of fixations in the regression path
         rpregreg: most upstream region visited in regression path. If fpcount == 0 then rpregreg = 0.
-        rpregchr: must upstream letter visited in regression path (offset from the first letter of the sentence). 
+        rpregchr: most upstream letter visited in regression path (offset from the first letter of the sentence). 
                   If fpcount = 0 then rpregchr will have a large value (high enough to be out of bounds for any possible stimulus string).
     arguments:
         FixDF -- fixation data of the trial
@@ -2463,6 +2422,10 @@ def cal_EM_measures(RegDF, FixDF, SacDF, EMF):
             EMF.loc[curEMF,'ffixurt'] = np.nan
         if EMF.loc[curEMF,'spilover'] == 0:
             EMF.loc[curEMF,'spilover'] = np.nan
+        if EMF.loc[curEMF,'spurt'] == 0:
+            EMF.loc[curEMF,'spurt'] = np.nan
+        if EMF.loc[curEMF,'spcount'] == 0:
+            EMF.loc[curEMF,'spcount'] = np.nan
     
     # whole trial measures
     EMF.tffixos = chk_tffixos(EMF)  # tffixos: offset of the first fixation in trial in letters from the beginning of the sentence       
@@ -2481,24 +2444,43 @@ def cal_EMF(direct, subj, regfileNameList):
     output:
         EMF -- data frame storing eye-movement measures
     """
-    nameFix = direct + '/' + subj + '_Fix.csv'; FixDF = pd.read_csv(nameFix, sep=',')   # read fixation data 
-    nameSac = direct + '/' + subj + '_Sac.csv'; SacDF = pd.read_csv(nameSac, sep=',')   # read saccade data
-    for trialID in range(len(regfileNameList)):
-        RegDF = getRegDF(regfileNameList, trialID) # get region file 
-        FixDFtemp = FixDF[FixDF.trial_id==trialID].reset_index()  # get fixation of the trial
-        SacDFtemp = SacDF[SacDF.trial_id==trialID].reset_index()  # get saccade of the trial
-        # create result data frame
-        EMF = pd.DataFrame(np.zeros((len(RegDF), 32)))
-        EMF.columns = ['subj', 'trial_id', 'trial_type', 'tdur', 'blinks', 'eye', 'tffixos', 'tffixurt', 'tfixcnt', 'tregrcnt', 'region', 'reglen', 'word', 'line', 'x1_pos', 'x2_pos', 'mod_x1', 'mod_x2',
-                       'fpurt', 'fpcount', 'fpregres', 'fpregreg', 'fpregchr', 'ffos', 'ffixurt', 'spilover', 'rpurt', 'rpcount', 'rpregreg', 'rpregchr', 'spurt', 'spcount']
-        # copy values from FixDF about the whole trial               
-        EMF.subj = subj; EMF.trial_id = FixDF.trial_id[0]; EMF.trial_type = FixDF.trial_type[0]; EMF.tdur = FixDF.tdur[0]; EMF.blinks = FixDF.blinks[0]; EMF.eye = FixDF.eye[0]
-        # copy values from RegDF about region        
-        EMF.region = RegDF.WordID; EMF.reglen = RegDF.length; EMF.word = RegDF.Word; EMF.line = RegDF.line; EMF.x1_pos = RegDF.x1_pos; EMF.x2_pos = RegDF.x2_pos
-        modEMF(EMF) # modify EMF's mod_x1 and mod_x2
-        print "Cal EM measures: Subj: " + subj + ", Trial: " + str(trialID)
-        cal_EM_measures(RegDF, FixDFtemp, SacDFtemp, EMF)        
-        nameEMF = direct + '/' + subj + '_EMF_trial' + str(trialID) + '.csv'; EMF.to_csv(nameEMF, index=False) # store results
+    # first, check whether the required files are there:
+    datafileExist = True
+    datafileName1 = direct + '/' + subj + '_Sac.csv'; datafileName2 = direct + '/' + subj + '_Fix.csv' 
+    if not os.path.isfile(datafileName1):
+        print subj + '_Sac.csv' + ' does not exist!'
+        datafileExist = False
+    elif not os.path.isfile(datafileName2):
+        print subj + '_Fix.csv' + ' does not exist!'
+        datafileExist = False
+    
+    regfileExist = True
+    for regfile in regfileNameList:
+        regfileName = direct + '/' + regfile
+        if not os.path.isfile(regfileName):
+            print regfile + ' does not exist!'
+            regfileExist = False
+    
+    # second, process the files
+    if datafileExist and regfileExist:
+        nameSac = direct + '/' + subj + '_Sac.csv'; SacDF = pd.read_csv(nameSac, sep=',')   # read saccade data
+        nameFix = direct + '/' + subj + '_Fix.csv'; FixDF = pd.read_csv(nameFix, sep=',')   # read fixation data 
+        for trialID in range(len(regfileNameList)):
+            RegDF = getRegDF(direct, regfileNameList, trialID) # get region file 
+            SacDFtemp = SacDF[SacDF.trial_id==trialID].reset_index()  # get saccade of the trial
+            FixDFtemp = FixDF[FixDF.trial_id==trialID].reset_index()  # get fixation of the trial
+            # create result data frame
+            EMF = pd.DataFrame(np.zeros((len(RegDF), 32)))
+            EMF.columns = ['subj', 'trial_id', 'trial_type', 'tdur', 'blinks', 'eye', 'tffixos', 'tffixurt', 'tfixcnt', 'tregrcnt', 'region', 'reglen', 'word', 'line', 'x1_pos', 'x2_pos', 'mod_x1', 'mod_x2',
+                           'fpurt', 'fpcount', 'fpregres', 'fpregreg', 'fpregchr', 'ffos', 'ffixurt', 'spilover', 'rpurt', 'rpcount', 'rpregreg', 'rpregchr', 'spurt', 'spcount']
+            # copy values from FixDF about the whole trial               
+            EMF.subj = subj; EMF.trial_id = FixDF.trial_id[0]; EMF.trial_type = FixDF.trial_type[0]; EMF.tdur = FixDF.tdur[0]; EMF.blinks = FixDF.blinks[0]; EMF.eye = FixDF.eye[0]
+            # copy values from RegDF about region        
+            EMF.region = RegDF.WordID; EMF.reglen = RegDF.length; EMF.word = RegDF.Word; EMF.line = RegDF.line; EMF.x1_pos = RegDF.x1_pos; EMF.x2_pos = RegDF.x2_pos
+            modEMF(EMF) # modify EMF's mod_x1 and mod_x2
+            print "Cal EM measures: Subj: " + subj + ", Trial: " + str(trialID)
+            cal_EM_measures(RegDF, FixDFtemp, SacDFtemp, EMF)        
+            nameEMF = direct + '/' + subj + '_EMF_trial' + str(trialID) + '.csv'; EMF.to_csv(nameEMF, index=False) # store results
         
 
 def cal_EMF_Batch(direct, regfileNameList):
@@ -2512,7 +2494,8 @@ def cal_EMF_Batch(direct, regfileNameList):
     """
     subjlist = []
     for file in os.listdir(direct):
-        if fnmatch.fnmatch(file, '*.asc'):
-            subjlist.append(file.split('.')[0])
+        if fnmatch.fnmatch(file, '*_Fix.csv'):
+            subjlist.append(str(file).split('_')[0])
+    subjlist = np.unique(subjlist)        
     for subj in subjlist:
         cal_EMF(direct, subj, regfileNameList)      
