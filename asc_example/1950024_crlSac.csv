@@ -1,4 +1,4 @@
-subj,trial_id,eye,startline,endline,SaclineIndex,start,end,duration,x1_pos,y1_pos,x2_pos,y2_pos,ampl,pk
+subj,trial_id,eye,startline,endline,SaclineIndex,start_time,end_time,duration,x1_pos,y1_pos,x2_pos,y2_pos,ampl,pk
 1950024,0.0,L,1.0,2.0,18.0,12460777.0,12460845.0,72.0,949.4,77.8,349.7,114.4,14.78,401.0
 1950024,0.0,L,2.0,3.0,43.0,12465741.0,12465805.0,68.0,908.9,127.5,301.8,167.1,14.97,418.0
 1950024,0.0,L,3.0,4.0,62.0,12469861.0,12469925.0,68.0,795.0,246.4,305.5,292.3,12.16,381.0

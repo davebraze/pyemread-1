@@ -17,6 +17,8 @@ from PIL import Image, ImageDraw, ImageFont
 import matplotlib.font_manager as font_manager
 import matplotlib.pyplot as plt
 
+# functions starting with "u_" are user functions, the others are helper functions
+
 # -----------------------------------------------------------------------------
 # -----------------------------------------------------------------------------
 # dictionary for storing each word's information
@@ -49,11 +51,6 @@ def readDict(fn):
 # -----------------------------------------------------------------------------
 # -----------------------------------------------------------------------------
 # functions for generating bitmap used for paragraph reading
-# global variables
-# for PRaster
-STANDARD_CHAR = u'n'
-
-
 def InputDict(resDict, curKey, Name, Word, length, height, baseline, curline, x1_pos, y1_pos, x2_pos, y2_pos, b_x1, b_y1, b_x2, b_y2):
     """
     write result of each word into resDict: note that dictionary value may have a different sequence as in the final csv
@@ -66,7 +63,7 @@ def InputDict(resDict, curKey, Name, Word, length, height, baseline, curline, x1
 
 def writeCSV(regFile, resDict):
     """
-    write resDict to csv file: Name, WordID, Word, length, height, baseline, line, x1_pos, y1_pos, x2_pos, y2_pos, b_x1, b_y1, b_x2, b_y2
+    write resDict to csv file: Name, WordID, Word, length, height, baseline, line_no, x1_pos, y1_pos, x2_pos, y2_pos, b_x1, b_y1, b_x2, b_y2
     """
     DF = pd.DataFrame(np.zeros((len(resDict), 15)))
     cur = 0    
@@ -75,7 +72,7 @@ def writeCSV(regFile, resDict):
         for i in np.arange(1,14):
             DF.loc[cur,i+1] = resDict[key][i]
         cur += 1
-    DF.columns = ['Name', 'WordID', 'Word', 'length', 'height', 'baseline', 'line', 'x1_pos', 'y1_pos', 'x2_pos', 'y2_pos', 'b_x1', 'b_y1', 'b_x2', 'b_y2']        
+    DF.columns = ['Name', 'WordID', 'Word', 'length', 'height', 'baseline', 'line_no', 'x1_pos', 'y1_pos', 'x2_pos', 'y2_pos', 'b_x1', 'b_y1', 'b_x2', 'b_y2']        
     DF.sort(columns='WordID')
     DF.to_csv(regFile, index=False)
 
@@ -238,20 +235,16 @@ def getdesasc(w, descents, ascents):
     return ((mdes, masc))
 
 
-def cAspect(imgfont, char=STANDARD_CHAR):
+def cAspect(imgfont, char):
     """
-    Determine the wd to ht ratio for the letter 'n' in the specified font.
-    fontdict = getfontdict()
-    sfont = fontdict['LucidaConsole']['Regular']
-    ssize = 12
-    sttf = ImageFont.truetype(sfont, ssize)
-    cAspect(sttf)
+    Determine the wd to ht ratio for the letter char in the specified font.
     """
     return (float(imgfont.getsize(char)[1])/imgfont.getsize(char)[0])
 
 
-def Praster(direct, fontpath, codeMethod='utf_8', text=[u'The quick brown fox jumps over the lazy dog.', u'The lazy tabby cat sleeps in the sun all afternoon.'],
-            dim=(1280,1024), fg=(0,0,0), bg=(232,232,232), wfont=None, regfile=True, lmargin=86, tmargin=86, linespace=43, xsz=18, ysz=None, bbox=False, bbox_big=False, 
+# user functions for generating bitmaps and region files
+def u_Praster(direct, fontpath, codeMethod='utf_8', text=[u'The quick brown fox jumps over the lazy dog.', u'The lazy tabby cat sleeps in the sun all afternoon.'],
+            dim=(1280,1024), fg=(0,0,0), bg=(232,232,232), wfont=None, regfile=True, lmargin=86, tmargin=86, linespace=43, fht=18, fwd=None, bbox=False, bbox_big=False, 
             ID='test', addspace=18, log=False):
     """
     Rasterize 'text' using 'font' according to the specified parameters. 
@@ -270,27 +263,28 @@ def Praster(direct, fontpath, codeMethod='utf_8', text=[u'The quick brown fox ju
         lmargin=86      : left margin in pixels
         tmargin=86      : top margin in pixels  NOTE ORIGIN IS IN BOTTOM LEFT CORNER
         linespace=43    : linespacing in pixels
-        xsz=18          : font height in pixels (max vertical distance between highest and lowest painted pixel
+        fht=18          : font height in pixels (max vertical distance between highest and lowest painted pixel
                         : considering every character in the font). Makes more sense to specify _width_,
                         : but ImageFont.truetype() wants a ht). Not every font obeys; see, e.g., "BrowalliaUPC Regular"
-        ysz=None        : towards character width in pixels. Takes precedence over xsz. 
+        fwd=None        : towards character width in pixels. Takes precedence over fht. 
         bbox=False      : draw bounding box around each word.
         bbox_big=False  : draw bounding box around the whole line of word.        
         ID='test'       : unique ID for stim, used to build filenames for bitmap and regions. Also included in watermark.
         addspace        : the extra pixels you want to add above the top and below the bottom of each line of texts
         log             : log for recording intermediate result
     """
-    if ysz: # Reset xsz if ysz is specified. This isn't working quite like I'd like. See full set of font species for details.
-        ttf = ImageFont.truetype(fontpath, xsz) # init the specified font resource
-        casp = cAspect(ttf)
-        xsz= int(round(ysz*casp))
-        ttf = ImageFont.truetype(fontpath, xsz) # re-init the specified font resource
-        (wd, ht) = ttf.getsize(STANDARD_CHAR)  
+    if fwd: # Reset fht if fwd is specified. This isn't working quite like I'd like. See full set of font species for details.
+        ttf = ImageFont.truetype(fontpath, fht) # init the specified font resource
+        std_char = u'n' # u'n' is used as a standard character for calculating font size 
+        casp = cAspect(ttf, std_char)  
+        fht= int(round(fwd*casp))
+        ttf = ImageFont.truetype(fontpath, fht) # re-init the specified font resource
+        (wd, ht) = ttf.getsize(std_char)  
     else:
-        ttf = ImageFont.truetype(fontpath, xsz) # init the specified font resource
+        ttf = ImageFont.truetype(fontpath, fht) # init the specified font resource
     
     # create descents and ascents dictionaries
-    descents = getStrikeDescents(fontpath, xsz); ascents = getStrikeAscents(fontpath, xsz)
+    descents = getStrikeDescents(fontpath, fht); ascents = getStrikeAscents(fontpath, fht)
 
     if log: 
         import json
@@ -304,10 +298,6 @@ def Praster(direct, fontpath, codeMethod='utf_8', text=[u'The quick brown fox ju
 
     ### open the region file: use codecs.open() to properly support writing unicode strings
     if regfile: 
-        #regfileH = codecs.open(id+".region.txt", 'wb', encoding=codeMethod)
-        #wo = '%s|%s|%s|%s|%s|%s|%s|%s|%s|%s|%s|%s|%s|%s|%s' % ('Name', 'WordID', 'Word', 'length', 'height', 'baseline', 'line', 
-        #                                                 'x1_pos', 'y1_pos', 'x2_pos', 'y2_pos', 'b_x1', 'b_y1', 'b_x2', 'b_y2') 
-        #regfileH.write(wo+'\n')
         resDict = Dictlist(); curKey = 1
           
     # output file: 
@@ -315,7 +305,7 @@ def Praster(direct, fontpath, codeMethod='utf_8', text=[u'The quick brown fox ju
     #      len: length of each word, include ahead bracket or quotation, or behind punctuation, 
     #   height: getsize() for single character is fine! not for words!
     # baseline: base line of each line of words
-    #     line: line number      
+    #     line_no: line number      
     # rec_x1, rec_y1, rec_x2, rec_y2: the rectangle bounding text of each word (not working properly due to error of getsize)
     # brec_x1, brec_y1, brec_x2, brec_y2: the rectangle bounding text based on the line (work properly!)      
     
@@ -349,7 +339,7 @@ def Praster(direct, fontpath, codeMethod='utf_8', text=[u'The quick brown fox ju
             xpos2 = xpos1 + wd    # right edge of current word
             
             (mdes, masc) = getdesasc(w, descents, ascents)  # calculate descent and ascent of each word
-            ht = getStrikeCenters(fontpath, xsz) + masc - mdes  # calculate word height based on character
+            ht = getStrikeCenters(fontpath, fht) + masc - mdes  # calculate word height based on character
             # get the correct text position!
             vpos1 = vpos - ht - mdes
             vpos2 = vpos1 + ht            
@@ -362,7 +352,7 @@ def Praster(direct, fontpath, codeMethod='utf_8', text=[u'The quick brown fox ju
             if bbox_big: draw.rectangle([(xpos1, vpos1_b - addspace), (xpos2, vpos2_b + addspace)], outline=fg, fill=bg)
             
             # draw current word
-            vpos1_text = vpos1 + masc - xsz/4.5 - 1  # top edge of current word, masc - xsz/4.5 - 1 is offset!.
+            vpos1_text = vpos1 + masc - fht/4.5 - 1  # top edge of current word, masc - fht/4.5 - 1 is offset!.
             draw.text((xpos1, vpos1_text), w, font=ttf, fill=fg) 
             
             # output word regions
@@ -407,8 +397,8 @@ def Praster(direct, fontpath, codeMethod='utf_8', text=[u'The quick brown fox ju
     img.save(direct + '/' + ID + '.png','PNG') # write bitmap file
 
 
-def Gen_Bitmap_RegFile(direct, fontName, textFileNameList, genmethods=2, codeMethod='utf_8', dim=(1280,1024), fg=(0,0,0), bg=(232,232,232), 
-    lmargin=215, tmargin=86, linespace=65, xsz=18, ysz=None, bbox=False, bbox_big=False, addspace=18, log=False):
+def u_Gen_Bitmap_RegFile(direct, fontName, textFileNameList, genmethods=2, codeMethod='utf_8', dim=(1280,1024), fg=(0,0,0), bg=(232,232,232), 
+    lmargin=215, tmargin=86, linespace=65, fht=18, fwd=None, bbox=False, bbox_big=False, addspace=18, log=False):
     """
     generate the bitmaps (PNG) and region files of single/multiple line story from text file
     arguments:
@@ -424,10 +414,10 @@ def Gen_Bitmap_RegFile(direct, fontName, textFileNameList, genmethods=2, codeMet
         lmargin=86      : left margin in pixels
         tmargin=86      : top margin in pixels NOTE ORIGIN IS IN BOTTOM LEFT CORNER
         linespace=43    : linespacing in pixels
-        xsz=18          : font height in pixels (max vertical distance between highest and lowest painted pixel
+        fht=18          : font height in pixels (max vertical distance between highest and lowest painted pixel
                         : considering every character in the font). Makes more sense to specify _width_,
                         : but ImageFont.truetype() wants a ht). Not every font obeys; see, e.g., "BrowalliaUPC Regular"
-        ysz=None        : towards character width in pixels. Takes precedence over xsz. 
+        fwd=None        : towards character width in pixels. Takes precedence over xsz. 
         bbox=False      : draw bounding box around each word.
         bbox_big=False  : draw bounding box around the whole line of word.        
         addspace        : the extra pixels you want to add above the top and below the bottom of each line of texts
@@ -441,9 +431,9 @@ def Gen_Bitmap_RegFile(direct, fontName, textFileNameList, genmethods=2, codeMet
     
     if genmethods == 0:
         # Simple tests.
-        Praster(direct, fontpath, xsz=xsz, bbox=True, log=True)
-        Praster(direct, fontpath, text=["This is a test.", "This is another."], xsz=xsz)
-        Praster(direct, fontpath, text=["This is a one-liner."], xsz=xsz)
+        u_Praster(direct, fontpath, fht=fht, bbox=True, log=True)
+        u_Praster(direct, fontpath, text=["This is a test.", "This is another."], fht=fht)
+        u_Praster(direct, fontpath, text=["This is a one-liner."], fht=fht)
 
     elif genmethods == 1:
         # first, check whether the text file exists
@@ -466,8 +456,8 @@ def Gen_Bitmap_RegFile(direct, fontName, textFileNameList, genmethods=2, codeMet
 
             for i, P in enumerate(tmp3): 
                 s = "storyID = %02.d line = %d" % (i+1, len(P)); print(s)
-                Praster(direct, fontpath, codeMethod=codeMethod, text=P, dim=dim, fg=fg, bg=bg, lmargin=lmargin, tmargin=tmargin, linespace=linespace, 
-                        xsz=xsz, ysz=ysz, bbox=bbox, bbox_big=bbox_big, addspace=addspace, ID='story%02.d' % (i+1), log=log)
+                u_Praster(direct, fontpath, codeMethod=codeMethod, text=P, dim=dim, fg=fg, bg=bg, lmargin=lmargin, tmargin=tmargin, linespace=linespace, 
+                        fht=fht, fwd=fwd, bbox=bbox, bbox_big=bbox_big, addspace=addspace, ID='story%02.d' % (i+1), log=log)
 
     elif genmethods == 2:
         # read from multiple text files                        
@@ -483,18 +473,56 @@ def Gen_Bitmap_RegFile(direct, fontName, textFileNameList, genmethods=2, codeMet
                 tmp0 = [ii for ii in lines if not re.match("^#", ii)] # Squeeze out comments: lines that start with '#'
                 tmp1 = [re.sub(u"\r\n$", u"", ii) for ii in tmp0]    # remove "\r\n" at the ending of each line
                 
-                Praster(direct, fontpath, codeMethod=codeMethod, text=tmp1, dim=dim, fg=fg, bg=bg, lmargin=lmargin, tmargin=tmargin, linespace=linespace, 
-                        xsz=xsz, ysz=ysz, bbox=bbox, bbox_big=bbox_big, addspace=addspace, ID=ID, log=log)
+                u_Praster(direct, fontpath, codeMethod=codeMethod, text=tmp1, dim=dim, fg=fg, bg=bg, lmargin=lmargin, tmargin=tmargin, linespace=linespace, 
+                        fht=fht, fwd=fwd, bbox=bbox, bbox_big=bbox_big, addspace=addspace, ID=ID, log=log)
 
 
+def u_updReg(direct, regfileNameList, addspace):
+    """
+    update old style region file into new style and save
+    arguments:
+        direct -- directory of the old region file
+        regfileNameList -- list of names of old region files
+        addspace -- added space for bigger boundary surrounding lines of texts
+    """
+    for trialID in range(len(regfileNameList)):
+        RegDF = pd.read_csv(direct + '/' + regfileNameList[trialID], sep=',', header=None)
+        RegDF.columns = ['Name', 'Word', 'length', 'x1_pos', 'y1_pos', 'x2_pos', 'y2_pos']
+        # add WordID
+        RegDF['WordID'] = range(1,len(RegDF)+1)        
+        # add line        
+        RegDF['line_no'] = 0
+        lineInd = 1; lineReg_low = 0; cur_y = RegDF.y2_pos[0]
+        for curind in range(len(RegDF)):
+            if RegDF.y2_pos[curind] >= cur_y + 20:
+                lineReg_up = curind
+                for ind in range(lineReg_low, lineReg_up):
+                    RegDF.loc[ind,'line_no'] = lineInd
+                lineInd += 1; lineReg_low = lineReg_up; cur_y = RegDF.y2_pos[curind]
+        if lineReg_up < len(RegDF):
+            # add the remaining to another line
+            for ind in range(lineReg_low, len(RegDF)):
+                RegDF.loc[ind,'line_no'] = lineInd
+        # add baseline
+        RegDF['baseline'] = 0        
+        for lineNum in np.unique(RegDF.line_no):
+            RegDF.loc[RegDF.line_no==lineNum,'baseline'] = min(RegDF.loc[RegDF.line_no==lineNum,'y2_pos'])
+        # add height
+        RegDF['height'] = 0
+        for line in range(len(RegDF)):
+            RegDF.loc[line,'height'] = RegDF.loc[line,'y2_pos'] - RegDF.loc[line,'y1_pos']        
+        # add b_x1, b_y1, b_x2, b_y2    
+        RegDF['b_x1'] = RegDF.x1_pos; RegDF['b_y1'] = 0; RegDF['b_x2'] = RegDF.x2_pos; RegDF['b_y2'] = 0
+        for lineNum in np.unique(RegDF.line_no):
+            RegDF.loc[RegDF.line_no==lineNum,'b_y1'] = max(RegDF.loc[RegDF.line_no==lineNum,'y1_pos']) - addspace
+            RegDF.loc[RegDF.line_no==lineNum,'b_y2'] = min(RegDF.loc[RegDF.line_no==lineNum,'y2_pos']) + addspace
+        RegDF = RegDF[['Name', 'WordID', 'Word', 'length', 'height', 'baseline', 'line_no', 'x1_pos', 'y1_pos', 'x2_pos', 'y2_pos', 'b_x1', 'b_y1', 'b_x2', 'b_y2']]     
+        RegDF.to_csv(direct + '/' + regfileNameList[trialID], index=False)            
+
+    
 # -----------------------------------------------------------------------------
 # -----------------------------------------------------------------------------
 # functions obtaining basic information from data files
-# global variables: 
-# for updating old style region file
-ADD_SPACE = 20
-  
-
 def getHeader(lines):
     """
     get header information
@@ -591,45 +619,6 @@ def gettdur(triallines):
     return endtime - starttime        
 
 
-def updateReg(direct, regfileNameList):
-    """
-    update old style region file into new style and save
-    """
-    for trialID in range(len(regfileNameList)):
-        RegDF = pd.read_csv(direct + '/' + regfileNameList[trialID], sep=',', header=None)
-        RegDF.columns = ['Name', 'Word', 'length', 'x1_pos', 'y1_pos', 'x2_pos', 'y2_pos']
-        # add WordID
-        RegDF['WordID'] = range(1,len(RegDF)+1)        
-        # add line        
-        RegDF['line'] = 0
-        lineInd = 1; lineReg_low = 0; cur_y = RegDF.y2_pos[0]
-        for curind in range(len(RegDF)):
-            if RegDF.y2_pos[curind] >= cur_y + 20:
-                lineReg_up = curind
-                for ind in range(lineReg_low, lineReg_up):
-                    RegDF.loc[ind,'line'] = lineInd
-                lineInd += 1; lineReg_low = lineReg_up; cur_y = RegDF.y2_pos[curind]
-        if lineReg_up < len(RegDF):
-            # add the remaining to another line
-            for ind in range(lineReg_low, len(RegDF)):
-                RegDF.loc[ind,'line'] = lineInd
-        # add baseline
-        RegDF['baseline'] = 0        
-        for line in np.unique(RegDF.line):
-            RegDF.loc[RegDF.line==line,'baseline'] = min(RegDF.loc[RegDF.line==line,'y2_pos'])
-        # add height
-        RegDF['height'] = 0
-        for line in range(len(RegDF)):
-            RegDF.loc[line,'height'] = RegDF.loc[line,'y2_pos'] - RegDF.loc[line,'y1_pos']        
-        # add b_x1, b_y1, b_x2, b_y2    
-        RegDF['b_x1'] = RegDF.x1_pos; RegDF['b_y1'] = 0; RegDF['b_x2'] = RegDF.x2_pos; RegDF['b_y2'] = 0
-        for line in np.unique(RegDF.line):
-            RegDF.loc[RegDF.line==line,'b_y1'] = max(RegDF.loc[RegDF.line==line,'y1_pos']) - ADD_SPACE
-            RegDF.loc[RegDF.line==line,'b_y2'] = min(RegDF.loc[RegDF.line==line,'y2_pos']) + ADD_SPACE
-        RegDF = RegDF[['Name', 'WordID', 'Word', 'length', 'height', 'baseline', 'line', 'x1_pos', 'y1_pos', 'x2_pos', 'y2_pos', 'b_x1', 'b_y1', 'b_x2', 'b_y2']]     
-        RegDF.to_csv(direct + '/' + regfileNameList[trialID], index=False)            
-
-    
 def getRegDF(direct, regfileNameList, trialID):
     """
     get the region file data frame from regfileNameList based on trialID
@@ -649,26 +638,6 @@ def getRegDF(direct, regfileNameList, trialID):
 # -----------------------------------------------------------------------------
 # -----------------------------------------------------------------------------
 # functions geting crossline information based on region files, 
-# used for checking crossline saccades and fixations.
-# global variables
-# for recording and lumping short fixations
-LN = 50 # maximum duration of a fixation to "lump". Fixation <= this value is subject to lumping with adjacent and near enough (determined by zN) fixations
-ZN = 50 # maximum distance (in pixels) between two fixations for "lumping"; default = 1.5 character (12/8s)
-MN = 50 # minimum legal fixation duration; default = 50 ms
-RECFINAL = False # whether or not include the final fixation of a trial and allow it to trigger regression; default = False
-
-# for tracing log file recording questionable trials
-RECSTATUS = True # record whether the datafile has some problem needing hand check    
-
-# for extracting crossline saccade
-# Basic assumption: crossline saccade or concatenate fixation tend to jump a large range of distance
-FIXDIFF_RATIO = 0.6    # the ratio of maximum distance between the center of the last word and the center of the first word in a line, for checking cross-line fixations
-FRONT_RANGE_RATIO = 0.2 # the ratio to check backward crossline saccade or fixation: such saccade or fixation usually starts around the line beginning
-COSDIF_THRES = 0.99 # threshold for identifying forward crossline saccades or fixations based on cosine difference
-Y_RANGE = 60   # the biggest y difference indicating the eyes are crossing lines or moving away from that line (this must be similar to the distance between two lines)
-FIX_METHOD = 'DIFF' # fixation method: 'DIFF': based on difference in x_axis; 'SAC': based on crosslineSac ('SAC' is preferred since saccade is kinda more accurate!)
-
-
 def getCrossLineInfo(RegDF, ExpType):
     """
     get cross line information from region file
@@ -688,14 +657,14 @@ def getCrossLineInfo(RegDF, ExpType):
         ]        
     elif ExpType == 'RP':
         for ind in range(len(RegDF)-1):
-            if RegDF.line[ind]+1 == RegDF.line[ind+1]:
+            if RegDF.line_no[ind]+1 == RegDF.line_no[ind+1]:
                 # line crossing! record
                 dic = {}
                 # center of the last word of the previous line
-                dic['p'] = RegDF.loc[ind,'line'];
+                dic['p'] = RegDF.loc[ind,'line_no'];
                 dic['p_x'] = (RegDF.loc[ind,'x1_pos'] + RegDF.loc[ind,'x2_pos'])/2.0; dic['p_y'] = (RegDF.loc[ind,'y1_pos'] + RegDF.loc[ind,'y2_pos'])/2.0
                 # center of the first word of the next line
-                dic['n'] = RegDF.loc[ind+1,'line'];
+                dic['n'] = RegDF.loc[ind+1,'line_no'];
                 dic['n_x'] = (RegDF.loc[ind+1,'x1_pos'] + RegDF.loc[ind+1,'x2_pos'])/2.0; dic['n_y'] = (RegDF.loc[ind+1,'y1_pos'] + RegDF.loc[ind+1,'y2_pos'])/2.0
                 CrossLineInfo.append(dic)
     return CrossLineInfo 
@@ -712,16 +681,16 @@ def lumpTwoFix(Df, ind1, ind2, direc, addtime):
         if ind1 >= ind2:
             raise ValueError('Warning! Wrong direction in lumping!')
         # lump
-        Df.loc[ind1,'end'] = Df.loc[ind2,'end']
-        Df.loc[ind1,'duration'] = Df.loc[ind1,'end'] - Df.loc[ind1,'start'] + addtime # new duration
+        Df.loc[ind1,'end_time'] = Df.loc[ind2,'end_time']
+        Df.loc[ind1,'duration'] = Df.loc[ind1,'end_time'] - Df.loc[ind1,'start_time'] + addtime # new duration
         Df.loc[ind1,'x_pos'] = (Df.loc[ind1,'x_pos'] + Df.loc[ind2,'x_pos'])/2.0; Df.loc[ind1,'y_pos'] = (Df.loc[ind1,'y_pos'] + Df.loc[ind2,'y_pos'])/2.0   # mean x_pos, mean y_pos
         Df.loc[ind1,'pup_size'] = (Df.loc[ind1,'pup_size'] + Df.loc[ind2,'pup_size'])/2.0  # mean pup_size
     elif direc == -1:
         if ind1 <= ind2:
             raise ValueError('Warning! Wrong direction in lumping!')
         # lump
-        Df.loc[ind1,'start'] = Df.loc[ind2,'start']
-        Df.loc[ind1,'duration'] = Df.loc[ind1,'end'] - Df.loc[ind1,'start'] + addtime # new duration
+        Df.loc[ind1,'start_time'] = Df.loc[ind2,'start_time']
+        Df.loc[ind1,'duration'] = Df.loc[ind1,'end_time'] - Df.loc[ind1,'start_time'] + addtime # new duration
         Df.loc[ind1,'x_pos'] = (Df.loc[ind1,'x_pos'] + Df.loc[ind2,'x_pos'])/2.0; Df.loc[ind1,'y_pos'] = (Df.loc[ind1,'y_pos'] + Df.loc[ind2,'y_pos'])/2.0    # mean x_pos, mean y_pos
         Df.loc[ind1,'pup_size'] = (Df.loc[ind1,'pup_size'] + Df.loc[ind2,'pup_size'])/2.0   # mean pup_size
     
@@ -731,8 +700,8 @@ def lumpMoreFix(Df, ind, ind_list, addtime):
     lump ind with inds in ind_list
     Df as a data frame is mutable, no need to return Df
     """
-    Df.loc[ind,'end'] = Df.loc[ind_list[-1],'end']  # use the last one's ending time for the lumped ending time
-    Df.loc[ind,'duration'] = Df.loc[ind,'end'] - Df.loc[ind,'start'] + addtime # new duration
+    Df.loc[ind,'end_time'] = Df.loc[ind_list[-1],'end_time']  # use the last one's ending time for the lumped ending time
+    Df.loc[ind,'duration'] = Df.loc[ind,'end_time'] - Df.loc[ind,'start_time'] + addtime # new duration
     for item in ind_list:           
         Df.loc[ind,'x_pos'] += Df.loc[item,'x_pos']; Df.loc[ind,'y_pos'] += Df.loc[item,'y_pos']
         Df.loc[ind,'pup_size'] += Df.loc[item,'pup_size']
@@ -740,13 +709,15 @@ def lumpMoreFix(Df, ind, ind_list, addtime):
     Df.loc[ind,'pup_size'] /= float(len(ind_list)+1)   # mean pup_size                    
 
     
-def lumpFix(Df, endindex, short_index, addtime):
+def lumpFix(Df, endindex, short_index, addtime, ln, zn):
     """
     lump fixation
     arguments:
         Df -- fixation data for lumping 
         short_index -- list of index of fixation having short duration
         addtime -- adjusting time for duration, calculated based on sampling frequency
+        ln -- in lumping, maximum duration of a fixation to "lump", default = 50. Fixation <= this value is subject to lumping with adjacent and near enough (determined by zN) fixations
+        zn -- in lumping, maximum distance (in pixels) between two fixations for "lumping"; default = 50, roughly 1.5 character (12/8s)
     return:
         Df -- although Df as a data frame is mutable, due to possible dropping and reindexing, we need to return Df
     """
@@ -756,7 +727,7 @@ def lumpFix(Df, endindex, short_index, addtime):
             # the first fixation
             # check the next one
             next_list = []; ind = cur + 1
-            while ind < len(short_index) and short_index[ind] == short_index[ind-1]+1 and abs(Df.x_pos[short_index[ind]]-Df.x_pos[short_index[cur]]) <= ZN:
+            while ind < len(short_index) and short_index[ind] == short_index[ind-1] + 1 and abs(Df.x_pos[short_index[ind]] - Df.x_pos[short_index[cur]]) <= zn:
                 # the next fixation is also a short fixation and within the zN distance                    
                 next_list.append(short_index[ind]); ind += 1                
             
@@ -766,21 +737,21 @@ def lumpFix(Df, endindex, short_index, addtime):
                 for item in next_list:
                     droplist.append(item)                        
                 # further check the next fixation!
-                if Df.duration[short_index[cur]] <= LN:
-                    if next_list[-1]+1 <= endindex and abs(Df.x_pos[short_index[cur]]-Df.x_pos[next_list[-1]+1]) <= ZN:
+                if Df.duration[short_index[cur]] <= ln:
+                    if next_list[-1] + 1 <= endindex and abs(Df.x_pos[short_index[cur]] - Df.x_pos[next_list[-1]+1]) <= zn:
                         lumpTwoFix(Df, short_index[cur], next_list[-1]+1, 1, addtime)   # there are next item in Df and it can be further lumped together
                         droplist.append(next_list[-1]+1)    # mark next_list[-1]+1 for dropping
                 # jump over these lumped ones
                 cur += len(next_list)                
             else:
                 # no consecutive short fixation for lumping, check the next one
-                if short_index[cur]+1 <= endindex and abs(Df.x_pos[short_index[cur]]-Df.x_pos[short_index[cur]+1]) <= ZN:
+                if short_index[cur] + 1 <= endindex and abs(Df.x_pos[short_index[cur]] - Df.x_pos[short_index[cur]+1]) <= zn:
                     lumpTwoFix(Df, short_index[cur], short_index[cur]+1, 1, addtime)    # lump short_index[cur] and short_index[cur]+1
                     droplist.append(short_index[cur]+1) # mark short_index[cur]+1 for dropping
                     
         elif short_index[cur] == endindex:
             # the last fixation, only check the previous one
-            if not (short_index[cur]-1 in droplist) and abs(Df.x_pos[short_index[cur]]-Df.x_pos[short_index[cur]-1]) <= ZN:
+            if not (short_index[cur] - 1 in droplist) and abs(Df.x_pos[short_index[cur]] - Df.x_pos[short_index[cur]-1]) <= zn:
                 lumpTwoFix(Df, short_index[cur], short_index[cur]-1, -1, addtime)   # lump short_index[cur] and short_index[cur]-1
                 droplist.append(short_index[cur]-1) # mark short_index[cur]-1 for dropping
                 
@@ -788,7 +759,7 @@ def lumpFix(Df, endindex, short_index, addtime):
             # check both next and previous fixation
             # check the next one
             next_list = []; ind = cur + 1
-            while ind < len(short_index) and short_index[ind] == short_index[ind-1]+1 and abs(Df.x_pos[short_index[ind]]-Df.x_pos[short_index[cur]]) <= ZN:
+            while ind < len(short_index) and short_index[ind] == short_index[ind-1] + 1 and abs(Df.x_pos[short_index[ind]] - Df.x_pos[short_index[cur]]) <= zn:
                 # the next fixation is also a short fixation and can be lumped together!                    
                 next_list.append(short_index[ind]); ind += 1                
             if len(next_list) != 0:
@@ -798,11 +769,11 @@ def lumpFix(Df, endindex, short_index, addtime):
                     droplist.append(item)
                     
                 # further check the previous and next fixation!
-                if Df.duration[short_index[cur]] <= LN:
+                if Df.duration[short_index[cur]] <= ln:
                     dist_next, dist_prev = 0.0, 0.0
-                    if next_list[-1]+1 <= endindex and not (next_list[-1]+1 in droplist) and abs(Df.x_pos[short_index[cur]]-Df.x_pos[next_list[-1]+1]) <= ZN:
+                    if next_list[-1] + 1 <= endindex and not (next_list[-1] + 1 in droplist) and abs(Df.x_pos[short_index[cur]] - Df.x_pos[next_list[-1]+1]) <= zn:
                         dist_next = abs(Df.x_pos[short_index[cur]] - Df.x_pos[next_list[-1]+1])
-                    if not (short_index[cur]-1 in droplist) and abs(Df.x_pos[short_index[cur]]-Df.x_pos[short_index[cur]-1]) <= ZN:
+                    if not (short_index[cur]-1 in droplist) and abs(Df.x_pos[short_index[cur]] - Df.x_pos[short_index[cur]-1]) <= zn:
                         dist_prev = abs(Df.x_pos[short_index[cur]] - Df.x_pos[short_index[cur]-1])
                     
                     if dist_next != 0.0 and dist_prev == 0.0:                        
@@ -816,14 +787,14 @@ def lumpFix(Df, endindex, short_index, addtime):
                             lumpTwoFix(Df, short_index[cur], next_list[-1]+1, 1, addtime)   # lump next first!
                             droplist.append(next_list[-1]+1)    # mark next_list[-1]+1 for dropping
                             # further check previous
-                            if Df.duration[short_index[cur]] <= LN and abs(Df.x_pos[short_index[cur]]-Df.x_pos[short_index[cur]-1]) <= ZN:
+                            if Df.duration[short_index[cur]] <= ln and abs(Df.x_pos[short_index[cur]] - Df.x_pos[short_index[cur]-1]) <= zn:
                                 lumpTwoFix(Df, short_index[cur], short_index[cur]-1, -1, addtime)   # lump previous                        
                                 droplist.append(short_index[cur]-1)# mark short_index[cur]-1 for dropping
                         else:
                             lumpTwoFix(Df, short_index[cur], short_index[cur]-1, -1, addtime)   # lump previous first!                       
                             droplist.append(short_index[cur]-1) # mark short_index[cur]-1 for dropping
                             # further check next
-                            if Df.duration[short_index[cur]] <= LN and abs(Df.x_pos[short_index[cur]]-Df.x_pos[next_list[-1]+1]) <= ZN:
+                            if Df.duration[short_index[cur]] <= ln and abs(Df.x_pos[short_index[cur]] - Df.x_pos[next_list[-1]+1]) <= zn:
                                 lumpTwoFix(Df, short_index[cur], next_list[-1]+1, 1, addtime)   # lump next                    
                                 droplist.append(next_list[-1]+1)    # mark next_list[-1]+1 for dropping            
 
@@ -832,9 +803,9 @@ def lumpFix(Df, endindex, short_index, addtime):
             else:
                 # check the previous and next fixation!
                 dist_next, dist_prev = 0.0, 0.0
-                if short_index[cur]+1 <= endindex and abs(Df.x_pos[short_index[cur]]-Df.x_pos[short_index[cur]+1]) <= ZN:
+                if short_index[cur] + 1 <= endindex and abs(Df.x_pos[short_index[cur]] - Df.x_pos[short_index[cur]+1]) <= zn:
                     dist_next = abs(Df.x_pos[short_index[cur]] - Df.x_pos[short_index[cur]+1])
-                if not (short_index[cur]-1 in droplist) and abs(Df.x_pos[short_index[cur]]-Df.x_pos[short_index[cur]-1]) <= ZN:
+                if not (short_index[cur]-1 in droplist) and abs(Df.x_pos[short_index[cur]] - Df.x_pos[short_index[cur]-1]) <= zn:
                     dist_prev = abs(Df.x_pos[short_index[cur]] - Df.x_pos[short_index[cur]-1])
                     
                 if dist_next != 0.0 and dist_prev == 0.0:
@@ -848,19 +819,19 @@ def lumpFix(Df, endindex, short_index, addtime):
                         lumpTwoFix(Df, short_index[cur], short_index[cur]+1, 1, addtime)    # lump next first!                   
                         droplist.append(short_index[cur]+1) # mark short_index[cur]+1 for dropping
                         # further check previous
-                        if Df.duration[short_index[cur]] <= LN and abs(Df.x_pos[short_index[cur]] - Df.x_pos[short_index[cur]-1]) <= ZN:
+                        if Df.duration[short_index[cur]] <= ln and abs(Df.x_pos[short_index[cur]] - Df.x_pos[short_index[cur]-1]) <= zn:
                             lumpTwoFix(Df, short_index[cur], short_index[cur]-1, -1, addtime)   # lump previous
                             droplist.append(short_index[cur]-1)# mark short_index[cur]-1 for dropping
                     else:                        
                         lumpTwoFix(Df, short_index[cur], short_index[cur]-1, -1, addtime)   # lump previous first!                        
                         droplist.append(short_index[cur]-1) # mark short_index[cur]-1 for dropping
                         # further check next
-                        if Df.duration[short_index[cur]] <= LN and abs(Df.x_pos[short_index[cur]] - Df.x_pos[short_index[cur]+1]) <= ZN:
+                        if Df.duration[short_index[cur]] <= ln and abs(Df.x_pos[short_index[cur]] - Df.x_pos[short_index[cur]+1]) <= zn:
                             lumpTwoFix(Df, short_index[cur], short_index[cur]+1, 1, addtime)    # lump next                  
                             droplist.append(short_index[cur]+1) # mark short_index[cur]+1 for dropping
         
         # after lumping or not, if short_index[cur]'s duration is still less than lN, delete it! 
-        if Df.loc[short_index[cur],'duration'] <= LN:
+        if Df.loc[short_index[cur],'duration'] <= ln:
             droplist.append(short_index[cur])            
         # move to next short fixation
         cur += 1    
@@ -898,7 +869,7 @@ def mergeFixLines(startline, endline, Df):
     return mergelines
     
     
-def getCrosslineFix(CrossLineInfo, startline, endline, Df):
+def getCrosslineFix(CrossLineInfo, startline, endline, Df, diff_ratio, frontrange_ratio):
     """
     collect all cross-line fixations in lines
     arguments:
@@ -906,6 +877,8 @@ def getCrosslineFix(CrossLineInfo, startline, endline, Df):
         startline -- search starting line
         endline -- search ending line
         Df -- fixation data frame
+        diff_ratio -- for calculating crossline saccades(fixations), the ratio of maximum distance between the center of the last word and the center of the first word in a line, default = 0.6
+        frontrange_ratio -- for calculating crossline saccades(fixations), the ratio to check backward crossline saccade or fixation: such saccade or fixation usually starts around the line beginning, default = 0.2
     return:
         lines -- list of turples storing cross-line fixations
         curline -- the current line in Df
@@ -914,13 +887,13 @@ def getCrosslineFix(CrossLineInfo, startline, endline, Df):
     lines = []; mergelines = mergeFixLines(startline, endline, Df)    
     curline, ind = 0, 0 # curline records the current mergeline Fix data, ind records the current CrossLineInfo
     while ind < len(CrossLineInfo):
-        curCross = CrossLineInfo[ind]; FixDistThres = FIXDIFF_RATIO*(curCross['p_x'] - curCross['n_x'])    # set up the maximum fixation distance to be identified as a cross-line fixation
-        if mergelines[curline][3] == 0 and mergelines[curline][2] >= FixDistThres and Df.loc[mergelines[curline][0],'x_pos'] <= curCross['n_x'] + FRONT_RANGE_RATIO*(curCross['p_x'] - curCross['n_x']):
+        curCross = CrossLineInfo[ind]; FixDistThres = diff_ratio*(curCross['p_x'] - curCross['n_x'])    # set up the maximum fixation distance to be identified as a cross-line fixation
+        if mergelines[curline][3] == 0 and mergelines[curline][2] >= FixDistThres and Df.loc[mergelines[curline][0],'x_pos'] <= curCross['n_x'] + frontrange_ratio*(curCross['p_x'] - curCross['n_x']):
             if ind != 0:
                 # rightward backward crossline fixation
                 # move curCross to the back
                 if ind > 0:
-                    ind -= 1; curCross = CrossLineInfo[ind]; FixDistThres = FIXDIFF_RATIO*(curCross['p_x'] - curCross['n_x'])
+                    ind -= 1; curCross = CrossLineInfo[ind]; FixDistThres = diff_ratio*(curCross['p_x'] - curCross['n_x'])
                 # record backward cross-line fixation using previous curCross
                 lines.append((-1, curCross['n'], curCross['p'], mergelines[curline][1]))
         if mergelines[curline][3] == 1 and mergelines[curline][2] <= -FixDistThres:
@@ -951,7 +924,7 @@ def getCrosslineFix(CrossLineInfo, startline, endline, Df):
                 lines.append((1, curCross['p'], curCross['n'], max(stl1,stl2)))
             # move curCross to the next
             if ind < len(CrossLineInfo) - 1:
-                ind += 1; curCross = CrossLineInfo[ind]; FixDistThres = FIXDIFF_RATIO*(curCross['p_x'] - curCross['n_x'])
+                ind += 1; curCross = CrossLineInfo[ind]; FixDistThres = diff_ratio*(curCross['p_x'] - curCross['n_x'])
             else:
                 break
         curline += 1
@@ -973,13 +946,17 @@ def getCrosslineFix(CrossLineInfo, startline, endline, Df):
     return lines, curline, question
 
 
-def getFixLine(RegDF, crlSac, FixDF):
+def getFixLine(RegDF, crlSac, FixDF, diff_ratio, frontrange_ratio, y_range, fix_method):
     """
     add line information for each FixDF
     arguments:
         RegDF -- region file data frame (with line information)
         crlSac -- data frame storing identified cross line saccades
         FixDF -- saccade data of the trial
+        diff_ratio -- for calculating crossline saccades(fixations), the ratio of maximum distance between the center of the last word and the center of the first word in a line, default = 0.6
+        frontrange_ratio -- for calculating crossline saccades(fixations), the ratio to check backward crossline saccade or fixation: such saccade or fixation usually starts around the line beginning, default = 0.2
+        y_range -- for calculating crossline saccades(fixations), the biggest y difference indicating the eyes are crossing lines or moving away from that line (this must be similar to the distance between two lines), default = 60
+        fix_method -- fixation method: 'DIFF': based on difference in x_axis; 'SAC': based on crosslineSac ('SAC' is preferred since saccade is kinda more accurate!), default = 'DIFF'
     return:
         newlineFix -- cross line fixations: previous fixation is in previous line, current fixation is in next line
     FixDF as a data frame is mutable, no need to return    
@@ -989,15 +966,15 @@ def getFixLine(RegDF, crlSac, FixDF):
     
     if len(np.unique(FixDF.eye)) == 1 and (np.unique(FixDF.eye)[0] == 'L' or np.unique(FixDF.eye)[0] == 'R'):
         # single eye data
-        if FIX_METHOD == 'DIFF':
+        if fix_method == 'DIFF':
             # method 1: based on difference in x_axis
-            lines, curline, question = getCrosslineFix(CrossLineInfo, 0, len(FixDF), FixDF)        
+            lines, curline, question = getCrosslineFix(CrossLineInfo, 0, len(FixDF), FixDF, diff_ratio, frontrange_ratio)        
             endline = len(FixDF)        
             if curline < len(FixDF):
                 # there are remaining lines, check whether there are backward cross-line fixation
-                curCross = CrossLineInfo[-1]; FixDistThres = FIXDIFF_RATIO*(curCross['p_x'] - curCross['n_x'])
+                curCross = CrossLineInfo[-1]; FixDistThres = diff_ratio*(curCross['p_x'] - curCross['n_x'])
                 nextline = curline + 1
-                while nextline < len(FixDF) and FixDF.x_pos[curline] - FixDF.x_pos[nextline] > -FixDistThres and FixDF.y_pos[curline] - FixDF.y_pos[nextline] <= Y_RANGE:
+                while nextline < len(FixDF) and abs(FixDF.x_pos[curline] - FixDF.x_pos[nextline]) <= FixDistThres and FixDF.y_pos[curline] - FixDF.y_pos[nextline] <= y_range:
                     curline = nextline; nextline = curline + 1
                 if nextline < len(FixDF):
                     endline = nextline                
@@ -1006,17 +983,17 @@ def getFixLine(RegDF, crlSac, FixDF):
             for ind in range(len(lines)):
                 curline = lines[ind]
                 for line in range(curlow, curline[3]):
-                    FixDF.loc[line,'line'] = curline[1]
+                    FixDF.loc[line,'line_no'] = curline[1]
                 curlow = curline[3]
             for line in range(curlow, endline):
-                FixDF.loc[line,'line'] = lines[-1][2]        
-        elif FIX_METHOD == 'SAC':
+                FixDF.loc[line,'line_no'] = lines[-1][2]        
+        elif fix_method == 'SAC':
             # method 2: based on crosslineSac
             lines = []            
             curlow = 0
             for ind in range(len(crlSac)):
                 curup = curlow + 1
-                while FixDF.end[curup] <= crlSac.start[ind]:
+                while FixDF.end_time[curup] <= crlSac.start_time[ind]:
                     curup += 1
                 start = crlSac.loc[ind,'startline']; end = crlSac.loc[ind,'endline']
                 if start < end:
@@ -1025,23 +1002,23 @@ def getFixLine(RegDF, crlSac, FixDF):
                     direction = -1
                 lines.append([direction, start, end, curup])    
                 for line in range(curlow, curup):
-                    FixDF.loc[line,'line'] = crlSac.loc[ind,'startline']
+                    FixDF.loc[line,'line_no'] = crlSac.loc[ind,'startline']
                 curlow = curup
             for line in range(curlow, len(FixDF)):
-                FixDF.loc[line,'line'] = crlSac.loc[ind,'endline']        
+                FixDF.loc[line,'line_no'] = crlSac.loc[ind,'endline']        
     else:
         # double eye data
         numLeft = len(FixDF[FixDF.eye == 'L']); numRight = len(FixDF[FixDF.eye == 'R']) 
-        if FIX_METHOD == 'DIFF':
+        if fix_method == 'DIFF':
             # method 1: based on differences in x_axis 
             # first, left eye data
-            lines_Left, curline_Left, ques1 = getCrosslineFix(CrossLineInfo, 0, numLeft, FixDF)        
+            lines_Left, curline_Left, ques1 = getCrosslineFix(CrossLineInfo, 0, numLeft, FixDF, diff_ratio, frontrange_ratio)        
             endline_Left = numLeft 
             if curline_Left < numLeft:
                 # there are remaining lines, check whether there are backward cross-line fixation
-                curCross = CrossLineInfo[-1]; FixDistThres = FIXDIFF_RATIO*(curCross['p_x'] - curCross['n_x'])
+                curCross = CrossLineInfo[-1]; FixDistThres = diff_ratio*(curCross['p_x'] - curCross['n_x'])
                 nextline = curline_Left + 1
-                while nextline < numLeft and (FixDF.loc[curline_Left, 'x_pos'] - FixDF.loc[nextline,'x_pos']) > -FixDistThres and FixDF.loc[curline_Left,'y_pos'] - FixDF.loc[nextline,'y_pos'] <= Y_RANGE:
+                while nextline < numLeft and abs(FixDF.x_pos[curline_Left] - FixDF.x_pos[nextline]) <= FixDistThres and FixDF.y_pos[curline_Left] - FixDF.y_pos[nextline] <= y_range:
                     curline_Left = nextline; nextline = curline_Left + 1
                 if nextline < numLeft:
                     endline_Left = nextline
@@ -1050,18 +1027,19 @@ def getFixLine(RegDF, crlSac, FixDF):
             for ind in range(len(lines_Left)):
                 curline = lines_Left[ind]
                 for line in range(curlow, curline[3]):
-                    FixDF.loc[line,'line'] = curline[1]
+                    FixDF.loc[line,'line_no'] = curline[1]
                 curlow = curline[3]
             for line in range(curlow, endline_Left):
-                FixDF.loc[line,'line'] = lines_Left[ind-1][2]
+                FixDF.loc[line,'line_no'] = lines_Left[-1][2]
+            
             # second, right eye data
-            lines_Right, curline_Right, ques2 = getCrosslineFix(CrossLineInfo, numLeft, numLeft + numRight, FixDF)                
+            lines_Right, curline_Right, ques2 = getCrosslineFix(CrossLineInfo, numLeft, numLeft + numRight, FixDF, diff_ratio, frontrange_ratio)                
             endline_Right = numLeft + numRight
             if curline_Right < numLeft + numRight:
                 # there are remaining lines, check whether there are backward cross-line fixation
-                curCross = CrossLineInfo[-1]; FixDistThres = FIXDIFF_RATIO*(curCross['p_x'] - curCross['n_x'])
+                curCross = CrossLineInfo[-1]; FixDistThres = diff_ratio*(curCross['p_x'] - curCross['n_x'])
                 nextline = curline_Right + 1
-                while nextline < numLeft + numRight and (FixDF.loc[curline_Right,'x_pos'] - FixDF.loc[nextline,'x_pos']) > -FixDistThres and FixDF.loc[curline_Right,'y_pos'] - FixDF.loc[nextline,'y_pos'] <= Y_RANGE:
+                while nextline < numLeft + numRight and abs(FixDF.x_pos[curline_Right] - FixDF.x_pos[nextline]) <= FixDistThres and FixDF.y_pos[curline_Right] - FixDF.y_pos[nextline] <= y_range:
                     curline_Right = nextline; nextline = curline_Right + 1
                 if nextline < numLeft + numRight:
                     endline_Right = nextline                
@@ -1070,22 +1048,22 @@ def getFixLine(RegDF, crlSac, FixDF):
             for ind in range(len(lines_Right)):
                 curline = lines_Right[ind]
                 for line in range(curlow, curline[3]):
-                    FixDF.loc[line,'line'] = curline[1]
+                    FixDF.loc[line,'line_no'] = curline[1]
                 curlow = curline[3]
             for line in range(curlow, endline_Right):
-                FixDF.loc[line,'line'] = lines_Right[-1][2]
+                FixDF.loc[line,'line_no'] = lines_Right[-1][2]
         
             lines = lines_Left + lines_Right
             if ques1 or ques2:
                 question = True
-        elif FIX_METHOD == 'SAC':
+        elif fix_method == 'SAC':
             # method 2: based on crosslineSac
             lines = []
             curlow = 0
             for ind in range(len(crlSac)):
                 if crlSac.eye[ind] == 'L':
                     curup = curlow + 1
-                    while FixDF.loc[curup,'eye'] == 'L' and FixDF.loc[curup,'end'] <= crlSac.loc[ind,'start']:
+                    while FixDF.eye[curup] == 'L' and FixDF.end_time[curup] <= crlSac.start_time[ind]:
                         curup += 1
                     start = crlSac.loc[ind,'startline']; end = crlSac.loc[ind,'endline']
                     if start < end:
@@ -1094,16 +1072,16 @@ def getFixLine(RegDF, crlSac, FixDF):
                         direction = -1
                     lines.append([direction, start, end, curup])     
                     for line in range(curlow, curup):
-                        FixDF.loc[line,'line'] = crlSac.loc[ind,'startline']
+                        FixDF.loc[line,'line_no'] = crlSac.loc[ind,'startline']
                     curlow = curup
             for line in range(curlow, numLeft):
-                FixDF.loc[line,'line'] = crlSac.loc[ind,'endline']
+                FixDF.loc[line,'line_no'] = crlSac.loc[ind,'endline']
 
             curlow = numLeft
             for ind in range(len(crlSac)):
                 if crlSac.eye[ind] == 'R':
                     curup = curlow + 1
-                    while FixDF.loc[curup,'eye'] == 'R' and FixDF.loc[curup,'end'] <= crlSac.loc[ind,'start']:
+                    while FixDF.eye[curup] == 'R' and FixDF.end_time[curup] <= crlSac.start_time[ind]:
                         curup += 1
                     start = crlSac.loc[ind,'startline']; end = crlSac.loc[ind,'endline']
                     if start < end:
@@ -1112,37 +1090,41 @@ def getFixLine(RegDF, crlSac, FixDF):
                         direction = -1
                     lines.append([direction, start, end, curup])       
                     for line in range(curlow, curup):
-                        FixDF.loc[line,'line'] = crlSac.loc[ind,'startline']
+                        FixDF.loc[line,'line_no'] = crlSac.loc[ind,'startline']
                     curlow = curup
             for line in range(curlow, numLeft + numRight):
-                FixDF.loc[line,'line'] = crlSac.loc[ind,'endline']
+                FixDF.loc[line,'line_no'] = crlSac.loc[ind,'endline']
     
     return lines, question
          
 
-def getcrlFix(RegDF, crlSac, FixDF):
+def getcrlFix(RegDF, crlSac, FixDF, diff_ratio, frontrange_ratio, y_range, fix_method):
     """
     get crossline Fix
     arguments:
         RegDF -- region file data frame
         crlSac -- crossline saccades
         FixDF -- fixation data of the trial
+        diff_ratio -- for calculating crossline saccades(fixations), the ratio of maximum distance between the center of the last word and the center of the first word in a line, default = 0.6
+        frontrange_ratio -- for calculating crossline saccades(fixations), the ratio to check backward crossline saccade or fixation: such saccade or fixation usually starts around the line beginning, default = 0.2
+        y_range -- for calculating crossline saccades(fixations), the biggest y difference indicating the eyes are crossing lines or moving away from that line (this must be similar to the distance between two lines), default = 60
+        fix_method -- fixation method: 'DIFF': based on difference in x_axis; 'SAC': based on crosslineSac ('SAC' is preferred since saccade is kinda more accurate!), default = 'DIFF'
     return:
         crlFix -- crossline fixations of the trial
     FixDF is mutable, no need to return
     """                   
     # Second, get line information of each fixation
-    lines, question = getFixLine(RegDF, crlSac, FixDF)
+    lines, question = getFixLine(RegDF, crlSac, FixDF, diff_ratio, frontrange_ratio, y_range, fix_method)
     
     crlFix = pd.DataFrame(np.zeros((len(lines), 13)))
-    crlFix.columns = ['subj', 'trial_id', 'eye', 'startline', 'endline', 'FixlineIndex', 'start', 'end', 'duration', 'x_pos', 'y_pos', 'pup_size', 'valid']
+    crlFix.columns = ['subj', 'trial_id', 'eye', 'startline', 'endline', 'FixlineIndex', 'start_time', 'end_time', 'duration', 'x_pos', 'y_pos', 'pup_size', 'valid']
     crlFix.subj = FixDF.subj[0]; crlFix.trial_id = FixDF.trial_id[0]
     cur = 0    
     for item in lines:
         curFix = FixDF.loc[item[3]]
         crlFix.loc[cur,'eye'] = curFix.eye
         crlFix.loc[cur,'startline'] = item[1]; crlFix.loc[cur,'endline'] = item[2]; crlFix.loc[cur,'FixlineIndex'] = item[3]
-        crlFix.loc[cur,'start'] = curFix.start; crlFix.loc[cur,'end'] = curFix.end; crlFix.loc[cur,'duration'] = curFix.duration; 
+        crlFix.loc[cur,'start_time'] = curFix.start_time; crlFix.loc[cur,'end_time'] = curFix.end_time; crlFix.loc[cur,'duration'] = curFix.duration; 
         crlFix.loc[cur,'x_pos'] = curFix.x_pos; crlFix.loc[cur,'y_pos'] = curFix.y_pos
         crlFix.loc[cur,'pup_size'] = curFix.pup_size; crlFix.loc[cur,'valid'] = curFix['valid']        
         cur += 1
@@ -1150,7 +1132,7 @@ def getcrlFix(RegDF, crlSac, FixDF):
     return crlFix, question    
 
 
-def recFix(RegDF, ExpType, trialID, blinklines, fixlines, sampfreq, eyerec, script, sessdate, srcfile, tdur):
+def recFix(RegDF, ExpType, trialID, blinklines, fixlines, sampfreq, eyerec, script, sessdate, srcfile, tdur, rec_lastFix, lump_Fix, ln, zn, mn):
     """
     get fixation data from trials
     arguments:
@@ -1164,7 +1146,12 @@ def recFix(RegDF, ExpType, trialID, blinklines, fixlines, sampfreq, eyerec, scri
         script -- script file
         sessdate -- session date
         srcfile -- source file
-        tdur -- estimated trial duration        
+        tdur -- estimated trial duration
+        rec_lastFix -- whether (True)or not (False) include the last fixation of a trial and allow it to trigger regression, default = False
+        lump_Fix -- whether (True) or not (False) lump short fixations, default = True
+        ln -- in lumping, maximum duration of a fixation to "lump", default = 50. Fixation <= this value is subject to lumping with adjacent and near enough (determined by zN) fixations
+        zn -- in lumping, maximum distance (in pixels) between two fixations for "lumping"; default = 50, roughly 1.5 character (12/8s)
+        mn -- in lumping, minimum legal fixation duration, default = 50 ms
     return:
         FixDF -- fixation data of the trial
     """            
@@ -1175,30 +1162,31 @@ def recFix(RegDF, ExpType, trialID, blinklines, fixlines, sampfreq, eyerec, scri
     if eyerec == 'L' or eyerec == 'R':
         # only left or right eye data are recorded
         FixDF = pd.DataFrame(np.zeros((fix_number, 18)))
-        FixDF.columns = ['subj', 'trial_id', 'trial_type', 'sampfreq', 'script', 'sessdate', 'srcfile', 'tdur', 'blinks', 'eye', 'start', 'end', 'duration', 'x_pos', 'y_pos', 'pup_size', 'valid', 'line']
+        FixDF.columns = ['subj', 'trial_id', 'trial_type', 'sampfreq', 'script', 'sessdate', 'srcfile', 'tdur', 'blinks', 'eye', 'start_time', 'end_time', 'duration', 'x_pos', 'y_pos', 'pup_size', 'valid', 'line_no']
         FixDF.subj = srcfile.split('.')[0]; FixDF.trial_id = int(trialID)
         FixDF.trial_type = ExpType + '_' + RegDF.Name[0]; FixDF.sampfreq = int(sampfreq); FixDF.script = script; FixDF.sessdate = sessdate; FixDF.srcfile = srcfile; FixDF.tdur = tdur; FixDF.blinks = int(blink_number)
     
-        FixDF.eye = [line[1] for line in fixlines]; FixDF.start = [float(line[2]) for line in fixlines]; FixDF.end = [float(line[3]) for line in fixlines]; FixDF.duration = [float(line[4]) for line in fixlines]
+        FixDF.eye = [line[1] for line in fixlines]; FixDF.start_time = [float(line[2]) for line in fixlines]; FixDF.end_time = [float(line[3]) for line in fixlines]; FixDF.duration = [float(line[4]) for line in fixlines]
         FixDF.x_pos = [float(line[5]) for line in fixlines]; FixDF.y_pos = [float(line[6]) for line in fixlines]; FixDF.pup_size = [float(line[7]) for line in fixlines]
         
         FixDF['valid'] = 'yes'
-        if not RECFINAL:
+        if not rec_lastFix:
             FixDF.loc[fix_number-1,'valid'] = 'no' 
-
-        # lump fixations        
-        # get indices of candidate fixations for lumping, whose durations <= lN
-        short_index = []
-        for ind in range(fix_number):
-            if FixDF.loc[ind,'duration'] <= LN and FixDF.loc[ind,'valid'] == 'yes':
-                short_index.append(ind)        
-        # check each short fixation for lumping        
-        if not RECFINAL:
-            endindex = fix_number - 2   # the upperbound of searching range, excluding the last one!
-        else:            
-            endindex = fix_number - 1   # the upperbound of searching range
-        # lump data    
-        FixDF = lumpFix(FixDF, endindex, short_index, addtime)       
+        
+        if lump_Fix:
+            # lump fixations
+            # get indices of candidate fixations for lumping, whose durations <= ln
+            short_index = []
+            for ind in range(fix_number):
+                if FixDF.loc[ind,'duration'] <= ln and FixDF.loc[ind,'valid'] == 'yes':
+                    short_index.append(ind)        
+            # check each short fixation for lumping        
+            if not rec_lastFix:
+                endindex = fix_number - 2   # the upperbound of searching range, excluding the last one!
+            else:
+                endindex = fix_number - 1   # the upperbound of searching range
+            # lump data    
+            FixDF = lumpFix(FixDF, endindex, short_index, addtime, ln, zn)       
 
     elif eyerec == 'LR':
         # both eyes data are recorded
@@ -1220,83 +1208,88 @@ def recFix(RegDF, ExpType, trialID, blinklines, fixlines, sampfreq, eyerec, scri
             lastLR = 'R'
         
         if numLeft != 0:
-            FixDF1 = pd.DataFrame(np.zeros((numLeft, 17)))
-            FixDF1.columns = ['subj', 'trial_id', 'trial_type', 'sampfreq', 'script', 'sessdate', 'srcfile', 'blinks', 'eye', 'start', 'end', 'duration', 'x_pos', 'y_pos', 'pup_size', 'valid', 'line']
+            FixDF1 = pd.DataFrame(np.zeros((numLeft, 18)))
+            FixDF1.columns = ['subj', 'trial_id', 'trial_type', 'sampfreq', 'script', 'sessdate', 'srcfile', 'tdur', 'blinks', 'eye', 'start_time', 'end_time', 'duration', 'x_pos', 'y_pos', 'pup_size', 'valid', 'line_no']
             FixDF1.subj = srcfile.split('.')[0]; FixDF1.trial_id = int(trialID)
-            FixDF1.trial_type = ExpType + '_' + RegDF.Name[0]; FixDF1.sampfreq = int(sampfreq); FixDF1.script = script; FixDF1.sessdate = sessdate; FixDF1.srcfile = srcfile; FixDF1.blinks = int(blink_number)
+            FixDF1.trial_type = ExpType + '_' + RegDF.Name[0]; FixDF1.sampfreq = int(sampfreq); FixDF1.script = script; FixDF1.sessdate = sessdate; FixDF1.srcfile = srcfile; FixDF1.tdur = tdur; FixDF1.blinks = int(blink_number)
             
             cur = 0
             for line in fixlines:
                 if line[1] == 'L':
-                    FixDF1.loc[cur,'eye'] = line[1]; FixDF1.loc[cur,'start'] = float(line[2]); FixDF1.loc[cur,'end'] = float(line[3]); FixDF1.loc[cur,'duration'] = float(line[4])
+                    FixDF1.loc[cur,'eye'] = line[1]; FixDF1.loc[cur,'start_time'] = float(line[2]); FixDF1.loc[cur,'end_time'] = float(line[3]); FixDF1.loc[cur,'duration'] = float(line[4])
                     FixDF1.loc[cur,'x_pos'] = float(line[5]); FixDF1.loc[cur,'y_pos'] = float(line[6]); FixDF1.loc[cur,'pup_size'] = float(line[7])
                     cur += 1
             
             FixDF1['valid'] = 'yes'
-            if not RECFINAL and lastLR == 'L':
+            if not rec_lastFix and lastLR == 'L':
                 FixDF1.loc[numLeft-1,'valid'] = 'no'     
             
-            # lump fixations
-            short_index1 = []
-            for ind in range(numLeft):
-                if FixDF1.loc[ind,'duration'] <= LN and FixDF1.loc[ind,'valid'] == 'yes':
-                    short_index1.append(ind)
-            # check each short fixation for lumping        
-            if not RECFINAL:
-                if numLeft == fix_number:
-                    endindex1 = fix_number - 2   # all fixations are left eyes, the upperbound of searching range, excluding the last one!                    
-                else:                    
-                    endindex1 = numLeft - 1  # the upperbound of searching range
-            else:
-                endindex1 = numLeft - 1
-            # lump data        
-            FixDF1 = lumpFix(FixDF1, endindex1, short_index1, addtime)               
+            if lump_Fix:
+                # lump fixations
+                short_index1 = []
+                for ind in range(numLeft):
+                    if FixDF1.loc[ind,'duration'] <= ln and FixDF1.loc[ind,'valid'] == 'yes':
+                        short_index1.append(ind)
+                # check each short fixation for lumping        
+                if not rec_lastFix:
+                    if numLeft == fix_number:
+                        endindex1 = fix_number - 2   # all fixations are left eyes, the upperbound of searching range, excluding the last one!                    
+                    else:                    
+                        endindex1 = numLeft - 1  # the upperbound of searching range
+                else:
+                    endindex1 = numLeft - 1
+                # lump data        
+                FixDF1 = lumpFix(FixDF1, endindex1, short_index1, addtime, ln, zn)               
         
         if numRight != 0:
-            FixDF2 = pd.DataFrame(np.zeros((numRight, 17)))
-            FixDF2.columns = ['subj', 'trial_id', 'trial_type', 'sampfreq', 'script', 'sessdate', 'srcfile', 'blinks', 'eye', 'start', 'end', 'duration', 'x_pos', 'y_pos', 'pup_size', 'valid', 'line']
+            FixDF2 = pd.DataFrame(np.zeros((numRight, 18)))
+            FixDF2.columns = ['subj', 'trial_id', 'trial_type', 'sampfreq', 'script', 'sessdate', 'srcfile', 'tdur', 'blinks', 'eye', 'start_time', 'end_time', 'duration', 'x_pos', 'y_pos', 'pup_size', 'valid', 'line_no']
             FixDF2.subj = srcfile.split('.')[0]; FixDF2.trial_id = int(trialID)
-            FixDF2.trial_type = ExpType + '_' + RegDF.Name[0]; FixDF2.sampfreq = int(sampfreq); FixDF2.script = script; FixDF2.sessdate = sessdate; FixDF2.srcfile = srcfile; FixDF2.blinks = int(blink_number)
+            FixDF2.trial_type = ExpType + '_' + RegDF.Name[0]; FixDF2.sampfreq = int(sampfreq); FixDF2.script = script; FixDF2.sessdate = sessdate; FixDF2.srcfile = srcfile; FixDF2.tdur = tdur; FixDF2.blinks = int(blink_number)
 
             cur = 0        
             for line in fixlines:
                 if line[1] == 'R':
-                    FixDF2.loc[cur,'eye'] = line[1]; FixDF2.loc[cur,'start'] = float(line[2]); FixDF2.loc[cur,'end'] = float(line[3]); FixDF2.loc[cur,'duration'] = float(line[4])
+                    FixDF2.loc[cur,'eye'] = line[1]; FixDF2.loc[cur,'start_time'] = float(line[2]); FixDF2.loc[cur,'end_time'] = float(line[3]); FixDF2.loc[cur,'duration'] = float(line[4])
                     FixDF2.loc[cur,'x_pos'] = float(line[5]); FixDF2.loc[cur,'y_pos'] = float(line[6]); FixDF2.loc[cur,'pup_size'] = float(line[7])
                     cur += 1
             
             FixDF2['valid'] = 'yes'
-            if not RECFINAL and lastLR == 'R':
+            if not rec_lastFix and lastLR == 'R':
                 FixDF2.loc[numRight-1,'valid'] = 'no'     
         
-            # lump fixation
-            short_index2 = []
-            for ind in range(numRight):
-                if FixDF2.loc[ind,'duration'] <= LN and FixDF2.loc[ind,'valid'] == 'yes':
-                    short_index2.append(ind)
-            # check each short fixation for lumping        
-            if not RECFINAL:
-                if numRight == fix_number:                     
-                    endindex2 = fix_number - 2  # all fixations are right eyes, the upperbound of searching range, excluding the last one!
-                else:                
-                    endindex2 = numRight - 1 # the upperbound of searching range
-            else:
-                endindex2 = numRight - 1                
-            # lump data        
-            FixDF2 = lumpFix(FixDF2, endindex2, short_index2, addtime) 
+            if lump_Fix:            
+                # lump fixation
+                short_index2 = []
+                for ind in range(numRight):
+                    if FixDF2.loc[ind,'duration'] <= ln and FixDF2.loc[ind,'valid'] == 'yes':
+                        short_index2.append(ind)
+                # check each short fixation for lumping        
+                if not rec_lastFix:
+                    if numRight == fix_number:                     
+                        endindex2 = fix_number - 2  # all fixations are right eyes, the upperbound of searching range, excluding the last one!
+                    else:                
+                        endindex2 = numRight - 1 # the upperbound of searching range
+                else:
+                    endindex2 = numRight - 1                
+                # lump data        
+                FixDF2 = lumpFix(FixDF2, endindex2, short_index2, addtime, ln, zn) 
         
         # merge all data
-        FixDF = pd.DataFrame(columns=('trial_id', 'trial_type', 'sampfreq', 'script', 'sessdate', 'srcfile', 'blinks', 'eye', 'start', 'end', 'duration', 'x_pos', 'y_pos', 'pup_size', 'valid'))        
+        FixDF = pd.DataFrame(columns=('subj', 'trial_id', 'trial_type', 'sampfreq', 'script', 'sessdate', 'srcfile', 'tdur', 'blinks', 'eye', 'start_time', 'end_time', 'duration', 'x_pos', 'y_pos', 'pup_size', 'valid', 'line_no'))
         if numLeft != 0:
             FixDF = FixDF.append(FixDF1, ignore_index=True)
         if numRight != 0:
             FixDF = FixDF.append(FixDF2, ignore_index=True)
     
-    # check validity of fixations after possible lumping
-    for ind in range(len(FixDF)):
-        if FixDF.loc[ind,'duration'] < MN:
-            FixDF.loc[ind,'valid'] = 'no'
+    if lump_Fix:
+        # check validity of fixations after possible lumping
+        for ind in range(len(FixDF)):
+            if FixDF.loc[ind,'duration'] < mn:
+                FixDF.loc[ind,'valid'] = 'no'
     
+    FixDF.line_no = np.nan
+
     return FixDF
 
 
@@ -1326,7 +1319,7 @@ def mergeSacLines(startline, endline, Df):
     return mergelines
     
     
-def getCrosslineSac(CrossLineInfo, startline, endline, Df):
+def getCrosslineSac(CrossLineInfo, startline, endline, Df, diff_ratio, frontrange_ratio):
     """
     collect all cross-line fixations in lines
     arguments:
@@ -1334,6 +1327,8 @@ def getCrosslineSac(CrossLineInfo, startline, endline, Df):
         startline -- search starting line
         endline -- search ending line
         Df -- fixation data frame
+        diff_ratio -- for calculating crossline saccades(fixations), the ratio of maximum distance between the center of the last word and the center of the first word in a line, default = 0.6
+        frontrange_ratio -- for calculating crossline saccades(fixations), the ratio to check backward crossline saccade or fixation: such saccade or fixation usually starts around the line beginning, default = 0.2
     return:
         lines -- list of turples storing cross-line fixations
         curline -- the current line in Df
@@ -1342,13 +1337,13 @@ def getCrosslineSac(CrossLineInfo, startline, endline, Df):
     lines = []; mergelines = mergeSacLines(startline, endline, Df)    
     curline, ind = 0, 0 # curline records the current mergeline Fix data, ind records the current CrossLineInfo
     while ind < len(CrossLineInfo):
-        curCross = CrossLineInfo[ind]; FixDistThres = FIXDIFF_RATIO*(curCross['p_x'] - curCross['n_x'])    # set up the maximum fixation distance to be identified as a cross-line fixation
-        if mergelines[curline][3] == 0 and mergelines[curline][2] >= FixDistThres and Df.loc[mergelines[curline][0],'x1_pos'] <= curCross['n_x'] + FRONT_RANGE_RATIO*(curCross['p_x'] - curCross['n_x']):
+        curCross = CrossLineInfo[ind]; FixDistThres = diff_ratio*(curCross['p_x'] - curCross['n_x'])    # set up the maximum fixation distance to be identified as a cross-line fixation
+        if mergelines[curline][3] == 0 and mergelines[curline][2] >= FixDistThres and Df.loc[mergelines[curline][0],'x1_pos'] <= curCross['n_x'] + frontrange_ratio*(curCross['p_x'] - curCross['n_x']):
             if ind != 0:
                 # rightward backward crossline fixation
                 # move curCross to the back
                 if ind > 0:
-                    ind -= 1; curCross = CrossLineInfo[ind]; FixDistThres = FIXDIFF_RATIO*(curCross['p_x'] - curCross['n_x'])
+                    ind -= 1; curCross = CrossLineInfo[ind]; FixDistThres = diff_ratio*(curCross['p_x'] - curCross['n_x'])
                 # record backward cross-line fixation using previous curCross
                 lines.append((-1, curCross['n'], curCross['p'], mergelines[curline][1]))
         if mergelines[curline][3] == 1 and mergelines[curline][2] <= -FixDistThres:
@@ -1379,7 +1374,7 @@ def getCrosslineSac(CrossLineInfo, startline, endline, Df):
                 lines.append((1, curCross['p'], curCross['n'], max(stl1,stl2)))
             # move curCross to the next
             if ind < len(CrossLineInfo) - 1:
-                ind += 1; curCross = CrossLineInfo[ind]; FixDistThres = FIXDIFF_RATIO*(curCross['p_x'] - curCross['n_x'])
+                ind += 1; curCross = CrossLineInfo[ind]; FixDistThres = diff_ratio*(curCross['p_x'] - curCross['n_x'])
             else:
                 break
         curline += 1
@@ -1401,12 +1396,15 @@ def getCrosslineSac(CrossLineInfo, startline, endline, Df):
     return lines, curline, question
 
        
-def getSacLine(RegDF, SacDF):
+def getSacLine(RegDF, SacDF, diff_ratio, frontrange_ratio, y_range):
     """
     add line information for each SacDF
     arguments:
         RegDF -- region file data frame
         SacDF -- saccade data of the trial
+        diff_ratio -- for calculating crossline saccades(fixations), the ratio of maximum distance between the center of the last word and the center of the first word in a line, default = 0.6
+        frontrange_ratio -- for calculating crossline saccades(fixations), the ratio to check backward crossline saccade or fixation: such saccade or fixation usually starts around the line beginning, default = 0.2
+        y_range -- for calculating crossline saccades(fixations), the biggest y difference indicating the eyes are crossing lines or moving away from that line (this must be similar to the distance between two lines), default = 60
     return:
         lines -- crossline information
     SacDF as a data frame is mutable, no need to return    
@@ -1416,29 +1414,78 @@ def getSacLine(RegDF, SacDF):
    
     if len(np.unique(SacDF.eye)) == 1 and (np.unique(SacDF.eye)[0] == 'L' or np.unique(SacDF.eye)[0] == 'R'):
         # single eye data
-        lines, curline, question = getCrosslineSac(CrossLineInfo, 0, len(SacDF), SacDF)        
-        # mark crossline saccade as prevline_nextline    
+        lines, curline, question = getCrosslineSac(CrossLineInfo, 0, len(SacDF), SacDF, diff_ratio, frontrange_ratio)        
+        endline = len(SacDF)        
+        if curline < len(SacDF):
+            # there are remaining lines, check whether there are backward cross-line saccade
+            curCross = CrossLineInfo[-1]; FixDistThres = diff_ratio*(curCross['p_x'] - curCross['n_x'])
+            curline += 1
+            while curline < len(SacDF) and abs(SacDF.x2_pos[curline] - SacDF.x1_pos[curline]) <= FixDistThres and SacDF.y1_pos[curline] - SacDF.y2_pos[curline] <= y_range:
+                curline += 1
+            if curline < len(SacDF):
+                endline = curline                
+        # mark crossline saccade as prevline_nextline
+        curlow = 0    
         for ind in range(len(lines)):
             curline = lines[ind]
-            crossline = str(curline[1])+'_'+str(curline[2])
-            SacDF.loc[curline[3],'line'] = crossline
+            for line in range(curlow, curline[3]):
+                SacDF.loc[line,'line_no'] = curline[1]
+            SacDF.loc[curline[3],'line_no'] = str(curline[1])+'_'+str(curline[2])    
+            curlow = curline[3]+1
+        for line in range(curlow, endline):
+            SacDF.loc[line,'line_no'] = lines[-1][2]
     else:
         # double eye saccade data
         numLeft = len(SacDF[SacDF.eye == 'L']); numRight = len(SacDF[SacDF.eye == 'R'])        
         # first, left eye saccade
-        lines_Left, curline, ques1 = getCrosslineSac(CrossLineInfo, 0, numLeft, SacDF)
+        lines_Left, curline_Left, ques1 = getCrosslineSac(CrossLineInfo, 0, numLeft, SacDF, diff_ratio, frontrange_ratio)
+        endline_Left = numLeft 
+        if curline_Left < numLeft:
+            # there are remaining lines, check whether there are backward cross-line saccade
+            curCross = CrossLineInfo[-1]; FixDistThres = diff_ratio*(curCross['p_x'] - curCross['n_x'])
+            curline_Left += 1
+            while curline_Left < numLeft and abs(SacDF.x2_pos[curline_Left] - SacDF.x1_pos[curline_Left]) <= FixDistThres and SacDF.y1_pos[curline_Left] - SacDF.y2_pos[curline_Left] <= y_range:
+                curline_Left += 1
+            if curline_Left < numLeft:
+                endline_Left = curline_Left
+        # mark crossline saccade as prevline_nextline
+        curlow = 0    
+        for ind in range(len(lines_Left)):
+            curline = lines_Left[ind]
+            for line in range(curlow, curline[3]):
+                SacDF.loc[line,'line_no'] = curline[1]
+            SacDF.loc[curline[3],'line_no'] = str(curline[1])+'_'+str(curline[2])    
+            curlow = curline[3]+1
+        for line in range(curlow, endline_Left):
+            SacDF.loc[line,'line_no'] = lines_Left[-1][2]
         # mark crossline saccade as prevline_nextline    
         for ind in range(len(lines_Left)):
             curline = lines_Left[ind]
             crossline = str(curline[1])+'_'+str(curline[2])
-            SacDF.loc[curline[3],'line'] = crossline
+            SacDF.loc[curline[3],'line_no'] = crossline
+        
         # second, right eye saccade
-        lines_Right, curline, ques2 = getCrosslineSac(CrossLineInfo, numLeft, numLeft + numRight, SacDF)
-        # mark crossline saccade as prevline_nextline    
+        lines_Right, curline_Right, ques2 = getCrosslineSac(CrossLineInfo, numLeft, numLeft + numRight, SacDF, diff_ratio, frontrange_ratio)
+        endline_Right = numLeft + numRight
+        if curline_Right < numLeft + numRight:
+            # there are remaining lines, check whether there are backward cross-line fixation
+            curCross = CrossLineInfo[-1]; FixDistThres = diff_ratio*(curCross['p_x'] - curCross['n_x'])
+            curline_Right += 1
+            while curline_Right < numLeft + numRight and abs(SacDF.x2_pos[curline_Right] - SacDF.x1_pos[curline_Right]) <= FixDistThres and SacDF.y1_pos[curline_Right] - SacDF.y2_pos[curline_Right] <= y_range:
+                curline_Right += 1
+            if curline_Right < numLeft + numRight:
+                endline_Right = curline_Right                
+        # mark crossline saccade as prevline_nextline        
+        curlow = numLeft
         for ind in range(len(lines_Right)):
             curline = lines_Right[ind]
-            crossline = str(curline[1])+'_'+str(curline[2])
-            SacDF.loc[curline[3],'line'] = crossline            
+            for line in range(curlow, curline[3]):
+                SacDF.loc[line,'line_no'] = curline[1]
+            SacDF.loc[curline[3],'line_no'] = str(curline[1])+'_'+str(curline[2])    
+            curlow = curline[3]+1
+        for line in range(curlow, endline_Right):
+            SacDF.loc[line,'line_no'] = lines_Right[-1][2]
+        
         lines = lines_Left + lines_Right
         if ques1 or ques2:
             question = True
@@ -1446,27 +1493,30 @@ def getSacLine(RegDF, SacDF):
     return lines, question        
 
 
-def getcrlSac(RegDF, SacDF):
+def getcrlSac(RegDF, SacDF, diff_ratio, frontrange_ratio, y_range):
     """
     get crossline Sac
     arguments:
         RegDF -- region file data frame
         SacDFtemp -- saccade data of the trial
+        diff_ratio -- for calculating crossline saccades(fixations), the ratio of maximum distance between the center of the last word and the center of the first word in a line, default = 0.6
+        frontrange_ratio -- for calculating crossline saccades(fixations), the ratio to check backward crossline saccade or fixation: such saccade or fixation usually starts around the line beginning, default = 0.2
+        y_range -- for calculating crossline saccades(fixations), the biggest y difference indicating the eyes are crossing lines or moving away from that line (this must be similar to the distance between two lines), default = 60
     return:
         crlSac -- crossline saccades of the trial
     SacDF is mutable, no need to return
     """            
-    lines, question = getSacLine(RegDF, SacDF)   # get line information of each saccade
+    lines, question = getSacLine(RegDF, SacDF, diff_ratio, frontrange_ratio, y_range)   # get line information of each saccade
     
     crlSac = pd.DataFrame(np.zeros((len(lines), 15)))
-    crlSac.columns = ['subj', 'trial_id', 'eye', 'startline', 'endline', 'SaclineIndex', 'start', 'end', 'duration', 'x1_pos', 'y1_pos', 'x2_pos', 'y2_pos', 'ampl', 'pk']
+    crlSac.columns = ['subj', 'trial_id', 'eye', 'startline', 'endline', 'SaclineIndex', 'start_time', 'end_time', 'duration', 'x1_pos', 'y1_pos', 'x2_pos', 'y2_pos', 'ampl', 'pk']
     crlSac.subj = SacDF.subj[0]; crlSac.trial_id = SacDF.trial_id[0]
     cur = 0    
     for item in lines:
         curSac = SacDF.loc[item[3]]
         crlSac.loc[cur,'eye'] = curSac.eye
         crlSac.loc[cur,'startline'] = item[1]; crlSac.loc[cur,'endline'] = item[2]; crlSac.loc[cur,'SaclineIndex'] = item[3]
-        crlSac.loc[cur,'start'] = curSac.start; crlSac.loc[cur,'end'] = curSac.end; crlSac.loc[cur,'duration'] = curSac.duration; 
+        crlSac.loc[cur,'start_time'] = curSac.start_time; crlSac.loc[cur,'end_time'] = curSac.end_time; crlSac.loc[cur,'duration'] = curSac.duration; 
         crlSac.loc[cur,'x1_pos'] = curSac.x1_pos; crlSac.loc[cur,'y1_pos'] = curSac.y1_pos
         crlSac.loc[cur,'x2_pos'] = curSac.x2_pos; crlSac.loc[cur,'y2_pos'] = curSac.y2_pos
         crlSac.loc[cur,'ampl'] = curSac.ampl; crlSac.loc[cur,'pk'] = curSac.pk        
@@ -1506,13 +1556,13 @@ def recSac(RegDF, ExpType, trialID, blinklines, saclines, sampfreq, eyerec, scri
             saclines.remove(line); sac_number -= 1
     
     SacDF = pd.DataFrame(np.zeros((sac_number, 20)))
-    SacDF.columns = ['subj', 'trial_id', 'trial_type', 'sampfreq', 'script', 'sessdate', 'srcfile', 'tdur', 'blinks', 'eye', 'start', 'end', 'duration', 'x1_pos', 'y1_pos', 'x2_pos', 'y2_pos', 'ampl', 'pk', 'line']
+    SacDF.columns = ['subj', 'trial_id', 'trial_type', 'sampfreq', 'script', 'sessdate', 'srcfile', 'tdur', 'blinks', 'eye', 'start_time', 'end_time', 'duration', 'x1_pos', 'y1_pos', 'x2_pos', 'y2_pos', 'ampl', 'pk', 'line_no']
     SacDF.subj = srcfile.split('.')[0]; SacDF.trial_id = int(trialID); 
     SacDF.trial_type = ExpType + '_' + RegDF.Name[0]; SacDF.sampfreq = int(sampfreq); SacDF.script = script; SacDF.sessdate = sessdate; SacDF.srcfile = srcfile; SacDF.tdur = tdur; SacDF.blinks = int(blink_number)
 
     if eyerec == 'L' or eyerec == 'R':
         # single eye saccade
-        SacDF.eye = [line[1] for line in saclines]; SacDF.start = [float(line[2]) for line in saclines]; SacDF.end = [float(line[3]) for line in saclines]; SacDF.duration = [float(line[4]) for line in saclines]
+        SacDF.eye = [line[1] for line in saclines]; SacDF.start_time = [float(line[2]) for line in saclines]; SacDF.end_time = [float(line[3]) for line in saclines]; SacDF.duration = [float(line[4]) for line in saclines]
         SacDF.x1_pos = [float(line[5]) for line in saclines]; SacDF.y1_pos = [float(line[6]) for line in saclines]
         SacDF.x2_pos = [float(line[7]) for line in saclines]; SacDF.y2_pos = [float(line[8]) for line in saclines]
         SacDF.ampl = [float(line[9]) for line in saclines]; SacDF.pk = [float(line[10]) for line in saclines]
@@ -1533,31 +1583,38 @@ def recSac(RegDF, ExpType, trialID, blinklines, saclines, sampfreq, eyerec, scri
         cur = 0    
         for line in saclines:
             if line[1] == 'L':
-                SacDF.loc[cur,'eye'] = line[1]; SacDF.loc[cur,'start'] = float(line[2]); SacDF.loc[cur,'end'] = float(line[3]); SacDF.loc[cur,'duration'] = float(line[4])
+                SacDF.loc[cur,'eye'] = line[1]; SacDF.loc[cur,'start_time'] = float(line[2]); SacDF.loc[cur,'end_time'] = float(line[3]); SacDF.loc[cur,'duration'] = float(line[4])
                 SacDF.loc[cur,'x1_pos'] = float(line[5]); SacDF.loc[cur,'y1_pos'] = float(line[6])
                 SacDF.loc[cur,'x2_pos'] = float(line[7]); SacDF.loc[cur,'y2_pos'] = float(line[8])
                 SacDF.loc[cur,'ampl'] = float(line[9]); SacDF.loc[cur,'pk'] = float(line[10])
                 cur += 1
         for line in saclines:
             if line[1] == 'R':
-                SacDF.loc[cur,'eye'] = line[1]; SacDF.loc[cur,'start'] = float(line[2]); SacDF.loc[cur,'end'] = float(line[3]); SacDF.loc[cur,'duration'] = float(line[4])
+                SacDF.loc[cur,'eye'] = line[1]; SacDF.loc[cur,'start_time'] = float(line[2]); SacDF.loc[cur,'end_time'] = float(line[3]); SacDF.loc[cur,'duration'] = float(line[4])
                 SacDF.loc[cur,'x1_pos'] = float(line[5]); SacDF.loc[cur,'y1_pos'] = float(line[6])
                 SacDF.loc[cur,'x2_pos'] = float(line[7]); SacDF.loc[cur,'y2_pos'] = float(line[8])
                 SacDF.loc[cur,'ampl'] = float(line[9]); SacDF.loc[cur,'pk'] = float(line[10])
                 cur += 1                   
     
+    SacDF.line_no = np.nan
+    
     return SacDF            
    
 
-# main function for getting saccades and fixations
-def rec_Sac_Fix(direct, datafile, regfileNameList, ExpType):
+# user function for getting saccades and fixations
+def u_read_SRRasc(direct, datafile, regfileNameList, ExpType, rec_lastFix=False, lump_Fix=True, ln=50, zn=50, mn=50):
     """
-    read EMF file and extract the saccade and fixation data
+    read SRR ascii file and extract saccades and fixations
     arguments:
         direct -- directory for storing output files
         datafile -- EMF ascii file name
         regionfileNameList -- a list of region file names (trial_id will help select corresponding region files)
         ExpType -- type of experiments: 'RAN', 'RP'
+        rec_lastFix -- whether (True)or not (False) include the last fixation of a trial and allow it to trigger regression, default = False
+        lump_Fix -- whether (True) or not (False) lump short fixations, default = True
+        ln -- for lumping fixations, maximum duration of a fixation to "lump", default = 50. Fixation <= this value is subject to lumping with adjacent and near enough (determined by zN) fixations
+        zn -- for lumping fixations, maximum distance (in pixels) between two fixations for "lumping"; default = 50, roughly 1.5 character (12/8s)
+        mn -- for lumping fixations, minimum legal fixation duration, default = 50 ms
     output:
         SacDF -- saccade data in different trials
         FixDF -- fixation data in different trials
@@ -1566,15 +1623,13 @@ def rec_Sac_Fix(direct, datafile, regfileNameList, ExpType):
     datafileExist = True
     datafileName = direct + '/' + datafile
     if not os.path.isfile(datafileName):
-        print datafile + ' does not exist!'
-        datafileExist = False
+        print datafile + ' does not exist!'; datafileExist = False
     
     regfileExist = True
     for regfile in regfileNameList:
         regfileName = direct + '/' + regfile
         if not os.path.isfile(regfileName):
-            print regfile + ' does not exist!'
-            regfileExist = False
+            print regfile + ' does not exist!'; regfileExist = False
     
     # second, process the files
     if datafileExist and regfileExist:
@@ -1582,8 +1637,8 @@ def rec_Sac_Fix(direct, datafile, regfileNameList, ExpType):
         script, sessdate, srcfile = getHeader(lines)    # get header lines    
         T_idx, T_lines = getTrialReg(lines) # get trial regions
     
-        SacDF = pd.DataFrame(columns=('subj', 'trial_id', 'trial_type', 'sampfreq', 'script', 'sessdate', 'srcfile', 'tdur', 'blinks', 'eye', 'start', 'end', 'duration', 'x1_pos', 'y1_pos', 'x2_pos', 'y2_pos', 'ampl', 'pk', 'line'))
-        FixDF = pd.DataFrame(columns=('subj', 'trial_id', 'trial_type', 'sampfreq', 'script', 'sessdate', 'srcfile', 'tdur', 'blinks', 'eye', 'start', 'end', 'duration', 'x_pos', 'y_pos', 'pup_size', 'valid', 'line'))        
+        SacDF = pd.DataFrame(columns=('subj', 'trial_id', 'trial_type', 'sampfreq', 'script', 'sessdate', 'srcfile', 'tdur', 'blinks', 'eye', 'start_time', 'end_time', 'duration', 'x1_pos', 'y1_pos', 'x2_pos', 'y2_pos', 'ampl', 'pk', 'line_no'))
+        FixDF = pd.DataFrame(columns=('subj', 'trial_id', 'trial_type', 'sampfreq', 'script', 'sessdate', 'srcfile', 'tdur', 'blinks', 'eye', 'start_time', 'end_time', 'duration', 'x_pos', 'y_pos', 'pup_size', 'valid', 'line_no'))        
     
         for ind in range(len(T_lines)):
             triallines = lines[T_lines[ind,0]+1:T_lines[ind,1]]; trialID = int(T_idx[ind,0].split(' ')[-1])
@@ -1595,20 +1650,38 @@ def rec_Sac_Fix(direct, datafile, regfileNameList, ExpType):
             SacDF = SacDF.append(SacDFtemp, ignore_index=True)
             # read fixation data
             print "Read Fix: Trial ", str(trialID)
-            FixDFtemp = recFix(RegDF, ExpType, trialID, blinklines, fixlines, sampfreq, eyerec, script, sessdate, srcfile, tdur)        
+            FixDFtemp = recFix(RegDF, ExpType, trialID, blinklines, fixlines, sampfreq, eyerec, script, sessdate, srcfile, tdur, rec_lastFix, lump_Fix, ln, zn, mn)        
             FixDF = FixDF.append(FixDFtemp, ignore_index=True)
-    
-        resName = direct + '/' + srcfile.split('.')[0]
-        SacDF.to_csv(resName + '_Sac.csv', index=False); FixDF.to_csv(resName + '_Fix.csv', index=False)
+                
+        return SacDF, FixDF
 
 
-def rec_Sac_Fix_Batch(direct, regfileNameList, ExpType):
+def u_write_Sac_Report(direct, SacDF):
     """
-    batch processing of all subjects' fixation and saccade data
+    write SacDF to csv file
+    """
+    resName = direct + '/' + SacDF.srcfile[0].split('.')[0]; SacDF.to_csv(resName + '_Sac.csv', index=False)
+
+
+def u_write_Fix_Report(direct, FixDF):
+    """
+    write FixDF to csv file
+    """
+    resName = direct + '/' + FixDF.srcfile[0].split('.')[0]; FixDF.to_csv(resName + '_Fix.csv', index=False)
+
+
+def ub_read_write_SRRasc(direct, regfileNameList, ExpType, rec_lastFix=False, lump_Fix=True, ln=50, zn=50, mn=50):
+    """
+    processing all subjects' saccades and fixations, read them from ascii files and write them into csv files
     arguments:
         direct -- directory containing all asc files
         regfileNameList -- a list of region file names (trial_id will help select corresponding region files)
         ExpType -- type of experiments: 'RAN', 'RP'
+        rec_lastFix -- whether (True)or not (False) include the last fixation of a trial and allow it to trigger regression, default = False
+        lump_Fix -- whether (True) or not (False) lump short fixations, default = True
+        ln -- for lumping fixations, maximum duration of a fixation to "lump", default = 50. Fixation <= this value is subject to lumping with adjacent and near enough (determined by zN) fixations
+        zn -- for lumping fixations, maximum distance (in pixels) between two fixations for "lumping"; default = 50, roughly 1.5 character (12/8s)
+        mn -- for lumping fixations, minimum legal fixation duration, default = 50 ms
     output:
         FixDF -- fixation data in different trials of different subjects
         SacDF -- saccade data in different trials of different subjects
@@ -1616,84 +1689,117 @@ def rec_Sac_Fix_Batch(direct, regfileNameList, ExpType):
     ascfiles = []
     for file in os.listdir(direct):
         if fnmatch.fnmatch(file, '*.asc'):
-            ascfiles.append(str(file).split('.')[0])
+            ascfiles.append(str(file))
+    if ascfiles == []:
+        print 'No asc file in the directory!'        
     for asc in ascfiles:
-        rec_Sac_Fix(direct, asc, regfileNameList, ExpType)
+        SacDF, FixDF = u_read_SRRasc(direct, asc, regfileNameList, ExpType, rec_lastFix, lump_Fix, ln, zn, mn)
+        u_write_Sac_Report(direct, SacDF); u_write_Fix_Report(direct, FixDF)
 
 
-def crl_Sac_Fix(direct, subj, regfileNameList, ExpType):
+def u_cal_crlSacFix(direct, subj, regfileNameList, ExpType, recStatus=True, diff_ratio=0.6, frontrange_ratio=0.2, y_range=60, fix_method='DIFF'):
     """
-    read csv data file of subj and extract crossline saccades and fixations
+    read csv data file of subj and extract crossline saccades and fixations and update line numbers of original saccades and fixations
     arguments:
         direct -- directory for storing csv and output files
         subj -- subject ID
         regionfileNameList -- a list of region file names (trial_id will help select corresponding region files)
-        ExpType -- type of experiments: 'RAN', 'RP'    
+        ExpType -- type of experiments: 'RAN', 'RP'
+        recStatus -- whether (True) or not (False) record questionable saccades and fixations, default = True
+        diff_ratio -- for calculating crossline saccades(fixations), the ratio of maximum distance between the center of the last word and the center of the first word in a line, default = 0.6
+        frontrange_ratio -- for calculating crossline saccades(fixations), the ratio to check backward crossline saccade or fixation: such saccade or fixation usually starts around the line beginning, default = 0.2
+        y_range -- for calculating crossline saccades(fixations), the biggest y difference indicating the eyes are crossing lines or moving away from that line (this must be similar to the distance between two lines), default = 60
+        fix_method -- fixation method: 'DIFF': based on difference in x_axis; 'SAC': based on crosslineSac ('SAC' is preferred since saccade is kinda more accurate!), default = 'DIFF'
     output:
-        SacDF -- saccade data in different trials with updated line numbers
+        newSacDF -- saccade data in different trials with updated line numbers
         crlSac -- crossline saccade data in different trials
-        FixDF -- fixation data in different trials with updated line numbers
+        newFixDF -- fixation data in different trials with updated line numbers
         crlFix -- crossline fixation data in different trials
     """
     # first, check whether the required files are there:
     datafileExist = True
-    datafileName1 = direct + '/' + subj + '_Sac.csv'
-    datafileName2 = direct + '/' + subj + '_Fix.csv'
+    datafileName1 = direct + '/' + subj + '_Sac.csv'; datafileName2 = direct + '/' + subj + '_Fix.csv'
     if not os.path.isfile(datafileName1):
-        print subj + '_Sac.csv' + ' does not exist!'
-        datafileExist = False
+        print subj + '_Sac.csv' + ' does not exist!'; datafileExist = False
     if not os.path.isfile(datafileName2):
-        print subj + '_Fix.csv' + ' does not exist!'
-        datafileExist = False
+        print subj + '_Fix.csv' + ' does not exist!'; datafileExist = False
         
     regfileExist = True
     for regfile in regfileNameList:
         regfileName = direct + '/' + regfile
         if not os.path.isfile(regfileName):
-            print regfile + ' does not exist!'
-            regfileExist = False
+            print regfile + ' does not exist!'; regfileExist = False
     
     # second, process the files
     if datafileExist and regfileExist:
         nameSac = direct + '/' + subj + '_Sac.csv'; nameFix = direct + '/' + subj + '_Fix.csv'
         SacDF = pd.read_csv(nameSac, sep=','); FixDF = pd.read_csv(nameFix, sep=',')    
         newSacDF = pd.DataFrame(); newFixDF = pd.DataFrame()     
-        crlSac = pd.DataFrame(columns=('subj', 'trial_id', 'eye', 'startline', 'endline', 'SaclineIndex', 'start', 'end', 'duration', 'x1_pos', 'y1_pos', 'x2_pos', 'y2_pos', 'ampl', 'pk'))
-        crlFix = pd.DataFrame(columns=('subj', 'trial_id', 'eye', 'startline', 'endline', 'FixlineIndex', 'start', 'end', 'duration', 'x_pos', 'y_pos', 'pup_size', 'valid'))
+        crlSac = pd.DataFrame(columns=('subj', 'trial_id', 'eye', 'startline', 'endline', 'SaclineIndex', 'start_time', 'end_time', 'duration', 'x1_pos', 'y1_pos', 'x2_pos', 'y2_pos', 'ampl', 'pk'))
+        crlFix = pd.DataFrame(columns=('subj', 'trial_id', 'eye', 'startline', 'endline', 'FixlineIndex', 'start_time', 'end_time', 'duration', 'x_pos', 'y_pos', 'pup_size', 'valid'))
         print "Subj: ", subj
     
         for trialID in np.unique(map(int,SacDF.trial_id)):
             RegDF = getRegDF(direct, regfileNameList, trialID)  # get region file
             # get saccade data
             print "Get crlSac: Trial ", str(trialID)
-            SacDFtemp = SacDF[SacDF.trial_id==trialID].reset_index(); crlSactemp, question = getcrlSac(RegDF, SacDFtemp)
+            SacDFtemp = SacDF[SacDF.trial_id==trialID].reset_index(); crlSactemp, question = getcrlSac(RegDF, SacDFtemp, diff_ratio, frontrange_ratio, y_range)
             newSacDF = newSacDF.append(SacDFtemp, ignore_index=True); crlSac = crlSac.append(crlSactemp, ignore_index=True)
-            if RECSTATUS and question:
+            if recStatus and question:
                 logfile = open(direct + '/log.txt', 'a+')
                 logfile.write('Subj: ' + subj + ' Trial ' + str(trialID) + ' crlSac start/end need check!\n')
                 logfile.close()        
             
             # get fixation data
             print "Get Fix: Trial ", str(trialID)
-            FixDFtemp = FixDF[FixDF.trial_id==trialID].reset_index(); crlFixtemp, question = getcrlFix(RegDF, crlSactemp, FixDFtemp)
+            FixDFtemp = FixDF[FixDF.trial_id==trialID].reset_index(); crlFixtemp, question = getcrlFix(RegDF, crlSactemp, FixDFtemp, diff_ratio, frontrange_ratio, y_range, fix_method)
             newFixDF = newFixDF.append(FixDFtemp, ignore_index=True); crlFix = crlFix.append(crlFixtemp, ignore_index=True)
-            if RECSTATUS and question:
+            if recStatus and question:
                 logfile = open(direct + '/log.txt', 'a+')
                 logfile.write('Subj: ' + subj + ' Trial ' + str(trialID) + ' crlFix start/end need check!\n')  
                 logfile.close()
             
-        newSacDF.to_csv(nameSac, index=False); newFixDF.to_csv(nameFix, index=False)
-        namecrlSac = direct + '/' + subj + '_crlSac.csv'; namecrlFix = direct + '/' + subj + '_crlFix.csv'
-        crlSac.to_csv(namecrlSac, index=False); crlFix.to_csv(namecrlFix, index=False)
+        return newSacDF, crlSac, newFixDF, crlFix
 
 
-def crl_Sac_Fix_Batch(direct, regfileNameList, ExpType):
+def u_write_Sac_crlSac(direct, subj, SacDF, crlSac):
     """
-    batch processing of all subjects' fixation and saccade data
+    write modified saccades and crossline saccades to csv files
+    arguments:
+        direct -- directory for storing csv files
+        subj -- subject ID
+        SacDF -- saccade data in different trials with updated line numbers
+        crlSac -- crossline saccade data in different trials
+    """            
+    nameSac = direct + '/' + subj + '_Sac.csv'; SacDF.to_csv(nameSac, index=False)
+    namecrlSac = direct + '/' + subj + '_crlSac.csv'; crlSac.to_csv(namecrlSac, index=False)
+
+
+def u_write_Fix_crlFix(direct, subj, FixDF, crlFix):
+    """
+    write modified fixations and crossline fixations to csv files
+    arguments:
+        direct -- directory for storing csv files
+        subj -- subject ID
+        FixDF -- fixation data in different trials with updated line numbers
+        crlFix -- crossline fixation data in different trials
+    """            
+    nameFix = direct + '/' + subj + '_Fix.csv'; FixDF.to_csv(nameFix, index=False)
+    namecrlFix = direct + '/' + subj + '_crlFix.csv'; crlFix.to_csv(namecrlFix, index=False)
+
+
+def ub_cal_write_SacFix_crlSacFix(direct, regfileNameList, ExpType, recStatus=True, diff_ratio=0.6, frontrange_ratio=0.2, y_range=60, fix_method='DIFF'):
+    """
+    processing all subjects' saccades and fixations, read them from csv files and store them into csv files
     arguments:
         direct -- directory containing all asc files
         regfileNameList -- a list of region file names (trial_id will help select corresponding region files)
         ExpType -- type of experiments: 'RAN', 'RP'
+        recStatus -- whether (True) or not (False) record questionable saccades and fixations, default = True 
+        diff_ratio -- for calculating crossline saccades(fixations), the ratio of maximum distance between the center of the last word and the center of the first word in a line, default = 0.6
+        frontrange_ratio -- for calculating crossline saccades(fixations), the ratio to check backward crossline saccade or fixation: such saccade or fixation usually starts around the line beginning, default = 0.2
+        y_range -- for calculating crossline saccades(fixations), the biggest y difference indicating the eyes are crossing lines or moving away from that line (this must be similar to the distance between two lines), default = 60
+        fix_method -- fixation method: 'DIFF': based on difference in x_axis; 'SAC': based on crosslineSac ('SAC' is preferred since saccade is kinda more accurate!), default = 'DIFF'
     output:
         SacDF -- saccade data in different trials with updated line numbers of different subjects
         crlSac -- crossline saccade data in different trials of different subjects
@@ -1704,19 +1810,32 @@ def crl_Sac_Fix_Batch(direct, regfileNameList, ExpType):
     for file in os.listdir(direct):
         if fnmatch.fnmatch(file, '*_*.csv'):
             subjlist.append(str(file).split('_')[0])
-    subjlist = np.unique(subjlist)        
+    subjlist = np.unique(subjlist)
+    if subjlist == []:
+        print 'No csv files in the directory'
     for subj in subjlist:
-        crl_Sac_Fix(direct, subj, regfileNameList, ExpType)
+        SacDF, crlSac, FixDF, crlFix = u_cal_crlSacFix(direct, subj, regfileNameList, ExpType, recStatus, diff_ratio, frontrange_ratio, y_range, fix_method)
+        u_write_Sac_crlSac(direct, subj, SacDF, crlSac); u_write_Fix_crlFix(direct, subj, FixDF, crlFix)
         
 
-def reccrl_Sac_Fix(direct, datafile, regfileNameList, ExpType):
+def u_read_cal_SRRasc(direct, datafile, regfileNameList, ExpType, rec_lastFix=False, lump_Fix=True, ln=50, zn=50, mn=50, recStatus=True, diff_ratio=0.6, frontrange_ratio=0.2, y_range=60, fix_method='DIFF'):
     """
-    read ASC file and extract the fixation and saccade data
+    read ASC file and extract the fixation and saccade data and calculate crossline saccades and fixations
     arguments:
         direct -- directory for storing output files
         datafile -- EMF ascii file name
         regionfileNameList -- a list of region file names (trial_id will help select corresponding region files)
         ExpType -- type of experiments: 'RAN', 'RP'
+        rec_lastFix -- whether (True)or not (False) include the last fixation of a trial and allow it to trigger regression, default = False
+        lump_Fix -- whether (True) or not (False) lump short fixations, default = True
+        ln -- for lumping fixations, maximum duration of a fixation to "lump", default = 50. Fixation <= this value is subject to lumping with adjacent and near enough (determined by zN) fixations
+        zn -- for lumping fixations, maximum distance (in pixels) between two fixations for "lumping"; default = 50, roughly 1.5 character (12/8s)
+        mn -- for lumping fixations, minimum legal fixation duration, default = 50 ms
+        recStatus -- whether (True) or not (False) record questionable saccades and fixations, default = True 
+        diff_ratio -- for calculating crossline saccades(fixations), the ratio of maximum distance between the center of the last word and the center of the first word in a line, default = 0.6
+        frontrange_ratio -- for calculating crossline saccades(fixations), the ratio to check backward crossline saccade or fixation: such saccade or fixation usually starts around the line beginning, default = 0.2
+        y_range -- for calculating crossline saccades(fixations), the biggest y difference indicating the eyes are crossing lines or moving away from that line (this must be similar to the distance between two lines), default = 60
+        fix_method -- fixation method: 'DIFF': based on difference in x_axis; 'SAC': based on crosslineSac ('SAC' is preferred since saccade is kinda more accurate!), default = 'DIFF'
     output:
         SacDF -- saccade data in different trials
         crlSacDF -- crossline saccade data in different trials
@@ -1727,15 +1846,13 @@ def reccrl_Sac_Fix(direct, datafile, regfileNameList, ExpType):
     datafileExist = True
     datafileName = direct + '/' + datafile
     if not os.path.isfile(datafileName):
-        print datafile + ' does not exist!'
-        datafileExist = False
+        print datafile + ' does not exist!'; datafileExist = False
     
     regfileExist = True
     for regfile in regfileNameList:
         regfileName = direct + '/' + regfile
         if not os.path.isfile(regfileName):
-            print regfile + ' does not exist!'
-            regfileExist = False
+            print regfile + ' does not exist!'; regfileExist = False
     
     # second, process the files
     if datafileExist and regfileExist:
@@ -1744,10 +1861,10 @@ def reccrl_Sac_Fix(direct, datafile, regfileNameList, ExpType):
         script, sessdate, srcfile = getHeader(lines)    # get header lines    
         T_idx, T_lines = getTrialReg(lines) # get trial regions
     
-        SacDF = pd.DataFrame(columns=('subj', 'trial_id', 'trial_type', 'sampfreq', 'script', 'sessdate', 'srcfile', 'tdur', 'blinks', 'eye', 'start', 'end', 'duration', 'x1_pos', 'y1_pos', 'x2_pos', 'y2_pos', 'ampl', 'pk', 'line'))
-        FixDF = pd.DataFrame(columns=('subj', 'trial_id', 'trial_type', 'sampfreq', 'script', 'sessdate', 'srcfile', 'tdur', 'blinks', 'eye', 'start', 'end', 'duration', 'x_pos', 'y_pos', 'pup_size', 'valid', 'line'))        
-        crlSac = pd.DataFrame(columns=('subj', 'trial_id', 'eye', 'startline', 'endline', 'SaclineIndex', 'start', 'end', 'duration', 'x1_pos', 'y1_pos', 'x2_pos', 'y2_pos', 'ampl', 'pk'))
-        crlFix = pd.DataFrame(columns=('subj', 'trial_id', 'eye', 'startline', 'endline', 'FixlineIndex', 'start', 'end', 'duration', 'x_pos', 'y_pos', 'pup_size', 'valid'))
+        SacDF = pd.DataFrame(columns=('subj', 'trial_id', 'trial_type', 'sampfreq', 'script', 'sessdate', 'srcfile', 'tdur', 'blinks', 'eye', 'start_time', 'end_time', 'duration', 'x1_pos', 'y1_pos', 'x2_pos', 'y2_pos', 'ampl', 'pk', 'line_no'))
+        FixDF = pd.DataFrame(columns=('subj', 'trial_id', 'trial_type', 'sampfreq', 'script', 'sessdate', 'srcfile', 'tdur', 'blinks', 'eye', 'start_time', 'end_time', 'duration', 'x_pos', 'y_pos', 'pup_size', 'valid', 'line_no'))        
+        crlSac = pd.DataFrame(columns=('subj', 'trial_id', 'eye', 'startline', 'endline', 'SaclineIndex', 'start_time', 'end_time', 'duration', 'x1_pos', 'y1_pos', 'x2_pos', 'y2_pos', 'ampl', 'pk'))
+        crlFix = pd.DataFrame(columns=('subj', 'trial_id', 'eye', 'startline', 'endline', 'FixlineIndex', 'start_time', 'end_time', 'duration', 'x_pos', 'y_pos', 'pup_size', 'valid'))
     
         for ind in range(len(T_lines)):
             triallines = lines[T_lines[ind,0]+1:T_lines[ind,1]]; trialID = int(T_idx[ind,0].split(' ')[-1])
@@ -1756,36 +1873,43 @@ def reccrl_Sac_Fix(direct, datafile, regfileNameList, ExpType):
             # read saccade data and get crossline saccade
             print "Read Sac and Get crlSac: Trial ", str(trialID)
             SacDFtemp = recSac(RegDF, ExpType, trialID, blinklines, saclines, sampfreq, eyerec, script, sessdate, srcfile, tdur)
-            crlSactemp, question = getcrlSac(RegDF, SacDFtemp)
+            crlSactemp, question = getcrlSac(RegDF, SacDFtemp, diff_ratio, frontrange_ratio, y_range)
             SacDF = SacDF.append(SacDFtemp, ignore_index=True); crlSac = crlSac.append(crlSactemp, ignore_index=True)
-            if RECSTATUS and question:
+            if recStatus and question:
                 logfile = open(direct + '/log.txt', 'a+')
                 logfile.write('Subj: ' + SacDFtemp.subj[0] + ' Trial ' + str(trialID) + ' crlSac start/end need check!\n')
                 logfile.close()
 
             # read fixation data and get crossline fixation
             print "Read Fix and Get crlFix: Trial ", str(trialID)
-            FixDFtemp = recFix(RegDF, ExpType, trialID, blinklines, fixlines, sampfreq, eyerec, script, sessdate, srcfile, tdur)        
-            crlFixtemp, question = getcrlFix(RegDF, crlSactemp, FixDFtemp)
+            FixDFtemp = recFix(RegDF, ExpType, trialID, blinklines, fixlines, sampfreq, eyerec, script, sessdate, srcfile, tdur, rec_lastFix, lump_Fix, ln, zn, mn)        
+            crlFixtemp, question = getcrlFix(RegDF, crlSactemp, FixDFtemp, diff_ratio, frontrange_ratio, y_range, fix_method)
             FixDF = FixDF.append(FixDFtemp, ignore_index=True); crlFix = crlFix.append(crlFixtemp, ignore_index=True)
-            if RECSTATUS and question:
+            if recStatus and question:
                 logfile = open(direct + '/log.txt', 'a+')
                 logfile.write('Subj: ' + FixDFtemp.subj[0] + ' Trial ' + str(trialID) + ' crlFix start/end need check!\n')
                 logfile.close()
     
-        # store fixation and saccade data
-        resName = direct + './' + srcfile.split('.')[0]   
-        SacDF.to_csv(resName + '_Sac.csv', index=False); crlSac.to_csv(resName + '_crlSac.csv', index=False)
-        FixDF.to_csv(resName + '_Fix.csv', index=False); crlFix.to_csv(resName + '_crlFix.csv', index=False)
+        return SacDF, crlSac, FixDF, crlFix
         
     
-def reccrl_Sac_Fix_Batch(direct, regfileNameList, ExpType):
+def ub_read_cal_write_SRRasc(direct, regfileNameList, ExpType, rec_lastFix=False, lump_Fix=True, ln=50, zn=50, mn=50, recStatus=True, diff_ratio=0.6, frontrange_ratio=0.2, y_range=60, fix_method='DIFF'):
     """
-    batch processing of all subjects' fixation and saccade data
+    processing all subjects' fixation and saccade data
     arguments:
         direct -- directory containing all asc files
         regfileNameList -- a list of region file names (trial_id will help select corresponding region files)
         ExpType -- type of experiments: 'RAN', 'RP'
+        rec_lastFix -- whether (True)or not (False) include the last fixation of a trial and allow it to trigger regression, default = False
+        lump_Fix -- whether (True) or not (False) lump short fixations, default = True
+        ln -- for lumping fixations, maximum duration of a fixation to "lump", default = 50. Fixation <= this value is subject to lumping with adjacent and near enough (determined by zN) fixations
+        zn -- for lumping fixations, maximum distance (in pixels) between two fixations for "lumping"; default = 50, roughly 1.5 character (12/8s)
+        mn -- for lumping fixations, minimum legal fixation duration, default = 50 ms
+        recStatus -- whether (True) or not (False) record questionable saccades and fixations, default = True 
+        diff_ratio -- for calculating crossline saccades(fixations), the ratio of maximum distance between the center of the last word and the center of the first word in a line, default = 0.6
+        frontrange_ratio -- for calculating crossline saccades(fixations), the ratio to check backward crossline saccade or fixation: such saccade or fixation usually starts around the line beginning, default = 0.2
+        y_range -- for calculating crossline saccades(fixations), the biggest y difference indicating the eyes are crossing lines or moving away from that line (this must be similar to the distance between two lines), default = 60
+        fix_method -- fixation method: 'DIFF': based on difference in x_axis; 'SAC': based on crosslineSac ('SAC' is preferred since saccade is kinda more accurate!), default = 'DIFF'
     output:
         SacDF -- saccade data in different trials of different subjects
         crlSacDF -- crossline saccade data in different trials of different subjects
@@ -1796,18 +1920,16 @@ def reccrl_Sac_Fix_Batch(direct, regfileNameList, ExpType):
     for file in os.listdir(direct):
         if fnmatch.fnmatch(file, '*.asc'):
             ascfiles.append(str(file))
+    if ascfiles == []:
+        print 'No asc files in the directory!'        
     for asc in ascfiles:
-        reccrl_Sac_Fix(direct, asc, regfileNameList, ExpType)
+        SacDF, crlSac, FixDF, crlFix = u_read_cal_SRRasc(direct, asc, regfileNameList, ExpType, rec_lastFix, lump_Fix, ln, zn, mn, recStatus, diff_ratio, frontrange_ratio, y_range, fix_method)
+        u_write_Sac_crlSac(direct, asc.split('.')[0], SacDF, crlSac); u_write_Fix_crlFix(direct, asc.split('.')[0], FixDF, crlFix)
 
     
 # -----------------------------------------------------------------------------
 # -----------------------------------------------------------------------------
 # functions for drawing saccades and fixations    
-# gloabl variables
-# for drawing
-MAX_FIXATION_RADIUS = 30 # maximum radius of fixation circles for showing 
-
-
 def rgb2gray(rgb):
     """
     convert a rgb turple to gray scale
@@ -1815,7 +1937,7 @@ def rgb2gray(rgb):
     return str(0.2989*rgb[0]/256.0 + 0.5870*rgb[1]/256.0 + 0.1140*rgb[2]/256.0)
 
 
-def image_Sac_Fix(direct, subj, bitmapNameList, Sac, crlSac, Fix, crlFix, RegDF, trialID, method, PNGmethod = 0):
+def image_SacFix(direct, subj, bitmapNameList, Sac, crlSac, Fix, crlFix, RegDF, trialID, method, max_FixRadius, drawFinal, showNum, PNGmethod):
     """
     draw saccade and fixation data of a trial
     arguments:
@@ -1832,142 +1954,209 @@ def image_Sac_Fix(direct, subj, bitmapNameList, Sac, crlSac, Fix, crlFix, RegDF,
             'ALL': draw all results (mixing saccade with fixation, and mixing crossline saccade with crossline fixation)
             'SAC': draw saccade results (saccades and crossline saccades)
             'FIX': draw fixation results (fixation and crossline fixations)
+        max_FixRadius -- maximum radius of fixation circles for showing 
+        drawFinal -- whether (True) or not (False) draw fixations and saccades after the ending of reading     
+        showNum -- whether (True) or not (False) show number for fixations 
         PNGmethod -- whether use png file as background (0) or draw texts from region file (1)    
     the results are saved in png file    
     """
+    # prepare bitmaps for displaying saccades and fixations
     fd = FontDict(); fontpath = fd.fontGet('LiberationMono','Regular')
     xsz = 18; ttf = ImageFont.truetype(fontpath, xsz)
-    if PNGmethod == 1:
+    if PNGmethod == 0:
+        # open the bitmap of the paragraph
+        img1 = Image.open(direct + '/' + bitmapNameList[trialID]); draw1 = ImageDraw.Draw(img1)
+        img2 = Image.open(direct + '/' + bitmapNameList[trialID]); draw2 = ImageDraw.Draw(img2)
+    elif PNGmethod == 1:        
         descents = getStrikeDescents(fontpath, xsz); ascents = getStrikeAscents(fontpath, xsz)   
         fg = (0,0,0); bg = (232,232,232); dim = (1280,1024)
+        # initialize images
+        img1 = Image.new('RGB', dim, bg); draw1 = ImageDraw.Draw(img1) # 'RGB' specifies 8-bit per channel (32 bit color)
+        img2 = Image.new('RGB', dim, bg); draw2 = ImageDraw.Draw(img2) # 'RGB' specifies 8-bit per channel (32 bit color)
+        # draw texts and rectangles
+        for curline in pd.unique(RegDF.line_no):
+            line = RegDF[RegDF.line_no==curline]; line.index = range(len(line))            
+            # draw word one by one    
+            for ind in range(len(line)):
+                (mdes, masc) = getdesasc(line.Word[ind], descents, ascents)  # calculate descent and ascent of each word
+                # draw current word
+                vpos_text = line.y1_pos[ind] + masc - xsz/4.5 - 1  # top edge of current word, masc - xsz/4.5 - 1 is offset!.
+                draw1.text((line.x1_pos[ind], vpos_text), line.Word[ind], font=ttf, fill=fg) 
+                draw2.text((line.x1_pos[ind], vpos_text), line.Word[ind], font=ttf, fill=fg) 
+
+    if len(np.unique(Fix.eye)) == 1:
+        # single eye data
+        SingleEye = True
+        end_Fix = len(Fix); end_time = Fix.loc[end_Fix-1,'end_time']
+        if not drawFinal:
+            # get ending Fixation and ending time of reading
+            for ind in range(end_Fix):
+                if Fix.valid[ind] == 'yes' and np.isnan(Fix.line_no[ind]):
+                    end_Fix = ind
+                    break
+            end_time = Fix.loc[end_Fix-1,'end_time']
+    else:
+        # double eye data
+        SingleEye = False        
+        end_Fix_L = len(Fix[Fix.eye=='L']); end_time_L = Fix.loc[end_Fix_L-1,'end_time']
+        end_Fix_R = len(Fix); end_time_R = Fix.loc[end_Fix_R-1,'end_time']
+        if not drawFinal:
+            # get ending Fixation and ending time of reading
+            # left eye
+            for ind in range(end_Fix_L):
+                if Fix.eye[ind] == 'L' and Fix.valid[ind] == 'yes' and np.isnan(Fix.line_no[ind]):
+                    end_Fix_L = ind
+                    break
+            end_time_L = Fix.loc[end_Fix_L-1,'end_time']
+            # right eye
+            for ind in range(len(Fix[Fix.eye=='L']), end_Fix_R):
+                if Fix.eye[ind] == 'R' and Fix.valid[ind] == 'yes' and np.isnan(Fix.line_no[ind]):
+                    end_Fix_R = ind
+                    break
+            end_time_R = Fix.loc[end_Fix_R-1,'end_time']
+
+    # set up colors for saccades and fixations
+    col_leftSac = 'blue'; col_rightSac = 'red'; col_leftEyeFix = 'green'; col_rightEyeFix = 'red'; col_num = 'blue'
     
-    # draw
-    if method == 'ALL':
-        if PNGmethod == 0:
-            # open the bitmap of the paragraph
-            img1 = Image.open(direct + '/' + bitmapNameList[trialID]); draw1 = ImageDraw.Draw(img1)      
-        elif PNGmethod == 1:        
-            # initialize the image
-            img1 = Image.new('RGB', dim, bg) # 'RGB' specifies 8-bit per channel (32 bit color)
-            draw1 = ImageDraw.Draw(img1)        
-            # draw texts and rectangles
-            for curline in pd.unique(RegDF.line):
-                line = RegDF[RegDF.line==curline]; line.index = range(len(line))            
-                # draw word one by one    
-                for ind in range(len(line)):
-                    (mdes, masc) = getdesasc(line.Word[ind], descents, ascents)  # calculate descent and ascent of each word
-                    # draw current word
-                    vpos_text = line.y1_pos[ind] + masc - xsz/4.5 - 1  # top edge of current word, masc - xsz/4.5 - 1 is offset!.
-                    draw1.text((line.x1_pos[ind], vpos_text), line.Word[ind], font=ttf, fill=fg) 
-                    # outline the word region!
-                    # draw1.rectangle([(line.x1_pos[ind], line.y1_pos[ind]), (line.x2_pos[ind], line.y2_pos[ind])], outline=fg, fill=None)
-        # draw fixations
-        radius_ratio = MAX_FIXATION_RADIUS/max(Fix.duration)
-        for ind in range(len(Fix)):
-            if Fix.line[ind] != 0 and Fix.valid[ind] != 'no':
-                r = Fix.duration[ind]*radius_ratio            
-                draw1.ellipse((Fix.x_pos[ind]-r, Fix.y_pos[ind]-r, Fix.x_pos[ind]+r, Fix.y_pos[ind]+r), outline='blue', fill='blue')
-                draw1.text((Fix.x_pos[ind], Fix.y_pos[ind]), str(Fix.duration[ind]), font=ttf, fill='green')
-        # draw saccades
-        for ind in range(len(Sac)):
-            if Sac.x1_pos[ind] < Sac.x2_pos[ind]:
-                draw1.line((Sac.x1_pos[ind], Sac.y1_pos[ind], Sac.x2_pos[ind], Sac.y2_pos[ind]), fill='green', width=2)
-            else:
-                draw1.line((Sac.x1_pos[ind], Sac.y1_pos[ind], Sac.x2_pos[ind], Sac.y2_pos[ind]), fill='red', width=2)
-        # save image
-        img1.save(direct + '/' + subj + '_FixSac_trial' + str(trialID) + '.png', 'PNG')
-        
-        if PNGmethod == 0:        
-            # open the bitmap of the paragraph
-            img2 = Image.open(direct + '/' + bitmapNameList[trialID]); draw2 = ImageDraw.Draw(img2)
-        elif PNGmethod == 1:
-            # initialize the image
-            img2 = Image.new('RGB', dim, bg) # 'RGB' specifies 8-bit per channel (32 bit color)
-            draw2 = ImageDraw.Draw(img2)
-            # draw texts and rectangles
-            for curline in pd.unique(RegDF.line):
-                line = RegDF[RegDF.line==curline]; line.index = range(len(line))            
-                # draw word one by one    
-                for ind in range(len(line)):
-                    (mdes, masc) = getdesasc(line.Word[ind], descents, ascents)  # calculate descent and ascent of each word
-                    # draw current word
-                    vpos_text = line.y1_pos[ind] + masc - xsz/4.5 - 1  # top edge of current word, masc - xsz/4.5 - 1 is offset!.
-                    draw2.text((line.x1_pos[ind], vpos_text), line.Word[ind], font=ttf, fill=fg) 
-                    # outline the word region!
-                    # draw2.rectangle([(line.x1_pos[ind], line.y1_pos[ind]), (line.x2_pos[ind], line.y2_pos[ind])], outline=fg, fill=None)
-        # draw crossline fixations
-        radius_ratio = MAX_FIXATION_RADIUS/max(Fix.duration)
+    if method == 'ALL':            
+        radius_ratio = max_FixRadius/max(Fix.duration)
+        # draw img1
+        if SingleEye:
+            # draw fixations            
+            for ind in range(end_Fix):
+                if Fix.valid[ind] == 'yes':
+                    r = Fix.duration[ind]*radius_ratio            
+                    if Fix.eye[ind] == 'L':
+                        draw1.ellipse((Fix.x_pos[ind]-r, Fix.y_pos[ind]-r, Fix.x_pos[ind]+r, Fix.y_pos[ind]+r), outline=col_leftEyeFix, fill=col_leftEyeFix)
+                    elif Fix.eye[ind] == 'R':
+                        draw1.ellipse((Fix.x_pos[ind]-r, Fix.y_pos[ind]-r, Fix.x_pos[ind]+r, Fix.y_pos[ind]+r), outline=col_rightEyeFix, fill=col_rightEyeFix)
+                    if showNum:
+                        draw1.text((Fix.x_pos[ind], Fix.y_pos[ind]), str(Fix.duration[ind]), font=ttf, fill=col_num)
+            # draw saccades
+            for ind in range(len(Sac)):
+                if Sac.loc[ind,'end_time'] <= end_time:
+                    if Sac.x1_pos[ind] < Sac.x2_pos[ind]:
+                        draw1.line((Sac.x1_pos[ind], Sac.y1_pos[ind], Sac.x2_pos[ind], Sac.y2_pos[ind]), fill=col_rightSac, width=2)
+                    else:
+                        draw1.line((Sac.x1_pos[ind], Sac.y1_pos[ind], Sac.x2_pos[ind], Sac.y2_pos[ind]), fill=col_leftSac, width=2)
+        else:
+            # draw left eye fixations
+            for ind in range(end_Fix_L):
+                if Fix.eye[ind] == 'L' and Fix.valid[ind] == 'yes':
+                    r = Fix.duration[ind]*radius_ratio            
+                    draw1.ellipse((Fix.x_pos[ind]-r, Fix.y_pos[ind]-r, Fix.x_pos[ind]+r, Fix.y_pos[ind]+r), outline=col_leftEyeFix, fill=col_leftEyeFix)
+                    if showNum:
+                        draw1.text((Fix.x_pos[ind], Fix.y_pos[ind]), str(Fix.duration[ind]), font=ttf, fill=col_num)
+            # draw right eye fixations
+            for ind in range(len(Fix[Fix.eye=='L']), end_Fix_R):
+                if Fix.eye[ind] == 'R' and Fix.valid[ind] == 'yes':
+                    r = Fix.duration[ind]*radius_ratio            
+                    draw1.ellipse((Fix.x_pos[ind]-r, Fix.y_pos[ind]-r, Fix.x_pos[ind]+r, Fix.y_pos[ind]+r), outline=col_rightEyeFix, fill=col_rightEyeFix)
+                    if showNum:
+                        draw1.text((Fix.x_pos[ind], Fix.y_pos[ind]), str(Fix.duration[ind]), font=ttf, fill=col_num)
+            # draw saccades            
+            for ind in range(len(Sac)):
+                if (Sac.eye[ind] == 'L' and Sac.loc[ind,'end_time'] <= end_time_L) or (Sac.eye[ind] == 'R' and Sac.loc[ind,'end_time'] <= end_time_R):
+                    if Sac.x1_pos[ind] < Sac.x2_pos[ind]:
+                        draw1.line((Sac.x1_pos[ind], Sac.y1_pos[ind], Sac.x2_pos[ind], Sac.y2_pos[ind]), fill=col_rightSac, width=2)
+                    else:
+                        draw1.line((Sac.x1_pos[ind], Sac.y1_pos[ind], Sac.x2_pos[ind], Sac.y2_pos[ind]), fill=col_leftSac, width=2)
+                
+        # draw img2
+        # draw crossline fixations on img2        
         for ind in range(len(crlFix)):
-            r = crlFix.duration[ind]*radius_ratio            
-            draw2.ellipse((crlFix.x_pos[ind]-r, crlFix.y_pos[ind]-r, crlFix.x_pos[ind]+r, crlFix.y_pos[ind]+r), outline='blue', fill='blue')
-            draw2.text((crlFix.x_pos[ind], crlFix.y_pos[ind]), str(crlFix.duration[ind]), font=ttf, fill='green')
-        # draw crossline saccades
+            r = crlFix.duration[ind]*radius_ratio
+            if crlFix.eye[ind] == 'L':
+                draw2.ellipse((crlFix.x_pos[ind]-r, crlFix.y_pos[ind]-r, crlFix.x_pos[ind]+r, crlFix.y_pos[ind]+r), outline=col_leftEyeFix, fill=col_leftEyeFix)
+            elif crlFix.eye[ind] == 'R':
+                draw2.ellipse((crlFix.x_pos[ind]-r, crlFix.y_pos[ind]-r, crlFix.x_pos[ind]+r, crlFix.y_pos[ind]+r), outline=col_rightEyeFix, fill=col_rightEyeFix)
+            if showNum:
+                draw2.text((crlFix.x_pos[ind], crlFix.y_pos[ind]), str(crlFix.duration[ind]), font=ttf, fill=col_num)
+        # draw crossline saccades on img2
         for ind in range(len(crlSac)):
             if crlSac.x1_pos[ind] < crlSac.x2_pos[ind]:
-                draw2.line((crlSac.x1_pos[ind], crlSac.y1_pos[ind], crlSac.x2_pos[ind], crlSac.y2_pos[ind]), fill='green', width=2)
+                draw2.line((crlSac.x1_pos[ind], crlSac.y1_pos[ind], crlSac.x2_pos[ind], crlSac.y2_pos[ind]), fill=col_rightSac, width=2)
             else:
-                draw2.line((crlSac.x1_pos[ind], crlSac.y1_pos[ind], crlSac.x2_pos[ind], crlSac.y2_pos[ind]), fill='red', width=2)
-        # save image
+                draw2.line((crlSac.x1_pos[ind], crlSac.y1_pos[ind], crlSac.x2_pos[ind], crlSac.y2_pos[ind]), fill=col_leftSac, width=2)
+
+        # save img1 and img2
+        img1.save(direct + '/' + subj + '_FixSac_trial' + str(trialID) + '.png', 'PNG')
         img2.save(direct + '/' + subj + '_crlFixSac_trial' + str(trialID) + '.png', 'PNG')                
+    
     elif method == 'SAC':
-        if PNGmethod == 0:
-            # open the bitmap of the paragraph        
-            img = Image.open(direct + '/' + bitmapNameList[trialID]); draw = ImageDraw.Draw(img)
-        elif PNGmethod == 1:        
-            # initialize the image
-            img = Image.new('RGB', dim, bg) # 'RGB' specifies 8-bit per channel (32 bit color)
-            draw = ImageDraw.Draw(img1)
-            # draw texts and rectangles
-            for curline in pd.unique(RegDF.line):
-                line = RegDF[RegDF.line==curline]; line.index = range(len(line))            
-                # draw word one by one    
-                for ind in range(len(line)):
-                    (mdes, masc) = getdesasc(line.Word[ind], descents, ascents)  # calculate descent and ascent of each word
-                    # draw current word
-                    vpos_text = line.y1_pos[ind] + masc - xsz/4.5 - 1  # top edge of current word, masc - xsz/4.5 - 1 is offset!.
-                    draw.text((line.x1_pos[ind], vpos_text), line.Word[ind], font=ttf, fill=fg) 
-                    # outline the word region!
-                    # draw.rectangle([(line.x1_pos[ind], line.y1_pos[ind]), (line.x2_pos[ind], line.y2_pos[ind])], outline=fg, fill=None)
-        # draw saccades
-        for ind in range(len(Sac)):
-            if Sac.x1_pos[ind] < Sac.x2_pos[ind]:
-                draw.line((Sac.x1_pos[ind], Sac.y1_pos[ind], Sac.x2_pos[ind], Sac.y2_pos[ind]), fill='green', width=2)
+        # draw saccades on img1
+        if SingleEye:
+            for ind in range(len(Sac)):
+                if Sac.loc[ind,'end_time'] <= end_time:
+                    if Sac.x1_pos[ind] < Sac.x2_pos[ind]:
+                        draw1.line((Sac.x1_pos[ind], Sac.y1_pos[ind], Sac.x2_pos[ind], Sac.y2_pos[ind]), fill=col_rightSac, width=2)
+                    else:
+                        draw1.line((Sac.x1_pos[ind], Sac.y1_pos[ind], Sac.x2_pos[ind], Sac.y2_pos[ind]), fill=col_leftSac, width=2)
+        else:                
+            for ind in range(len(Sac)):
+                if (Sac.eye[ind] == 'L' and Sac.loc[ind,'end_time'] <= end_time_L) or (Sac.eye[ind] == 'R' and Sac.loc[ind,'end_time'] <= end_time_R):
+                    if Sac.x1_pos[ind] < Sac.x2_pos[ind]:
+                        draw1.line((Sac.x1_pos[ind], Sac.y1_pos[ind], Sac.x2_pos[ind], Sac.y2_pos[ind]), fill=col_rightSac, width=2)
+                    else:
+                        draw1.line((Sac.x1_pos[ind], Sac.y1_pos[ind], Sac.x2_pos[ind], Sac.y2_pos[ind]), fill=col_leftSac, width=2)    
+        
+        # draw crossline saccades on img2
+        for ind in range(len(crlSac)):
+            if crlSac.x1_pos[ind] < crlSac.x2_pos[ind]:
+                draw2.line((crlSac.x1_pos[ind], crlSac.y1_pos[ind], crlSac.x2_pos[ind], crlSac.y2_pos[ind]), fill=col_rightSac, width=2)
             else:
-                draw.line((Sac.x1_pos[ind], Sac.y1_pos[ind], Sac.x2_pos[ind], Sac.y2_pos[ind]), fill='red', width=2)
-        # save image
-        img.save(direct + '/' + subj + '_Sac_trial' + str(trialID) + '.png', 'PNG')
+                draw2.line((crlSac.x1_pos[ind], crlSac.y1_pos[ind], crlSac.x2_pos[ind], crlSac.y2_pos[ind]), fill=col_leftSac, width=2)
+
+        # save img1 and img2
+        img1.save(direct + '/' + subj + '_Sac_trial' + str(trialID) + '.png', 'PNG')
+        img2.save(direct + '/' + subj + '_crlSac_trial' + str(trialID) + '.png', 'PNG')        
+        
     elif method == 'FIX':
-        if PNGmethod == 0:
-            # open the bitmap of the paragraph        
-            img = Image.open(direct + '/' + bitmapNameList[trialID]); draw = ImageDraw.Draw(img)
-        elif PNGmethod == 1:    
-            # initialize the image
-            img = Image.new('RGB', dim, bg) # 'RGB' specifies 8-bit per channel (32 bit color)
-            draw = ImageDraw.Draw(img1)
-            # draw texts and rectangles
-            for curline in pd.unique(RegDF.line):
-                line = RegDF[RegDF.line==curline]; line.index = range(len(line))            
-                # draw word one by one    
-                for ind in range(len(line)):
-                    (mdes, masc) = getdesasc(line.Word[ind], descents, ascents)  # calculate descent and ascent of each word
-                    # draw current word
-                    vpos_text = line.y1_pos[ind] + masc - xsz/4.5 - 1  # top edge of current word, masc - xsz/4.5 - 1 is offset!.
-                    draw.text((line.x1_pos[ind], vpos_text), line.Word[ind], font=ttf, fill=fg) 
-                    # outline the word region!
-                    # draw.rectangle([(line.x1_pos[ind], line.y1_pos[ind]), (line.x2_pos[ind], line.y2_pos[ind])], outline=fg, fill=None)
-        # draw fixations
-        radius_ratio = MAX_FIXATION_RADIUS/max(Fix.duration)
-        for ind in range(len(Fix)):
-            if Fix.line[ind] != 0 and Fix.valid[ind] != 'no':
-                r = Fix.duration[ind]*radius_ratio            
-                draw.ellipse((Fix.x_pos[ind]-r, Fix.y_pos[ind]-r, Fix.x_pos[ind]+r, Fix.y_pos[ind]+r), outline='blue', fill='blue')
-                draw.text((Fix.x_pos[ind], Fix.y_pos[ind]), str(Fix.duration[ind]), font=ttf, fill='green')
-        # save image
-        img.save(direct + '/' + subj + '_Fix_trial' + str(trialID) + '.png', 'PNG') 
+        radius_ratio = max_FixRadius/max(Fix.duration)
+        # draw fixations on img1        
+        if SingleEye:
+            for ind in range(end_Fix):
+                if Fix.valid[ind] == 'yes':
+                    r = Fix.duration[ind]*radius_ratio            
+                    if Fix.eye[ind] == 'L':
+                        draw1.ellipse((Fix.x_pos[ind]-r, Fix.y_pos[ind]-r, Fix.x_pos[ind]+r, Fix.y_pos[ind]+r), outline=col_leftEyeFix, fill=col_leftEyeFix)
+                    elif Fix.eye[ind] == 'R':
+                        draw1.ellipse((Fix.x_pos[ind]-r, Fix.y_pos[ind]-r, Fix.x_pos[ind]+r, Fix.y_pos[ind]+r), outline=col_rightEyeFix, fill=col_rightEyeFix)
+                    if showNum:
+                        draw1.text((Fix.x_pos[ind], Fix.y_pos[ind]), str(Fix.duration[ind]), font=ttf, fill=col_num)
+        else:
+            # draw left eye fixations
+            for ind in range(end_Fix_L):
+                if Fix.eye[ind] == 'L' and Fix.valid[ind] == 'yes':
+                    r = Fix.duration[ind]*radius_ratio            
+                    draw1.ellipse((Fix.x_pos[ind]-r, Fix.y_pos[ind]-r, Fix.x_pos[ind]+r, Fix.y_pos[ind]+r), outline=col_leftEyeFix, fill=col_leftEyeFix)
+                    if showNum:
+                        draw1.text((Fix.x_pos[ind], Fix.y_pos[ind]), str(Fix.duration[ind]), font=ttf, fill=col_num)
+            # draw right eye fixations
+            for ind in range(len(Fix[Fix.eye=='L']), end_Fix_R):
+                if Fix.eye[ind] == 'R' and Fix.valid[ind] == 'yes':
+                    r = Fix.duration[ind]*radius_ratio            
+                    draw1.ellipse((Fix.x_pos[ind]-r, Fix.y_pos[ind]-r, Fix.x_pos[ind]+r, Fix.y_pos[ind]+r), outline=col_rightEyeFix, fill=col_rightEyeFix)
+                    if showNum:
+                        draw1.text((Fix.x_pos[ind], Fix.y_pos[ind]), str(Fix.duration[ind]), font=ttf, fill=col_num)
+        
+        # draw crossline fixations on img2        
+        for ind in range(len(crlFix)):
+            r = crlFix.duration[ind]*radius_ratio
+            if crlFix.eye[ind] == 'L':
+                draw2.ellipse((crlFix.x_pos[ind]-r, crlFix.y_pos[ind]-r, crlFix.x_pos[ind]+r, crlFix.y_pos[ind]+r), outline=col_leftEyeFix, fill=col_leftEyeFix)
+            elif crlFix.eye[ind] == 'R':
+                draw2.ellipse((crlFix.x_pos[ind]-r, crlFix.y_pos[ind]-r, crlFix.x_pos[ind]+r, crlFix.y_pos[ind]+r), outline=col_rightEyeFix, fill=col_rightEyeFix)
+            if showNum:
+                draw2.text((crlFix.x_pos[ind], crlFix.y_pos[ind]), str(crlFix.duration[ind]), font=ttf, fill=col_num)
+        
+        # save img1 and img2
+        img1.save(direct + '/' + subj + '_Fix_trial' + str(trialID) + '.png', 'PNG') 
+        img2.save(direct + '/' + subj + '_crlFix_trial' + str(trialID) + '.png', 'PNG') 
 
 
 # main functions for drawing saccades and fixations
-def draw_Sac_Fix(direct, subj, regfileNameList, bitmapNameList, method, PNGmethod = 0):    
+def u_draw_SacFix(direct, subj, regfileNameList, bitmapNameList, method, max_FixRadius=30, drawFinal=False, showNum=False, PNGmethod=0):    
     """
     read and draw saccade and fixation data
     arguments:
@@ -1979,7 +2168,10 @@ def draw_Sac_Fix(direct, subj, regfileNameList, bitmapNameList, method, PNGmetho
             'ALL': draw all results (mixing saccade with fixation, and mixing crossline saccade with crossline fixation)
             'SAC': draw saccade results (saccades and crossline saccades)
             'FIX': draw fixation results (fixation and crossline fixations)
-        PNGmethod -- whether use png file as background (0) or draw texts from region file (1) 
+        max_FixRadius -- maximum radius of fixation circles for showing, default = 30 
+        drawFinal -- whether (True) or not (False) draw fixations and saccades after the ending of reading, default = False
+        showNum -- whether (True) or not (False) show number for fixations, default = False 
+        PNGmethod -- whether use png file as background (0) or draw texts from region file (1), default = 0 
     output:
         when method == 'ALL'
             subj_FixSac_trial*.png -- showing the fixations and saccades of subj in different trials
@@ -1997,46 +2189,36 @@ def draw_Sac_Fix(direct, subj, regfileNameList, bitmapNameList, method, PNGmetho
     datafileName3 = direct + '/' + subj + '_crlSac.csv'; datafileName4 = direct + '/' + subj + '_crlFix.csv'
     if method == 'ALL':
         if not os.path.isfile(datafileName1):
-            print subj + '_Sac.csv' + ' does not exist!'
-            datafileExist = False
+            print subj + '_Sac.csv' + ' does not exist!'; datafileExist = False
         elif not os.path.isfile(datafileName2):
-            print subj + '_Fix.csv' + ' does not exist!'
-            datafileExist = False
+            print subj + '_Fix.csv' + ' does not exist!'; datafileExist = False
         elif not os.path.isfile(datafileName3):
-            print subj + '_crlSac.csv' + ' does not exist!'
-            datafileExist = False
+            print subj + '_crlSac.csv' + ' does not exist!'; datafileExist = False
         elif not os.path.isfile(datafileName4):
-            print subj + '_crlFix.csv' + ' does not exist!'
-            datafileExist = False
+            print subj + '_crlFix.csv' + ' does not exist!'; datafileExist = False
     if method == 'SAC':
         if not os.path.isfile(datafileName1):
-            print subj + '_Sac.csv' + ' does not exist!'
-            datafileExist = False
+            print subj + '_Sac.csv' + ' does not exist!'; datafileExist = False
         elif not os.path.isfile(datafileName3):
-            print subj + '_crlSac.csv' + ' does not exist!'
-            datafileExist = False
+            print subj + '_crlSac.csv' + ' does not exist!'; datafileExist = False
     if method == 'FIX':
         if not os.path.isfile(datafileName2):
-            print subj + '_Fix.csv' + ' does not exist!'
-            datafileExist = False
+            print subj + '_Fix.csv' + ' does not exist!'; datafileExist = False
         elif not os.path.isfile(datafileName4):
-            print subj + '_crlFix.csv' + ' does not exist!'
-            datafileExist = False   
+            print subj + '_crlFix.csv' + ' does not exist!'; datafileExist = False   
     
     regfileExist = True
     for regfile in regfileNameList:
         regfileName = direct + '/' + regfile
         if not os.path.isfile(regfileName):
-            print regfile + ' does not exist!'
-            regfileExist = False
+            print regfile + ' does not exist!'; regfileExist = False
 
     if PNGmethod == 0:
         bitmapExist = True
         for bitmap in bitmapNameList:
             bitmapName = direct + '/' + bitmap
             if not os.path.isfile(bitmapName):
-                print bitmap + ' does not exist!'
-                bitmapExist = False
+                print bitmap + ' does not exist!'; bitmapExist = False
             
     # second, process the files
     if datafileExist and regfileExist and ((PNGmethod == 0 and bitmapExist) or PNGmethod == 1):
@@ -2052,20 +2234,25 @@ def draw_Sac_Fix(direct, subj, regfileNameList, bitmapNameList, method, PNGmetho
             print "Draw Sac and Fix: Subj: " + subj + ", Trial: " + str(trialID)
             Sac = SacDF[SacDF.trial_id == trialID].reset_index(); crlSac = crlSacDF[crlSacDF.trial_id == trialID].reset_index()
             Fix = FixDF[FixDF.trial_id == trialID].reset_index(); crlFix = crlFixDF[crlFixDF.trial_id == trialID].reset_index()    
-            image_Sac_Fix(direct, subj, bitmapNameList, Sac, crlSac, Fix, crlFix, RegDF, trialID, method, PNGmethod)
+            image_SacFix(direct, subj, bitmapNameList, Sac, crlSac, Fix, crlFix, RegDF, trialID, method, max_FixRadius, drawFinal, showNum, PNGmethod)
 
 
-def draw_Sac_Fix_Batch(direct, regfileNameList, bitmapNameList, method, PNGmethod = 0):
+def ub_draw_SacFix(direct, regfileNameList, bitmapNameList, method, max_FixRadius=30, drawFinal=False, showNum=False, PNGmethod=0):
     """
-    batch drawing of all subjects' fixation and saccade data figures
+    drawing of all subjects' fixation and saccade data figures
     arguments:
         direct -- directory containing all csv files
         regfileNameList -- a list of region file names (trial_id will help select corresponding region files)
         bitmapNameList -- a list of png bitmaps showing the paragraphs shown to the subject
+        drawFinal -- whether (True) or not (False) draw fixations and saccades after the ending of reading     
         method -- drawing method:
             'ALL': draw all results (mixing saccade with fixation, and mixing crossline saccade with crossline fixation)
             'SAC': draw saccade results (saccades and crossline saccades)
             'FIX': draw fixation results (fixation and crossline fixations)
+        max_FixRadius -- maximum radius of fixation circles for showing, default = 30 
+        drawFinal -- whether (True) or not (False) draw fixations and saccades after the ending of reading, default = False
+        showNum -- whether (True) or not (False) show number for fixations, default = False
+        PNGmethod -- whether use png file as background (0) or draw texts from region file (1), default = 0     
     output:
         when method == 'ALL'
             *_FixSac_trial*.png -- showing the fixations and saccades of all subjects in different trials
@@ -2081,12 +2268,14 @@ def draw_Sac_Fix_Batch(direct, regfileNameList, bitmapNameList, method, PNGmetho
     for file in os.listdir(direct):
         if fnmatch.fnmatch(file, '*_*.csv'):
             subjlist.append(str(file).split('_')[0])
-    subjlist = np.unique(subjlist)        
+    subjlist = np.unique(subjlist)
+    if subjlist == []:
+        print 'No csv files in the directory!'        
     for subj in subjlist:
-        draw_Sac_Fix(direct, subj, regfileNameList, bitmapNameList, method, PNGmethod)
+        u_draw_SacFix(direct, subj, regfileNameList, bitmapNameList, method, max_FixRadius, drawFinal, showNum, PNGmethod)
 
 
-def draw_blinks(direct, trialNum):
+def u_draw_blinks(direct, trialNum):
     """
     draw histogram of individual blinks
     arguments: 
@@ -2109,8 +2298,7 @@ def draw_blinks(direct, trialNum):
         ax = fig.add_subplot(111)
         ax.hist(blinksdata, bins=20, normed=True)
         ax.set_title('Histogram of Blinks (trial = ' + str(trialID) + '; n= ' + str(len(blinksdata)) + ')')
-        ax.set_xlabel('No. Blinks')
-        ax.set_ylabel('Frequency')
+        ax.set_xlabel('No. Blinks'); ax.set_ylabel('Frequency')
         plt.show()
         plt.savefig(direct + '/Hist_blinks_trial' + str(trialID) + '.png')
     
@@ -2118,32 +2306,30 @@ def draw_blinks(direct, trialNum):
 # -----------------------------------------------------------------------------
 # -----------------------------------------------------------------------------
 # functions for calculating eye-movement measures
-# global variables
-ADD_TIMES = 1   # the times of single character length added to EMF for catching overshoot fixations
-
-def modEMF(EMF):
+def modEM(EMDF, addCharSp):
     """
-    modify EMF's mod_x1 and mod_x2, add space to boundaries of line starting and ending words
+    modify MFDF's mod_x1 and mod_x2, add space to boundaries of line starting and ending words
     arguments:
-        EMF -- result data frame
-    EMF, as a data frame, is mutable, no need to return    
+        EMDF -- result data frame
+        addCharSp -- number of single character space added to EMF for catching overshoot fixations
+    EMDF, as a data frame, is mutable, no need to return    
     """
-    EMF.mod_x1 = EMF.x1_pos; EMF.mod_x2 = EMF.x2_pos
-    addDist = ADD_TIMES * (EMF.loc[0,'x2_pos']-EMF.loc[0,'x1_pos'])/np.float(EMF.loc[0,'reglen'])
-    for curEMF in range(len(EMF)):
-        if curEMF == 0:            
-            EMF.loc[curEMF,'mod_x1'] -= addDist    # first word, add leftside!
-        elif curEMF == len(EMF) - 1:            
-            EMF.loc[curEMF,'mod_x2'] += addDist    # last word, add rightside!
+    EMDF.mod_x1 = EMDF.x1_pos; EMDF.mod_x2 = EMDF.x2_pos
+    addDist = addCharSp*(EMDF.loc[0,'x2_pos'] - EMDF.loc[0,'x1_pos'])/np.float(EMDF.loc[0,'reglen'])
+    for curEM in range(len(EMDF)):
+        if curEM == 0:            
+            EMDF.loc[curEM,'mod_x1'] -= addDist    # first word, add leftside!
+        elif curEM == len(EMDF) - 1:            
+            EMDF.loc[curEM,'mod_x2'] += addDist    # last word, add rightside!
         else:
             # check whether it is a line ending or line starting word
-            if EMF.loc[curEMF-1,'line'] == EMF.loc[curEMF,'line']-1:
-                EMF.loc[curEMF,'mod_x1'] -= addDist    # current region is a line starting, add leftside!
-            elif EMF.loc[curEMF+1,'line'] == EMF.loc[curEMF,'line'] + 1:
-                EMF.loc[curEMF,'mod_x2'] += addDist    # current region is a line ending, add rightside!
+            if EMDF.loc[curEM-1,'line_no'] == EMDF.loc[curEM,'line_no'] - 1:
+                EMDF.loc[curEM,'mod_x1'] -= addDist    # current region is a line starting, add leftside!
+            elif EMDF.loc[curEM+1,'line_no'] == EMDF.loc[curEM,'line_no'] + 1:
+                EMDF.loc[curEM,'mod_x2'] += addDist    # current region is a line ending, add rightside!
 
 
-def chk_fp_fix(FixDF, EMF, curFix, curEMF):
+def chk_fp_fix(FixDF, EMDF, curFix, curEM):
     """
     calculate fist pass fixation measures:
         fpurt: first pass fixation time. Only includes fixations of 50 ms or longer by default (but see option --minfixdur). 
@@ -2154,29 +2340,29 @@ def chk_fp_fix(FixDF, EMF, curFix, curEMF):
         spilover: Duration of the first fixation beyond a region/word.
     arguments:
         FixDF -- fixation data of the trial
-        EMF -- result data frame
+        EMDF -- result data frame
         curFix -- current fixation in the region
-        curEMF -- current region in the result data frame      
+        curEM -- current region in the result data frame      
     returns:
         stFix, endFix -- starting and ending fixation indices of the first reading
     """
-    EMF.loc[curEMF,'fpurt'] += FixDF.loc[curFix,'duration']  # fpurt: first pass fixation time
-    EMF.loc[curEMF,'fpcount'] += 1 # fpcount: number of first pass fixation
-    EMF.loc[curEMF,'ffos'] = np.ceil((FixDF.loc[curFix,'x_pos']-EMF.loc[curEMF,'mod_x1'])/np.float(EMF.loc[curEMF,'mod_x2']-EMF.loc[curEMF,'mod_x1'])*EMF.loc[curEMF,'reglen']) - 1   # ffos: offset of the first first-pass fixation in a region from the first letter of the region, in characters (range of 0 to reglen-1)
-    EMF.loc[curEMF,'ffixurt'] += FixDF.loc[curFix,'duration']   # ffixurt: first first-pass fixation duration for each region.
+    EMDF.loc[curEM,'fpurt'] += FixDF.loc[curFix,'duration']  # fpurt: first pass fixation time
+    EMDF.loc[curEM,'fpcount'] += 1 # fpcount: number of first pass fixation
+    EMDF.loc[curEM,'ffos'] = np.ceil((FixDF.loc[curFix,'x_pos'] - EMDF.loc[curEM,'mod_x1'])/np.float(EMDF.loc[curEM,'mod_x2'] - EMDF.loc[curEM,'mod_x1']) * EMDF.loc[curEM,'reglen']) - 1   # ffos: offset of the first first-pass fixation in a region from the first letter of the region, in characters (range of 0 to reglen-1)
+    EMDF.loc[curEM,'ffixurt'] += FixDF.loc[curFix,'duration']   # ffixurt: first first-pass fixation duration for each region.
     # locate the starting and ending indices of the first pass fixation in the current region                    
     stFix, endFix = curFix, curFix + 1
     # keep searching until leaving that word and use that as the ending index 
-    while endFix < len(FixDF) and FixDF.loc[endFix,'valid'] == 'yes' and FixDF.loc[endFix,'line'] == EMF.loc[curEMF,'line'] and EMF.loc[curEMF,'mod_x1'] <= FixDF.loc[endFix,'x_pos'] and FixDF.loc[endFix,'x_pos'] <= EMF.loc[curEMF,'mod_x2']:
-        EMF.loc[curEMF,'fpurt'] += FixDF.loc[endFix,'duration']  # add fpurt: first pass fixation time
-        EMF.loc[curEMF,'fpcount'] += 1  # add fpcount: number of first pass fixation
+    while endFix < len(FixDF) and FixDF.loc[endFix,'valid'] == 'yes' and FixDF.loc[endFix,'line_no'] == EMDF.loc[curEM,'line_no'] and EMDF.loc[curEM,'mod_x1'] <= FixDF.loc[endFix,'x_pos'] and FixDF.loc[endFix,'x_pos'] <= EMDF.loc[curEM,'mod_x2']:
+        EMDF.loc[curEM,'fpurt'] += FixDF.loc[endFix,'duration']  # add fpurt: first pass fixation time
+        EMDF.loc[curEM,'fpcount'] += 1  # add fpcount: number of first pass fixation
         endFix += 1
-    if endFix < len(FixDF) and FixDF.loc[endFix,'valid'] == 'yes':
-        EMF.loc[curEMF,'spilover'] += FixDF.loc[endFix,'duration']  # add spilover: Duration of the first fixation beyond a region/word.   
+    if endFix < len(FixDF) and FixDF.loc[endFix,'valid'] == 'yes' and not np.isnan(FixDF.loc[endFix,'line_no']):
+        EMDF.loc[curEM,'spilover'] += FixDF.loc[endFix,'duration']  # add spilover: Duration of the first fixation beyond a region/word.   
     return stFix, endFix
 
 
-def chk_fp_reg(FixDF, EMF, stFix, endFix, curEMF):
+def chk_fp_reg(FixDF, EMDF, stFix, endFix, curEM):
     """
     calculate first pass regression measures:
         fpregres: whether or not there was a first-pass regression from this region, yes=1, no=0.
@@ -2185,62 +2371,62 @@ def chk_fp_reg(FixDF, EMF, stFix, endFix, curEMF):
                  If fpregres == 0 then fpregchr will have a large value (high enough to be out of bounds for any possible stimulus string).
     arguments:
         FixDF -- fixation data of the trial
-        EMF -- result data frame
+        EMDF -- result data frame
         stFix, endFix -- starting and ending fixation indices of the first reading
-        curEMF -- current region in the result data frame              
+        curEM -- current region in the result data frame              
     """
-    if FixDF.loc[endFix,'line'] == EMF.loc[curEMF,'line']:
+    if FixDF.loc[endFix,'line_no'] == EMDF.loc[curEM,'line_no']:
         # the fixation after the first pass reading is within the same line of the current word
-        if FixDF.loc[endFix,'x_pos'] < EMF.loc[curEMF,'mod_x1']:
+        if FixDF.loc[endFix,'x_pos'] < EMDF.loc[curEM,'mod_x1']:
             # a regression fixation
-            EMF.loc[curEMF,'fpregres'] = 1
+            EMDF.loc[curEM,'fpregres'] = 1
             # search the region where regression fixation falls into
-            for cur in range(len(EMF)):
-                if FixDF.loc[endFix,'valid'] == 'yes' and FixDF.loc[endFix,'line'] == EMF.loc[cur,'line'] and EMF.loc[cur,'mod_x1'] <= FixDF.loc[endFix,'x_pos'] and FixDF.loc[endFix,'x_pos'] <= EMF.loc[cur,'mod_x2']:
-                    EMF.loc[curEMF,'fpregreg'] = EMF.loc[cur,'region']
+            for cur in range(len(EMDF)):
+                if FixDF.loc[endFix,'valid'] == 'yes' and FixDF.loc[endFix,'line_no'] == EMDF.loc[cur,'line_no'] and EMDF.loc[cur,'mod_x1'] <= FixDF.loc[endFix,'x_pos'] and FixDF.loc[endFix,'x_pos'] <= EMDF.loc[cur,'mod_x2']:
+                    EMDF.loc[curEM,'fpregreg'] = EMDF.loc[cur,'region']
                     if cur == 0:
-                        EMF.loc[curEMF,'fpregchr'] = np.ceil((FixDF.loc[endFix,'x_pos']-EMF.loc[cur,'mod_x1'])/np.float(EMF.loc[cur,'mod_x2']-EMF.loc[cur,'mod_x1'])*EMF.loc[cur,'reglen']) - 1
+                        EMDF.loc[curEM,'fpregchr'] = np.ceil((FixDF.loc[endFix,'x_pos'] - EMDF.loc[cur,'mod_x1'])/np.float(EMDF.loc[cur,'mod_x2'] - EMDF.loc[cur,'mod_x1']) * EMDF.loc[cur,'reglen']) - 1
                     else:    
-                        EMF.loc[curEMF,'fpregchr'] = sum(EMF.reglen[0:cur-1]) + np.ceil((FixDF.loc[endFix,'x_pos']-EMF.loc[cur,'mod_x1'])/np.float(EMF.loc[cur,'mod_x2']-EMF.loc[cur,'mod_x1'])*EMF.loc[cur,'reglen']) - 1
+                        EMDF.loc[curEM,'fpregchr'] = sum(EMDF.reglen[0:cur-1]) + np.ceil((FixDF.loc[endFix,'x_pos'] - EMDF.loc[cur,'mod_x1'])/np.float(EMDF.loc[cur,'mod_x2'] - EMDF.loc[cur,'mod_x1']) * EMDF.loc[cur,'reglen']) - 1
                     break
         else:
             # a forward fixation
-            EMF.loc[curEMF,'fpregres'] = 0; EMF.loc[curEMF,'fpregreg'] = 0; EMF.loc[curEMF,'fpregchr'] = sum(EMF.reglen)                    
+            EMDF.loc[curEM,'fpregres'] = 0; EMDF.loc[curEM,'fpregreg'] = 0; EMDF.loc[curEM,'fpregchr'] = sum(EMDF.reglen)                    
     else:
         # the fixation after the first pass reading is not in the same line of the current word
-        if FixDF.loc[endFix,'line'] < EMF.loc[curEMF,'line']:
+        if FixDF.loc[endFix,'line_no'] < EMDF.loc[curEM,'line_no']:
             # a regression fixation
-            EMF.loc[curEMF,'fpregres'] = 1
+            EMDF.loc[curEM,'fpregres'] = 1
             # search the region where regression fixation falls into
-            for cur in range(len(EMF)):
-                if FixDF.loc[endFix,'valid'] == 'yes' and FixDF.loc[endFix,'line'] == EMF.loc[cur,'line'] and EMF.loc[cur,'mod_x1'] <= FixDF.loc[endFix,'x_pos'] and FixDF.loc[endFix,'x_pos'] <= EMF.loc[cur,'mod_x2']:
-                    EMF.loc[curEMF,'fpregreg'] = EMF.loc[cur,'region']
+            for cur in range(len(EMDF)):
+                if FixDF.loc[endFix,'valid'] == 'yes' and FixDF.loc[endFix,'line_no'] == EMDF.loc[cur,'line_no'] and EMDF.loc[cur,'mod_x1'] <= FixDF.loc[endFix,'x_pos'] and FixDF.loc[endFix,'x_pos'] <= EMDF.loc[cur,'mod_x2']:
+                    EMDF.loc[curEM,'fpregreg'] = EMDF.loc[cur,'region']
                     if cur == 0:
-                        EMF.loc[curEMF,'fpregchr'] = np.ceil((FixDF.loc[endFix,'x_pos']-EMF.loc[cur,'mod_x1'])/np.float(EMF.loc[cur,'mod_x2']-EMF.loc[cur,'mod_x1'])*EMF.loc[cur,'reglen']) - 1
+                        EMDF.loc[curEM,'fpregchr'] = np.ceil((FixDF.loc[endFix,'x_pos'] - EMDF.loc[cur,'mod_x1'])/np.float(EMDF.loc[cur,'mod_x2'] - EMDF.loc[cur,'mod_x1']) * EMDF.loc[cur,'reglen']) - 1
                     else:    
-                        EMF.loc[curEMF,'fpregchr'] = sum(EMF.reglen[0:cur-1]) + np.ceil((FixDF.loc[endFix,'x_pos']-EMF.loc[cur,'mod_x1'])/np.float(EMF.loc[cur,'mod_x2']-EMF.loc[cur,'mod_x1'])*EMF.loc[cur,'reglen']) - 1
+                        EMDF.loc[curEM,'fpregchr'] = sum(EMDF.reglen[0:cur-1]) + np.ceil((FixDF.loc[endFix,'x_pos'] - EMDF.loc[cur,'mod_x1'])/np.float(EMDF.loc[cur,'mod_x2'] - EMDF.loc[cur,'mod_x1']) * EMDF.loc[cur,'reglen']) - 1
                     break
         else:
             # a forward fixation
-            EMF.loc[curEMF,'fpregres'] = 0; EMF.loc[curEMF,'fpregreg'] = 0; EMF.loc[curEMF,'fpregchr'] = sum(EMF.reglen)
+            EMDF.loc[curEM,'fpregres'] = 0; EMDF.loc[curEM,'fpregreg'] = 0; EMDF.loc[curEM,'fpregchr'] = sum(EMDF.reglen)
 
 
-def getReg(FixDF, curFix, EMF):
+def getReg(FixDF, curFix, EMDF):
     """
     search EMF to locate which region that FixDF.loc[curFix] falls into
     arguments:
         FixDF -- fixation data of the trial
         curFix -- current fixation index
-        EMF -- result data frame containing all region information
+        EMDF -- result data frame containing all region information
     return: index in EMF    
     """
-    for curEMF in range(len(EMF)):
-        if FixDF.loc[curFix,'line'] == EMF.loc[curEMF,'line'] and EMF.loc[curEMF,'mod_x1'] <= FixDF.loc[curFix,'x_pos'] and FixDF.loc[curFix,'x_pos'] <= EMF.loc[curEMF,'mod_x2']:
+    for curEM in range(len(EMDF)):
+        if FixDF.loc[curFix,'line_no'] == EMDF.loc[curEM,'line_no'] and EMDF.loc[curEM,'mod_x1'] <= FixDF.loc[curFix,'x_pos'] and FixDF.loc[curFix,'x_pos'] <= EMDF.loc[curEM,'mod_x2']:
             break
-    return curEMF
+    return curEM
    
 
-def chk_rp_reg(FixDF, EMF, stFix, endFix, curEMF):
+def chk_rp_reg(FixDF, EMDF, stFix, endFix, curEM):
     """
     calculate regression path measures:
         rpurt: regression path fixation time: The sum of all fixations from the time a region is entered until the first fixation to the right of that region. 
@@ -2252,88 +2438,88 @@ def chk_rp_reg(FixDF, EMF, stFix, endFix, curEMF):
                   If fpcount = 0 then rpregchr will have a large value (high enough to be out of bounds for any possible stimulus string).
     arguments:
         FixDF -- fixation data of the trial
-        EMF -- result data frame
+        EMDF -- result data frame
         stFix, endFix -- starting and ending fixation indices of the first reading
-        curEMF -- current region in the result data frame            
+        curEM -- current region in the result data frame            
     """
-    if EMF.loc[curEMF,'fpregres'] == 0:
+    if EMDF.loc[curEM,'fpregres'] == 0:
         # there is no regression, so no regression path
-        EMF.loc[curEMF,'rpurt'] = EMF.loc[curEMF,'fpurt']; EMF.loc[curEMF,'rpcount'] = 0; EMF.loc[curEMF,'rpregreg'] = 0; EMF.loc[curEMF,'rpregchr'] = sum(EMF.reglen) 
+        EMDF.loc[curEM,'rpurt'] = EMDF.loc[curEM,'fpurt']; EMDF.loc[curEM,'rpcount'] = 0; EMDF.loc[curEM,'rpregreg'] = 0; EMDF.loc[curEM,'rpregchr'] = sum(EMDF.reglen) 
     else:
         # there is a regression, find the regression path
-        if curEMF == 0:
+        if curEM == 0:
             # the first region (word), treat it as the same as no regression
-            EMF.loc[curEMF,'rpurt'] = EMF.loc[curEMF,'fpurt']; EMF.loc[curEMF,'rpcount'] = 0; EMF.loc[curEMF,'rpregreg'] = 0; EMF.loc[curEMF,'rpregchr'] = sum(EMF.reglen) 
-        elif curEMF == len(EMF) - 1:
+            EMDF.loc[curEM,'rpurt'] = EMDF.loc[curEM,'fpurt']; EMDF.loc[curEM,'rpcount'] = 0; EMDF.loc[curEM,'rpregreg'] = 0; EMDF.loc[curEM,'rpregchr'] = sum(EMDF.reglen) 
+        elif curEM == len(EMDF) - 1:
             # the last region (word)            
-            EMF.loc[curEMF,'rpurt'] = EMF.loc[curEMF,'fpurt'] + FixDF.loc[endFix,'duration']
-            EMF.loc[curEMF,'rpcount'] += 1
+            EMDF.loc[curEM,'rpurt'] = EMDF.loc[curEM,'fpurt'] + FixDF.loc[endFix,'duration']
+            EMDF.loc[curEM,'rpcount'] += 1
             curFix = endFix + 1
-            leftmostReg = getReg(FixDF, endFix, EMF); leftmostCurFix = endFix            
-            while curFix < len(FixDF) and FixDF.loc[curFix,'valid'] == 'yes':
+            leftmostReg = getReg(FixDF, endFix, EMDF); leftmostCurFix = endFix            
+            while curFix < len(FixDF) and FixDF.loc[curFix,'valid'] == 'yes' and not np.isnan(FixDF.loc[curFix,'line_no']):
                 # in the regression path                
-                EMF.loc[curEMF,'rpurt'] += FixDF.loc[curFix,'duration']
-                EMF.loc[curEMF,'rpcount'] += 1
-                newleft = getReg(FixDF, curFix, EMF)
+                EMDF.loc[curEM,'rpurt'] += FixDF.loc[curFix,'duration']
+                EMDF.loc[curEM,'rpcount'] += 1
+                newleft = getReg(FixDF, curFix, EMDF)
                 if leftmostReg > newleft:
                     leftmostReg = newleft; leftmostCurFix = curFix                    
                 curFix += 1
-            EMF.loc[curEMF,'rpregreg'] = leftmostReg
+            EMDF.loc[curEM,'rpregreg'] = leftmostReg
             if leftmostReg == 0:
-                EMF.loc[curEMF,'rpregchr'] = np.ceil((FixDF.loc[leftmostCurFix,'x_pos']-EMF.loc[leftmostReg,'mod_x1'])/np.float(EMF.loc[leftmostReg,'mod_x2']-EMF.loc[leftmostReg,'mod_x1'])*EMF.loc[leftmostReg,'reglen']) - 1
+                EMDF.loc[curEM,'rpregchr'] = np.ceil((FixDF.loc[leftmostCurFix,'x_pos'] - EMDF.loc[leftmostReg,'mod_x1'])/np.float(EMDF.loc[leftmostReg,'mod_x2'] - EMDF.loc[leftmostReg,'mod_x1']) * EMDF.loc[leftmostReg,'reglen']) - 1
             else:    
-                EMF.loc[curEMF,'rpregchr'] = sum(EMF.reglen[0:leftmostReg-1]) + np.ceil((FixDF.loc[leftmostCurFix,'x_pos']-EMF.loc[leftmostReg,'mod_x1'])/np.float(EMF.loc[leftmostReg,'mod_x2']-EMF.loc[leftmostReg,'mod_x1'])*EMF.loc[leftmostReg,'reglen']) - 1
+                EMDF.loc[curEM,'rpregchr'] = sum(EMDF.reglen[0:leftmostReg-1]) + np.ceil((FixDF.loc[leftmostCurFix,'x_pos'] - EMDF.loc[leftmostReg,'mod_x1'])/np.float(EMDF.loc[leftmostReg,'mod_x2'] - EMDF.loc[leftmostReg,'mod_x1']) * EMDF.loc[leftmostReg,'reglen']) - 1
         else:
             # the middle region (word)
-            EMF.loc[curEMF,'rpurt'] = EMF.loc[curEMF,'fpurt'] + FixDF.loc[endFix,'duration']
-            EMF.loc[curEMF,'rpcount'] += 1
-            leftmostReg = getReg(FixDF, endFix, EMF); leftmostCurFix = endFix
+            EMDF.loc[curEM,'rpurt'] = EMDF.loc[curEM,'fpurt'] + FixDF.loc[endFix,'duration']
+            EMDF.loc[curEM,'rpcount'] += 1
+            leftmostReg = getReg(FixDF, endFix, EMDF); leftmostCurFix = endFix
             curFix = endFix + 1
-            while curFix < len(FixDF) and FixDF.loc[curFix,'valid'] == 'yes' and not (FixDF.loc[curFix,'line'] == EMF.loc[curEMF+1,'line'] and EMF.loc[curEMF+1,'mod_x1'] <= FixDF.loc[curFix,'x_pos'] and FixDF.loc[curFix,'x_pos'] <= EMF.loc[curEMF+1,'mod_x2']):
+            while curFix < len(FixDF) and FixDF.loc[curFix,'valid'] == 'yes' and not np.isnan(FixDF.loc[curFix,'line_no']) and not (FixDF.loc[curFix,'line_no'] == EMDF.loc[curEM+1,'line_no'] and EMDF.loc[curEM+1,'mod_x1'] <= FixDF.loc[curFix,'x_pos'] and FixDF.loc[curFix,'x_pos'] <= EMDF.loc[curEM+1,'mod_x2']):
                 # in the regression path                
-                EMF.loc[curEMF,'rpurt'] += FixDF.loc[curFix,'duration']
-                EMF.loc[curEMF,'rpcount'] += 1
-                newleft = getReg(FixDF, curFix, EMF)
+                EMDF.loc[curEM,'rpurt'] += FixDF.loc[curFix,'duration']
+                EMDF.loc[curEM,'rpcount'] += 1
+                newleft = getReg(FixDF, curFix, EMDF)
                 if leftmostReg > newleft:
                     leftmostReg = newleft; leftmostCurFix = curFix                    
                 curFix += 1
-            EMF.loc[curEMF,'rpregreg'] = leftmostReg
+            EMDF.loc[curEM,'rpregreg'] = leftmostReg
             if leftmostReg == 0:
-                EMF.loc[curEMF,'rpregchr'] = np.ceil((FixDF.loc[leftmostCurFix,'x_pos']-EMF.loc[leftmostReg,'mod_x1'])/np.float(EMF.loc[leftmostReg,'mod_x2']-EMF.loc[leftmostReg,'mod_x1'])*EMF.loc[leftmostReg,'reglen']) - 1
+                EMDF.loc[curEM,'rpregchr'] = np.ceil((FixDF.loc[leftmostCurFix,'x_pos'] - EMDF.loc[leftmostReg,'mod_x1'])/np.float(EMDF.loc[leftmostReg,'mod_x2'] - EMDF.loc[leftmostReg,'mod_x1']) * EMDF.loc[leftmostReg,'reglen']) - 1
             else:
-                EMF.loc[curEMF,'rpregchr'] = sum(EMF.reglen[0:leftmostReg-1]) + np.ceil((FixDF.loc[leftmostCurFix,'x_pos']-EMF.loc[leftmostReg,'mod_x1'])/np.float(EMF.loc[leftmostReg,'mod_x2']-EMF.loc[leftmostReg,'mod_x1'])*EMF.loc[leftmostReg,'reglen']) - 1
+                EMDF.loc[curEM,'rpregchr'] = sum(EMDF.reglen[0:leftmostReg-1]) + np.ceil((FixDF.loc[leftmostCurFix,'x_pos'] - EMDF.loc[leftmostReg,'mod_x1'])/np.float(EMDF.loc[leftmostReg,'mod_x2'] - EMDF.loc[leftmostReg,'mod_x1']) * EMDF.loc[leftmostReg,'reglen']) - 1
             
 
-def chk_sp_fix(FixDF, EMF, endFix, curEMF):
+def chk_sp_fix(FixDF, EMDF, endFix, curEM):
     """
     calculate second pass fixation measures:
         spurt: second pass fixation time
         spcount: The number of second pass fixations
     arguments:
         FixDF -- fixation data of the trial
-        EMF -- result data frame
+        EMDF -- result data frame
         endFix -- ending fixation index of the first reading
-        curEMF -- current region in the result data frame            
+        curEM -- current region in the result data frame            
     """
     for curFix in range(endFix, len(FixDF)):
-        if FixDF.loc[curFix,'valid'] == 'yes' and FixDF.loc[curFix,'line'] == EMF.loc[curEMF,'line'] and EMF.loc[curEMF,'mod_x1'] <= FixDF.loc[curFix,'x_pos'] and FixDF.loc[curFix,'x_pos'] <= EMF.loc[curEMF,'mod_x2']:
-            EMF.loc[curEMF,'spurt'] += FixDF.loc[curFix,'duration'] # add spurt: second pass fixation time
-            EMF.loc[curEMF,'spcount'] += 1  # add spcount: the number of second pass fixations            
+        if FixDF.loc[curFix,'valid'] == 'yes' and FixDF.loc[curFix,'line_no'] == EMDF.loc[curEM,'line_no'] and EMDF.loc[curEM,'mod_x1'] <= FixDF.loc[curFix,'x_pos'] and FixDF.loc[curFix,'x_pos'] <= EMDF.loc[curEM,'mod_x2']:
+            EMDF.loc[curEM,'spurt'] += FixDF.loc[curFix,'duration'] # add spurt: second pass fixation time
+            EMDF.loc[curEM,'spcount'] += 1  # add spcount: the number of second pass fixations            
     
 
-def chk_tffixos(EMF):
+def chk_tffixos(EMDF):
     """
     calculate tffixos: offset of the first fixation in trial in letters from the beginning of the sentence
     arguments:
-        EMF -- result data frame
+        EMDF -- result data frame
     """
     tffixos = 0
-    for ind in range(len(EMF)):
-        if not np.isnan(EMF.loc[ind,'ffos']):
+    for ind in range(len(EMDF)):
+        if not np.isnan(EMDF.loc[ind,'ffos']):
             if ind == 0:
-                tffixos += EMF.loc[ind,'ffos']
+                tffixos += EMDF.loc[ind,'ffos']
             else:
-                tffixos += sum(EMF.reglen[0:ind-1]) + EMF.loc[ind,'ffos']
+                tffixos += sum(EMDF.reglen[0:ind-1]) + EMDF.loc[ind,'ffos']
     
     return tffixos           
 
@@ -2346,28 +2532,29 @@ def chk_tregrcnt(SacDF):
     """
     totregr = 0
     for ind in range(len(SacDF)):
-        crlinfo = SacDF.line[ind].split('_')
+        crlinfo = str(SacDF.line_no[ind]).split('_')
         if len(crlinfo) == 1:
-            # not crossline saccade
-            if SacDF.x1_pos[ind] > SacDF.x2_pos[ind]:
-                totregr += 1
+            if crlinfo != ['nan']:
+                # not crossline saccade
+                if SacDF.x1_pos[ind] > SacDF.x2_pos[ind]:
+                    totregr += 1
         else:
             # crossline saccade
-            if crlinfo[0] > crlinfo[1]:
+            if int(float(crlinfo[0])) > int(float(crlinfo[1])):
                 totregr += 1
                 
     return totregr            
 
 
-def cal_EM_measures(RegDF, FixDF, SacDF, EMF):
+def cal_EM(RegDF, FixDF, SacDF, EMDF):
     """
     calculate eye-movement measures of the trial
     arguments:
         RegDF -- region file
         FixDF -- fixation data of the trial
         SacDF -- saccade data of the trial
-        EMF -- result data frame 
-    EMF, as a data frame, is mutable, no need to return
+        EMDF -- result data frame 
+    EMDF, as a data frame, is mutable, no need to return
     eye-movement measures:
       whole trial measures:
         tffixos -- offset of the first fixation in trial in letters from the beginning of the sentence.
@@ -2376,7 +2563,7 @@ def cal_EM_measures(RegDF, FixDF, SacDF, EMF):
         tregrcnt -- total number of regressive saccades in trial.
       region (each word) measures:  
         fpurt -- first pass fixation time. Only includes fixations of 50 ms or longer by default (but see option --minfixdur). 
-                If fpcount == 0 then fpurt = 0 (but see option --conditionalize).
+                If fpcount == 0 then fpurt = 0.
         fpcount -- The number of first pass fixations
         fpregres -- whether or not there was a first-pass regression from this region, yes=1, no=0.
         fpregreg -- region targeted by first pass regression. If fpregres == 0 then fpregreg = 0.
@@ -2396,99 +2583,144 @@ def cal_EM_measures(RegDF, FixDF, SacDF, EMF):
         spcount -- The number of second pass fixations
     """
     # default values
-    EMF.ffos = np.nan  # for first pass fixation measures
-    EMF.fpregres = np.nan; EMF.fpregreg = np.nan; EMF.fpregchr = np.nan   # for first regression measures
-    EMF.rpregres = np.nan; EMF.rpregreg = np.nan; EMF.rpregchr = np.nan   # for regression path measures
+    EMDF.ffos = np.nan  # for first pass fixation measures
+    EMDF.fpregres = np.nan; EMDF.fpregreg = np.nan; EMDF.fpregchr = np.nan   # for first regression measures
+    EMDF.rpregres = np.nan; EMDF.rpregreg = np.nan; EMDF.rpregchr = np.nan   # for regression path measures
     
     # region (each word) measures
-    for curEMF in range(len(EMF)):
+    for curEM in range(len(EMDF)):
         for curFix in range(len(FixDF)):
-            if FixDF.loc[curFix,'valid'] == 'yes' and FixDF.loc[curFix,'line'] == EMF.loc[curEMF,'line'] and EMF.loc[curEMF,'mod_x1'] <= FixDF.loc[curFix,'x_pos'] and FixDF.loc[curFix,'x_pos'] <= EMF.loc[curEMF,'mod_x2']:
+            if FixDF.loc[curFix,'valid'] == 'yes' and FixDF.loc[curFix,'line_no'] == EMDF.loc[curEM,'line_no'] and EMDF.loc[curEM,'mod_x1'] <= FixDF.loc[curFix,'x_pos'] and FixDF.loc[curFix,'x_pos'] <= EMDF.loc[curEM,'mod_x2']:
                 # find a first pass fixation on the current word!                    
-                stFix, endFix = chk_fp_fix(FixDF, EMF, curFix, curEMF) # calculate first pass fixation measures: fpurt, fpcount, ffos, ffixurt, spilover  
-                chk_fp_reg(FixDF, EMF, stFix, endFix, curEMF) # calculate first pass regression measures: fpregres, fpregreg, fpregchr
-                chk_rp_reg(FixDF, EMF, stFix, endFix, curEMF) # calculate regression path measures: rpurt, rpcount, rpregreg, rpregchr
-                chk_sp_fix(FixDF, EMF, endFix, curEMF) # calculate second pass fixation measures: spurt, spcount                                       
+                stFix, endFix = chk_fp_fix(FixDF, EMDF, curFix, curEM) # calculate first pass fixation measures: fpurt, fpcount, ffos, ffixurt, spilover  
+                chk_fp_reg(FixDF, EMDF, stFix, endFix, curEM) # calculate first pass regression measures: fpregres, fpregreg, fpregchr
+                chk_rp_reg(FixDF, EMDF, stFix, endFix, curEM) # calculate regression path measures: rpurt, rpcount, rpregreg, rpregchr
+                chk_sp_fix(FixDF, EMDF, endFix, curEM) # calculate second pass fixation measures: spurt, spcount                                       
                 # first pass reading of that word is finished, go to next word        
                 break
                 
     # change fpurt == 0, fpcount == 0, ffixurt == 0, spilover == 0 with NA
-    for curEMF in range(len(EMF)):
-        if EMF.loc[curEMF,'fpurt'] == 0:
-            EMF.loc[curEMF,'fpurt'] = np.nan
-        if EMF.loc[curEMF,'fpcount'] == 0:
-            EMF.loc[curEMF,'fpcount'] = np.nan
-        if EMF.loc[curEMF,'ffixurt'] == 0:
-            EMF.loc[curEMF,'ffixurt'] = np.nan
-        if EMF.loc[curEMF,'spilover'] == 0:
-            EMF.loc[curEMF,'spilover'] = np.nan
-        if EMF.loc[curEMF,'spurt'] == 0:
-            EMF.loc[curEMF,'spurt'] = np.nan
-        if EMF.loc[curEMF,'spcount'] == 0:
-            EMF.loc[curEMF,'spcount'] = np.nan
+    for curEM in range(len(EMDF)):
+        if EMDF.loc[curEM,'fpurt'] == 0:
+            EMDF.loc[curEM,'fpurt'] = np.nan
+        if EMDF.loc[curEM,'fpcount'] == 0:
+            EMDF.loc[curEM,'fpcount'] = np.nan
+        if EMDF.loc[curEM,'ffixurt'] == 0:
+            EMDF.loc[curEM,'ffixurt'] = np.nan
+        if EMDF.loc[curEM,'spilover'] == 0:
+            EMDF.loc[curEM,'spilover'] = np.nan
+        if EMDF.loc[curEM,'spurt'] == 0:
+            EMDF.loc[curEM,'spurt'] = np.nan
+        if EMDF.loc[curEM,'spcount'] == 0:
+            EMDF.loc[curEM,'spcount'] = np.nan
+        if np.isnan(EMDF.loc[curEM,'fpurt']):
+            EMDF.loc[curEM,'rpurt'] = np.nan
+            EMDF.loc[curEM,'rpcount'] = np.nan
+            EMDF.loc[curEM,'rpregreg'] = np.nan            
     
     # whole trial measures
-    EMF.tffixos = chk_tffixos(EMF)  # tffixos: offset of the first fixation in trial in letters from the beginning of the sentence       
-    EMF.ttfixurt = sum(x for x in EMF.fpurt if not np.isnan(x))     # tffixurt: duration of the first fixation in trial
-    EMF.tfixcnt = len(FixDF[FixDF.valid=='yes'])    # tfixcnt: total number of valid fixations in trial
-    EMF.tregrcnt = chk_tregrcnt(SacDF)  # tregrcnt: total number of regressive saccades in trial
+    EMDF.tffixos = chk_tffixos(EMDF)  # tffixos: offset of the first fixation in trial in letters from the beginning of the sentence       
+    EMDF.ttfixurt = sum(x for x in EMDF.fpurt if not np.isnan(x))     # tffixurt: duration of the first fixation in trial
+    EMDF.tfixcnt = len(FixDF[FixDF.valid=='yes'])    # tfixcnt: total number of valid fixations in trial
+    EMDF.tregrcnt = chk_tregrcnt(SacDF)  # tregrcnt: total number of regressive saccades in trial
     
 
-def cal_EMF(direct, subj, regfileNameList):
+def u_cal_write_EM(direct, subj, regfileNameList, addCharSp=1):
     """
     read fixation and saccade data of subj and calculate eye-movement measures
     arguments:
         direct -- directory for storing csv and output files
         subj -- subject ID
         regionfileNameList -- a list of region file names (trial_id will help select corresponding region files)
+        addCharSp -- number of single character space added to EMF for catching overshoot fixations, default = 1
     output:
-        EMF -- data frame storing eye-movement measures
+        write each trial's results to csv files
     """
     # first, check whether the required files are there:
     datafileExist = True
     datafileName1 = direct + '/' + subj + '_Sac.csv'; datafileName2 = direct + '/' + subj + '_Fix.csv' 
     if not os.path.isfile(datafileName1):
-        print subj + '_Sac.csv' + ' does not exist!'
-        datafileExist = False
+        print subj + '_Sac.csv' + ' does not exist!'; datafileExist = False
     elif not os.path.isfile(datafileName2):
-        print subj + '_Fix.csv' + ' does not exist!'
-        datafileExist = False
+        print subj + '_Fix.csv' + ' does not exist!'; datafileExist = False
     
     regfileExist = True
     for regfile in regfileNameList:
         regfileName = direct + '/' + regfile
         if not os.path.isfile(regfileName):
-            print regfile + ' does not exist!'
-            regfileExist = False
+            print regfile + ' does not exist!'; regfileExist = False
     
     # second, process the files
     if datafileExist and regfileExist:
         nameSac = direct + '/' + subj + '_Sac.csv'; SacDF = pd.read_csv(nameSac, sep=',')   # read saccade data
-        nameFix = direct + '/' + subj + '_Fix.csv'; FixDF = pd.read_csv(nameFix, sep=',')   # read fixation data 
+        nameFix = direct + '/' + subj + '_Fix.csv'; FixDF = pd.read_csv(nameFix, sep=',')   # read fixation data
         for trialID in range(len(regfileNameList)):
             RegDF = getRegDF(direct, regfileNameList, trialID) # get region file 
             SacDFtemp = SacDF[SacDF.trial_id==trialID].reset_index()  # get saccade of the trial
             FixDFtemp = FixDF[FixDF.trial_id==trialID].reset_index()  # get fixation of the trial
-            # create result data frame
-            EMF = pd.DataFrame(np.zeros((len(RegDF), 32)))
-            EMF.columns = ['subj', 'trial_id', 'trial_type', 'tdur', 'blinks', 'eye', 'tffixos', 'tffixurt', 'tfixcnt', 'tregrcnt', 'region', 'reglen', 'word', 'line', 'x1_pos', 'x2_pos', 'mod_x1', 'mod_x2',
-                           'fpurt', 'fpcount', 'fpregres', 'fpregreg', 'fpregchr', 'ffos', 'ffixurt', 'spilover', 'rpurt', 'rpcount', 'rpregreg', 'rpregchr', 'spurt', 'spcount']
-            # copy values from FixDF about the whole trial               
-            EMF.subj = subj; EMF.trial_id = FixDF.trial_id[0]; EMF.trial_type = FixDF.trial_type[0]; EMF.tdur = FixDF.tdur[0]; EMF.blinks = FixDF.blinks[0]; EMF.eye = FixDF.eye[0]
-            # copy values from RegDF about region        
-            EMF.region = RegDF.WordID; EMF.reglen = RegDF.length; EMF.word = RegDF.Word; EMF.line = RegDF.line; EMF.x1_pos = RegDF.x1_pos; EMF.x2_pos = RegDF.x2_pos
-            modEMF(EMF) # modify EMF's mod_x1 and mod_x2
-            print "Cal EM measures: Subj: " + subj + ", Trial: " + str(trialID)
-            cal_EM_measures(RegDF, FixDFtemp, SacDFtemp, EMF)        
-            nameEMF = direct + '/' + subj + '_EMF_trial' + str(trialID) + '.csv'; EMF.to_csv(nameEMF, index=False) # store results
-        
+            
+            if len(np.unique(SacDFtemp.eye)) == 1:
+                # single eye data
+                if np.unique(SacDFtemp.eye)[0] == 'L':
+                    print 'Cal EM measures: Subj: ' + subj + ', Trial: ' + str(trialID) + ' Left Eye'
+                elif np.unique(SacDFtemp.eye)[0] == 'R':
+                    print 'Cal EM measures: Subj: ' + subj + ', Trial: ' + str(trialID) + ' Right Eye'
+                # create result data frame
+                EMDF = pd.DataFrame(np.zeros((len(RegDF), 32)))
+                EMDF.columns = ['subj', 'trial_id', 'trial_type', 'tdur', 'blinks', 'eye', 'tffixos', 'tffixurt', 'tfixcnt', 'tregrcnt', 'region', 'reglen', 'word', 'line_no', 'x1_pos', 'x2_pos', 'mod_x1', 'mod_x2',
+                                'fpurt', 'fpcount', 'fpregres', 'fpregreg', 'fpregchr', 'ffos', 'ffixurt', 'spilover', 'rpurt', 'rpcount', 'rpregreg', 'rpregchr', 'spurt', 'spcount']
+                # copy values from FixDF about the whole trial               
+                EMDF.subj = subj; EMDF.trial_id = FixDFtemp.trial_id[0]; EMDF.trial_type = FixDFtemp.trial_type[0]; EMDF.tdur = FixDFtemp.tdur[0]; EMDF.blinks = FixDFtemp.blinks[0]; EMDF.eye = FixDFtemp.eye[0]
+                # copy values from RegDF about region        
+                EMDF.region = RegDF.WordID; EMDF.reglen = RegDF.length; EMDF.word = RegDF.Word; EMDF.line_no = RegDF.line_no; EMDF.x1_pos = RegDF.x1_pos; EMDF.x2_pos = RegDF.x2_pos
+                modEM(EMDF, addCharSp) # modify EMF's mod_x1 and mod_x2
+                cal_EM(RegDF, FixDFtemp, SacDFtemp, EMDF)
+                # store results
+                if np.unique(SacDFtemp.eye)[0] == 'L':
+                    nameEM = direct + '/' + subj + '_EM_trial' + str(trialID) + '_L.csv'; EMDF.to_csv(nameEM, index=False)
+                elif np.unique(SacDFtemp.eye)[0] == 'R':
+                    nameEM = direct + '/' + subj + '_EM_trial' + str(trialID) + '_R.csv'; EMDF.to_csv(nameEM, index=False)   
+            else:
+                # double eye data
+                SacDFtemp_L = SacDFtemp[SacDFtemp.eye=='L'].reset_index(); SacDFtemp_R = SacDFtemp[SacDFtemp.eye=='R'].reset_index()                 
+                FixDFtemp_L = FixDFtemp[FixDFtemp.eye=='L'].reset_index(); FixDFtemp_R = FixDFtemp[FixDFtemp.eye=='R'].reset_index()
+                
+                print "Cal EM measures: Subj: " + subj + ", Trial: " + str(trialID) + ' Left Eye'
+                # create result data frame
+                EMDF_L = pd.DataFrame(np.zeros((len(RegDF), 32)))
+                EMDF_L.columns = ['subj', 'trial_id', 'trial_type', 'tdur', 'blinks', 'eye', 'tffixos', 'tffixurt', 'tfixcnt', 'tregrcnt', 'region', 'reglen', 'word', 'line_no', 'x1_pos', 'x2_pos', 'mod_x1', 'mod_x2',
+                                  'fpurt', 'fpcount', 'fpregres', 'fpregreg', 'fpregchr', 'ffos', 'ffixurt', 'spilover', 'rpurt', 'rpcount', 'rpregreg', 'rpregchr', 'spurt', 'spcount']
+                # copy values from FixDF about the whole trial               
+                EMDF_L.subj = subj; EMDF_L.trial_id = FixDFtemp_L.trial_id[0]; EMDF_L.trial_type = FixDFtemp_L.trial_type[0]; EMDF_L.tdur = FixDFtemp_L.tdur[0]; EMDF_L.blinks = FixDFtemp_L.blinks[0]; EMDF_L.eye = FixDFtemp_L.eye[0]
+                # copy values from RegDF about region        
+                EMDF_L.region = RegDF.WordID; EMDF_L.reglen = RegDF.length; EMDF_L.word = RegDF.Word; EMDF_L.line_no = RegDF.line_no; EMDF_L.x1_pos = RegDF.x1_pos; EMDF_L.x2_pos = RegDF.x2_pos
+                modEM(EMDF_L, addCharSp) # modify EMF's mod_x1 and mod_x2
+                cal_EM(RegDF, FixDFtemp_L, SacDFtemp_L, EMDF_L)
+                # store results
+                nameEM_L = direct + '/' + subj + '_EM_trial' + str(trialID) + '_L.csv'; EMDF_L.to_csv(nameEM_L, index=False)
+            
+                print "Cal EM measures: Subj: " + subj + ", Trial: " + str(trialID) + ' Right Eye'
+                # create result data frame
+                EMDF_R = pd.DataFrame(np.zeros((len(RegDF), 32)))
+                EMDF_R.columns = ['subj', 'trial_id', 'trial_type', 'tdur', 'blinks', 'eye', 'tffixos', 'tffixurt', 'tfixcnt', 'tregrcnt', 'region', 'reglen', 'word', 'line_no', 'x1_pos', 'x2_pos', 'mod_x1', 'mod_x2',
+                                  'fpurt', 'fpcount', 'fpregres', 'fpregreg', 'fpregchr', 'ffos', 'ffixurt', 'spilover', 'rpurt', 'rpcount', 'rpregreg', 'rpregchr', 'spurt', 'spcount']
+                # copy values from FixDF about the whole trial               
+                EMDF_R.subj = subj; EMDF_R.trial_id = FixDFtemp_R.trial_id[0]; EMDF_R.trial_type = FixDFtemp_R.trial_type[0]; EMDF_R.tdur = FixDFtemp_R.tdur[0]; EMDF_R.blinks = FixDFtemp_R.blinks[0]; EMDF_R.eye = FixDFtemp_R.eye[0]
+                # copy values from RegDF about region        
+                EMDF_R.region = RegDF.WordID; EMDF_R.reglen = RegDF.length; EMDF_R.word = RegDF.Word; EMDF_R.line_no = RegDF.line_no; EMDF_R.x1_pos = RegDF.x1_pos; EMDF_R.x2_pos = RegDF.x2_pos
+                modEM(EMDF_R, addCharSp) # modify EMF's mod_x1 and mod_x2
+                cal_EM(RegDF, FixDFtemp_R, SacDFtemp_R, EMDF_R)
+                # store results
+                nameEM_R = direct + '/' + subj + '_EM_trial' + str(trialID) + '_R.csv'; EMDF_R.to_csv(nameEM_R, index=False)
 
-def cal_EMF_Batch(direct, regfileNameList):
+
+def ub_cal_write_EM(direct, regfileNameList, addCharSp=1):
     """
     batch calculating all subjects' EMF measures
     arguments:
         direct -- directory containing all csv files
         regfileNameList -- a list of region file names (trial_id will help select corresponding region files)
+        addCharSp -- number of single character space added to EMF for catching overshoot fixations, default = 1
     output:
         EMF -- data frame storing eye-movement measures of different subjects        
     """
@@ -2496,6 +2728,8 @@ def cal_EMF_Batch(direct, regfileNameList):
     for file in os.listdir(direct):
         if fnmatch.fnmatch(file, '*_Fix.csv'):
             subjlist.append(str(file).split('_')[0])
-    subjlist = np.unique(subjlist)        
+    subjlist = np.unique(subjlist)
+    if subjlist == []:
+        print 'No csv files in the directory!'       
     for subj in subjlist:
-        cal_EMF(direct, subj, regfileNameList)      
+        u_cal_write_EM(direct, subj, regfileNameList)

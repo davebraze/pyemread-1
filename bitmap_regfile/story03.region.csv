@@ -1,4 +1,4 @@
-Name,WordID,Word,length,height,baseline,line,x1_pos,y1_pos,x2_pos,y2_pos,b_x1,b_y1,b_x2,b_y2
+Name,WordID,Word,length,height,baseline,line_no,x1_pos,y1_pos,x2_pos,y2_pos,b_x1,b_y1,b_x2,b_y2
 story03,1,Cowboy,6,17,86,1,215,72,281,89,215,56,281,106
 story03,2, was,4,10,86,1,281,76,325,86,281,56,325,106
 story03,3, without,8,14,86,1,325,72,413,86,325,56,413,106

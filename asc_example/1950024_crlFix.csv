@@ -1,4 +1,4 @@
-subj,trial_id,eye,startline,endline,FixlineIndex,start,end,duration,x_pos,y_pos,pup_size,valid
+subj,trial_id,eye,startline,endline,FixlineIndex,start_time,end_time,duration,x_pos,y_pos,pup_size,valid
 1950024,0.0,L,1.0,2.0,19.0,12460849.0,12460977.0,132.0,344.5,122.9,1248.0,yes
 1950024,0.0,L,2.0,3.0,26.0,12462269.0,12462529.0,264.0,555.0,144.0,1418.0,yes
 1950024,0.0,L,3.0,4.0,42.0,12465809.0,12465917.0,112.0,295.6,173.7,1367.0,yes
