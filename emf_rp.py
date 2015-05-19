@@ -2332,12 +2332,16 @@ def modEM(EMDF, addCharSp):
 def chk_fp_fix(FixDF, EMDF, curFix, curEM):
     """
     calculate fist pass fixation measures:
-        fpurt: first pass fixation time. Only includes fixations of 50 ms or longer by default (but see option --minfixdur). 
-               If fpcount == 0 then fpurt = 0 (but see option --conditionalize).
-        fpcount: The number of first pass fixations
-        ffos: offset of the first first-pass fixation in a region from the first letter of the region, in characters (range of 0 to reglen-1).
-        ffixurt: first first-pass fixation duration for each region.
-        spilover: Duration of the first fixation beyond a region/word.
+        fpurt -- first-pass fixation time. It is the sum of the durations of one or more first-pass fixations falling into the word region. 
+                By default, we only record fixations of 50 ms or longer; shorter fixations are subject to the lumping operation. 
+                If there is no first-pass fixation laying within the word region, 'fpurt' is 'NaN' (missing value) (first-pass fixation measure)
+        fpcount -- number of first-pass fixations falling into the word region. If there is no first-pass fixation in the word region, 'fpcount' is 'NaN' (first-pass fixation measure)
+        ffos -- offset in characters of the first first-pass fixation in the word region from the first character of the region. 
+                If there is no first-pass fixation in the word region, 'ffos' is 'NaN' (first-pass fixation measure).
+        ffixurt -- duration of the first first-pass fixation in the word region. 
+                   If there is no first-pass fixation in the word region, 'ffixurt' is 'NaN' (first-pass fixation measure).
+        spilover -- duration of the first fixation falling beyond (either left or right) the word region. 
+                    If there is no first-pass fixation in the word region, 'spilover' is 'NaN' (first-pass fixation measure).
     arguments:
         FixDF -- fixation data of the trial
         EMDF -- result data frame
@@ -2365,10 +2369,12 @@ def chk_fp_fix(FixDF, EMDF, curFix, curEM):
 def chk_fp_reg(FixDF, EMDF, stFix, endFix, curEM):
     """
     calculate first pass regression measures:
-        fpregres: whether or not there was a first-pass regression from this region, yes=1, no=0.
-        fpregreg: region targeted by first pass regression. If fpregres == 0 then fpregreg = 0.
-        fpregchr: character position targeted by first pass regression (offset from first letter of the sentence). 
-                 If fpregres == 0 then fpregchr will have a large value (high enough to be out of bounds for any possible stimulus string).
+        fpregres -- whether there is a first-pass regression starting from the current word region; if so, 'fpregres' is 1, otherwise, 'fpregres' is 0. If there is no first-pass fixation in the word region, ‘fpregres’ is ‘NaN’ (first-pass regression measure)..
+        fpregreg -- word region where the first-pass regression ends. If there is no first-pass regression ('fpregres' is 0), 'fpregreg' is 0. 
+                    If there is no first-pass fixation in the word region, 'fpregreg' is 'NaN' (first-pass regression measure)
+        fpregchr -- offset in characters in the word region where the first-pass regression ends. 
+                    If there is no first-pass regression ('fpregres' is 0), 'fpregchr' is set to a value large enough to be out of boundaries of any possible string (in the current version, it is set as the total number of characters of the text). 
+                    If there is no first-pass fixation in the word region, 'fpregchr' is 'NaN' (first-pass regression measure).
     arguments:
         FixDF -- fixation data of the trial
         EMDF -- result data frame
@@ -2429,13 +2435,17 @@ def getReg(FixDF, curFix, EMDF):
 def chk_rp_reg(FixDF, EMDF, stFix, endFix, curEM):
     """
     calculate regression path measures:
-        rpurt: regression path fixation time: The sum of all fixations from the time a region is entered until the first fixation to the right of that region. 
-               This will include fixations outside, but to the left of the region in the case that fpregres=1. It is not the same as 'go-past time' (AKA 'quasi-first pass time), in which fixations outside the
-               region are not counted. If fpregres == 0 then rpurt == fpurt.
-        rpcount: The number of fixations in the regression path
-        rpregreg: most upstream region visited in regression path. If fpcount == 0 then rpregreg = 0.
-        rpregchr: most upstream letter visited in regression path (offset from the first letter of the sentence). 
-                  If fpcount = 0 then rpregchr will have a large value (high enough to be out of bounds for any possible stimulus string).
+        rpurt -- sum of durations of all fixations in the regression path. A regression path starts from the first fixation falling into the current word region and ends at the first fixation falling into the immediately next word region.
+                If there is a first-pass regression ('fpregres' is 1), the regression path includes the fixations in the current region and those outside the current word region but falling into only the word regions before the current region.
+                If there is no first-pass regression ('fpregres' is 0), 'rpurt' equals to 'fpurt'. 
+                If there is no first-pass fixation in the word region, 'rpurt' is 'NaN' (regression path measure).
+        rpcount -- number of fixations in the regression path. If there is no first-pass fixation in the word region, 'rpcount' is 'NaN' (regression path measure).
+        rpregreg -- the smallest index of the word region visited by the regression path. 
+                    If there is no regression path ('fpregres' is 0), 'rpregreg' is 0. 
+                    If there is no first-pass fixation in the word region, 'rpregreg' is 'NaN' (regression path measure).
+        rpregchr -- offset in characters in the smallest word region visited by the regression path. 
+                    If there is no first-pass regression ('fpregres' is 'NA'), 'rpregchr' is set to a value large enough to be out of boundaries of any possible string (in the current version, it is set as the total number of characters of the text). 
+                    If there is no first-pass fixation in the word region, 'rpregreg' is 'NaN' (regression path measure).
     arguments:
         FixDF -- fixation data of the trial
         EMDF -- result data frame
@@ -2493,8 +2503,9 @@ def chk_rp_reg(FixDF, EMDF, stFix, endFix, curEM):
 def chk_sp_fix(FixDF, EMDF, endFix, curEM):
     """
     calculate second pass fixation measures:
-        spurt: second pass fixation time
-        spcount: The number of second pass fixations
+        spurt -- second-pass fixation time. It is the sum of durations of all fixations falling again into the current word region after the first-pass reading.
+                If there is no second-pass fixation, 'spurt' is 'NaN' (second-pass fixation measure)
+        spcount -- number of second-pass fixations. If there is no second-pass fixation, 'spcount' is 'NA' (second-pass fixation measure).
     arguments:
         FixDF -- fixation data of the trial
         EMDF -- result data frame
@@ -2557,30 +2568,41 @@ def cal_EM(RegDF, FixDF, SacDF, EMDF):
     EMDF, as a data frame, is mutable, no need to return
     eye-movement measures:
       whole trial measures:
-        tffixos -- offset of the first fixation in trial in letters from the beginning of the sentence.
-        tffixurt -- duration of the first fixation in trial.
-        tfixcnt -- total number of valid fixations in trial.
-        tregrcnt -- total number of regressive saccades in trial.
+        tffixos -- total offset of the first-pass fixation of each word from the beginning of the first sentence of the text (whole-text eye-movement measure).
+        tffixurt -- total duration of the first pass fixation of each word in the text (whole-text eye-movement measure).
+        tfixcnt -- total number of valid fixations in the trial (whole-text eye-movement measure).
+        tregrcnt -- total number of regressive saccades (a saccade is a regressive saccade if it starts at one word region in the text and ends at an earlier word region) in the trial (whole-text EM measure).
       region (each word) measures:  
-        fpurt -- first pass fixation time. Only includes fixations of 50 ms or longer by default (but see option --minfixdur). 
-                If fpcount == 0 then fpurt = 0.
-        fpcount -- The number of first pass fixations
-        fpregres -- whether or not there was a first-pass regression from this region, yes=1, no=0.
-        fpregreg -- region targeted by first pass regression. If fpregres == 0 then fpregreg = 0.
-        fpregchr -- character position targeted by first pass regression (offset from first letter of the sentence). 
-                    If fpregres = 0 then fpregchr will have a large value (high enough to be out of bounds for any possible stimulus string).
-        ffos -- offset of the first first-pass fixation in a region from the first letter of the region, in characters (range of 0 to reglen-1).
-        ffixurt -- first first-pass fixation duration for each region.
-        spilover -- Duration of the first fixation beyond a region/word.
-        rpurt -- regression path fixation time: The sum of all fixations from the time a region is entered until the first fixation to the right of that region. 
-                This will include fixations outside, but to the left of the region in the case that fpregres=1. It is not the same as 'go-past time' (AKA 'quasi-first pass time), in which fixations outside the
-                region are not counted. If fpregres == 0 then rpurt = fpurt.
-        rpcount -- The number of fixations in the regression path
-        rpregreg -- most upstream region visited in regression path. If fpcount == 0 then rpregreg = 0.
-        rpregchr -- must upstream letter visited in regression path (offset from the first letter of the sentence). 
-                    If fpcount == 0 then rpregchr will have a large value (high enough to be out of bounds for any possible stimulus string).
-        spurt -- second pass fixation time
-        spcount -- The number of second pass fixations
+        fpurt -- first-pass fixation time. It is the sum of the durations of one or more first-pass fixations falling into the word region. 
+                By default, we only record fixations of 50 ms or longer; shorter fixations are subject to the lumping operation. 
+                If there is no first-pass fixation laying within the word region, 'fpurt' is 'NaN' (missing value) (first-pass fixation measure)
+        fpcount -- number of first-pass fixations falling into the word region. If there is no first-pass fixation in the word region, 'fpcount' is 'NaN' (first-pass fixation measure)
+        fpregres -- whether there is a first-pass regression starting from the current word region; if so, 'fpregres' is 1, otherwise, 'fpregres' is 0. If there is no first-pass fixation in the word region, ‘fpregres’ is ‘NaN’ (first-pass regression measure)..
+        fpregreg -- word region where the first-pass regression ends. If there is no first-pass regression ('fpregres' is 0), 'fpregreg' is 0. 
+                    If there is no first-pass fixation in the word region, 'fpregreg' is 'NaN' (first-pass regression measure)
+        fpregchr -- offset in characters in the word region where the first-pass regression ends. 
+                    If there is no first-pass regression ('fpregres' is 0), 'fpregchr' is set to a value large enough to be out of boundaries of any possible string (in the current version, it is set as the total number of characters of the text). 
+                    If there is no first-pass fixation in the word region, 'fpregchr' is 'NaN' (first-pass regression measure).
+        ffos -- offset in characters of the first first-pass fixation in the word region from the first character of the region. 
+                If there is no first-pass fixation in the word region, 'ffos' is 'NaN' (first-pass fixation measure).
+        ffixurt -- duration of the first first-pass fixation in the word region. 
+                   If there is no first-pass fixation in the word region, 'ffixurt' is 'NaN' (first-pass fixation measure).
+        spilover -- duration of the first fixation falling beyond (either left or right) the word region. 
+                    If there is no first-pass fixation in the word region, 'spilover' is 'NaN' (first-pass fixation measure).
+        rpurt -- sum of durations of all fixations in the regression path. A regression path starts from the first fixation falling into the current word region and ends at the first fixation falling into the immediately next word region.
+                If there is a first-pass regression ('fpregres' is 1), the regression path includes the fixations in the current region and those outside the current word region but falling into only the word regions before the current region.
+                If there is no first-pass regression ('fpregres' is 0), 'rpurt' equals to 'fpurt'. 
+                If there is no first-pass fixation in the word region, 'rpurt' is 'NaN' (regression path measure).
+        rpcount -- number of fixations in the regression path. If there is no first-pass fixation in the word region, 'rpcount' is 'NaN' (regression path measure).
+        rpregreg -- the smallest index of the word region visited by the regression path. 
+                    If there is no regression path ('fpregres' is 0), 'rpregreg' is 0. 
+                    If there is no first-pass fixation in the word region, 'rpregreg' is 'NaN' (regression path measure).
+        rpregchr -- offset in characters in the smallest word region visited by the regression path. 
+                    If there is no first-pass regression ('fpregres' is 'NA'), 'rpregchr' is set to a value large enough to be out of boundaries of any possible string (in the current version, it is set as the total number of characters of the text). 
+                    If there is no first-pass fixation in the word region, 'rpregreg' is 'NaN' (regression path measure).
+        spurt -- second-pass fixation time. It is the sum of durations of all fixations falling again into the current word region after the first-pass reading.
+                If there is no second-pass fixation, 'spurt' is 'NaN' (second-pass fixation measure)
+        spcount -- number of second-pass fixations. If there is no second-pass fixation, 'spcount' is 'NA' (second-pass fixation measure).
     """
     # default values
     EMDF.ffos = np.nan  # for first pass fixation measures
