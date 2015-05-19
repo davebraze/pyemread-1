@@ -1,0 +1,2 @@
+# emf_rp
+EMF_RP (available at GitHub: github.com/gtojty/emf_rp) is a general purpose, stand-alone software package designed to assist with the chores of implementing single/multi-line text reading experiments and analyzing collected eye-movement data. The package consists of a set of functions to generate pixel-based bitmaps of single/multi-line texts for reading, extract and visualize saccades and fixations detected by eye trackers during reading, and calculate widely-adopted eye-movement measures. 
