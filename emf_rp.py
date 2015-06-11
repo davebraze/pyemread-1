@@ -397,7 +397,7 @@ def u_Praster(direct, fontpath, codeMethod='utf_8', text=[u'The quick brown fox 
     img.save(direct + '/' + ID + '.png','PNG') # write bitmap file
 
 
-def u_Gen_Bitmap_RegFile(direct, fontName, textFileNameList, genmethods=2, codeMethod='utf_8', dim=(1280,1024), fg=(0,0,0), bg=(232,232,232), 
+def u_Gen_Bitmap_RegFile(direct, fontName, textFileNameList, genmethod=2, codeMethod='utf_8', dim=(1280,1024), fg=(0,0,0), bg=(232,232,232), 
     lmargin=215, tmargin=86, linespace=65, fht=18, fwd=None, bbox=False, bbox_big=False, addspace=18, log=False):
     """
     generate the bitmaps (PNG) and region files of single/multiple line story from text file
@@ -405,7 +405,7 @@ def u_Gen_Bitmap_RegFile(direct, fontName, textFileNameList, genmethods=2, codeM
         direct -- directory of for text files
         fontName -- name of a font, e.g. 'LiberationMono'
         textFileNameList -- a list of one or multiple text file for generating bitmaps
-        genmethods -- methods to generate: 0: simple test (simple texts); 1: read from one text file; 2: read from many text files
+        genmethod -- methods to generate: 0: simple test (simple texts); 1: read from one text file; 2: read from many text files;
      the following arguments are identical to Praster    
         codeMethod      : for linux: utf_8; for Windows: cp1252
         dim=(1280,1024) : (x,y) dimension of bitmap 
@@ -429,13 +429,13 @@ def u_Gen_Bitmap_RegFile(direct, fontName, textFileNameList, genmethods=2, codeM
     fontpathlist = font_manager.findSystemFonts() # Get paths to all installed font files (any system?).
     fontpathlist.sort()
     
-    if genmethods == 0:
+    if genmethod == 0:
         # Simple tests.
         u_Praster(direct, fontpath, fht=fht, bbox=True, log=True)
         u_Praster(direct, fontpath, text=["This is a test.", "This is another."], fht=fht)
         u_Praster(direct, fontpath, text=["This is a one-liner."], fht=fht)
 
-    elif genmethods == 1:
+    elif genmethod == 1:
         # first, check whether the text file exists
         txtfile = textFileNameList[0]; realtxtfile = direct + '/' + txtfile
         if not os.path.isfile(realtxtfile):
@@ -459,33 +459,22 @@ def u_Gen_Bitmap_RegFile(direct, fontName, textFileNameList, genmethods=2, codeM
                 u_Praster(direct, fontpath, codeMethod=codeMethod, text=P, dim=dim, fg=fg, bg=bg, lmargin=lmargin, tmargin=tmargin, linespace=linespace, 
                         fht=fht, fwd=fwd, bbox=bbox, bbox_big=bbox_big, addspace=addspace, ID='story%02.d' % (i+1), log=log)
 
-    elif genmethods == 2:
-        # read from multiple text files                        
+    elif genmethod == 2:
+        # read from multiple text files
+        if len(textFileNameList) == 0:
+            # automatically read all text files in direct
+            for file in os.listdir(direct):
+                if fnmatch.fnmatch(file, '*.txt'):
+                    textFileNameList.append(str(file))
+        else:
+            # read specific text files in direct; check whether the file exists!
+            for txtfile in textFileNameList:
+                ID = txtfile.split('.')[0]; realtxtfile = direct + '/' + txtfile
+                if not os.path.isfile(realtxtfile):
+                    print ID + ' does not exist!'
+                    textFileNameList.remove(txtfile)
+        # read available text files and generate bitmaps and region files    
         for txtfile in textFileNameList:
-            ID = txtfile.split('.')[0]; realtxtfile = direct + '/' + txtfile
-            if not os.path.isfile(realtxtfile):
-                print ID + ' does not exist!'
-            else:
-                # read from the text file   
-                infileH = codecs.open(realtxtfile, mode="rb", encoding=codeMethod)
-                print "Read text file: ", infileH.name; lines = infileH.readlines(); infileH.close()
-
-                tmp0 = [ii for ii in lines if not re.match("^#", ii)] # Squeeze out comments: lines that start with '#'
-                tmp1 = [re.sub(u"\r\n$", u"", ii) for ii in tmp0]    # remove "\r\n" at the ending of each line
-                
-                u_Praster(direct, fontpath, codeMethod=codeMethod, text=tmp1, dim=dim, fg=fg, bg=bg, lmargin=lmargin, tmargin=tmargin, linespace=linespace, 
-                        fht=fht, fwd=fwd, bbox=bbox, bbox_big=bbox_big, addspace=addspace, ID=ID, log=log)
-
-    elif genmethods == 3:
-        # read all txt files from a fixed directory
-        textFileNameList = []
-        for file in os.listdir(direct):
-            if fnmatch.fnmatch(file, '*.txt'):
-                textFileNameList.append(str(file))
-        if textFileNameList == []:
-            print 'No text files in the directory!'
-        for txtfile in textFileNameList:
-            ID = txtfile.split('.')[0]; realtxtfile = direct + '/' + txtfile
             # read from the text file   
             infileH = codecs.open(realtxtfile, mode="rb", encoding=codeMethod)
             print "Read text file: ", infileH.name; lines = infileH.readlines(); infileH.close()
@@ -494,7 +483,7 @@ def u_Gen_Bitmap_RegFile(direct, fontName, textFileNameList, genmethods=2, codeM
             tmp1 = [re.sub(u"\r\n$", u"", ii) for ii in tmp0]    # remove "\r\n" at the ending of each line
                 
             u_Praster(direct, fontpath, codeMethod=codeMethod, text=tmp1, dim=dim, fg=fg, bg=bg, lmargin=lmargin, tmargin=tmargin, linespace=linespace, 
-                      fht=fht, fwd=fwd, bbox=bbox, bbox_big=bbox_big, addspace=addspace, ID=ID, log=log)
+                     fht=fht, fwd=fwd, bbox=bbox, bbox_big=bbox_big, addspace=addspace, ID=ID, log=log)
   
 
 def u_updReg(direct, regfileNameList, addspace):
@@ -1646,10 +1635,17 @@ def u_read_SRRasc(direct, datafile, regfileNameList, ExpType, rec_lastFix=False,
         print datafile + ' does not exist!'; datafileExist = False
     
     regfileExist = True
-    for regfile in regfileNameList:
-        regfileName = direct + '/' + regfile
-        if not os.path.isfile(regfileName):
-            print regfile + ' does not exist!'; regfileExist = False
+    if len(regfileNameList) == 0:
+        # automatically gather all region files in direct
+        for file in os.listdir(direct):
+            if fnmatch.fnmatch(file, '*.region.csv'):
+                regfileNameList.append(str(file))
+    else:
+        # check whether particular region file exists!            
+        for regfile in regfileNameList:
+            regfileName = direct + '/' + regfile
+            if not os.path.isfile(regfileName):
+                print regfile + ' does not exist!'; regfileExist = False
     
     # second, process the files
     if datafileExist and regfileExist:
@@ -1710,11 +1706,26 @@ def ub_read_write_SRRasc(direct, regfileNameList, ExpType, rec_lastFix=False, lu
     for file in os.listdir(direct):
         if fnmatch.fnmatch(file, '*.asc'):
             ascfiles.append(str(file))
-    if ascfiles == []:
-        print 'No asc file in the directory!'        
-    for asc in ascfiles:
-        SacDF, FixDF = u_read_SRRasc(direct, asc, regfileNameList, ExpType, rec_lastFix, lump_Fix, ln, zn, mn)
-        u_write_Sac_Report(direct, SacDF); u_write_Fix_Report(direct, FixDF)
+    if len(ascfiles) == 0:
+        print 'No asc file in the directory!'
+        
+    regfileExist = True    
+    if len(regfileNameList) == 0:
+        # automatically gather all region files in direct
+        for file in os.listdir(direct):
+            if fnmatch.fnmatch(file, '*.region.csv'):
+                regfileNameList.append(str(file))
+    else:
+        # check whether the region file exists in direct
+        for regfile in regfileNameList:
+            regfileName = direct + '/' + regfile
+            if not os.path.isfile(regfileName):
+                print regfile + ' does not exist!'; regfileExist = False
+    
+    if regfileExist:            
+        for asc in ascfiles:
+            SacDF, FixDF = u_read_SRRasc(direct, asc, regfileNameList, ExpType, rec_lastFix, lump_Fix, ln, zn, mn)
+            u_write_Sac_Report(direct, SacDF); u_write_Fix_Report(direct, FixDF)
 
 
 def u_cal_crlSacFix(direct, subj, regfileNameList, ExpType, recStatus=True, diff_ratio=0.6, frontrange_ratio=0.2, y_range=60, fix_method='DIFF'):
@@ -1745,10 +1756,17 @@ def u_cal_crlSacFix(direct, subj, regfileNameList, ExpType, recStatus=True, diff
         print subj + '_Fix.csv' + ' does not exist!'; datafileExist = False
         
     regfileExist = True
-    for regfile in regfileNameList:
-        regfileName = direct + '/' + regfile
-        if not os.path.isfile(regfileName):
-            print regfile + ' does not exist!'; regfileExist = False
+    if len(regfileNameList) == 0:
+        # automatically gather all region files in direct
+        for file in os.listdir(direct):
+            if fnmatch.fnmatch(file, '*.region.csv'):
+                regfileNameList.append(str(file))
+    else:
+        # check whether particular region file exists!
+        for regfile in regfileNameList:
+            regfileName = direct + '/' + regfile
+            if not os.path.isfile(regfileName):
+                print regfile + ' does not exist!'; regfileExist = False
     
     # second, process the files
     if datafileExist and regfileExist:
@@ -1831,11 +1849,26 @@ def ub_cal_write_SacFix_crlSacFix(direct, regfileNameList, ExpType, recStatus=Tr
         if fnmatch.fnmatch(file, '*_*.csv'):
             subjlist.append(str(file).split('_')[0])
     subjlist = np.unique(subjlist)
-    if subjlist == []:
+    if len(subjlist) == 0:
         print 'No csv files in the directory'
-    for subj in subjlist:
-        SacDF, crlSac, FixDF, crlFix = u_cal_crlSacFix(direct, subj, regfileNameList, ExpType, recStatus, diff_ratio, frontrange_ratio, y_range, fix_method)
-        u_write_Sac_crlSac(direct, subj, SacDF, crlSac); u_write_Fix_crlFix(direct, subj, FixDF, crlFix)
+    
+    regfileExist = True
+    if len(regfileNameList) == 0:
+        # automatically gather all region files in direct
+        for file in os.listdir(direct):
+            if fnmatch.fnmatch(file, '*.region.csv'):
+                regfileNameList.append(str(file))
+    else:
+        # check whether particular region file exists!
+        for regfile in regfileNameList:
+            regfileName = direct + '/' + regfile
+            if not os.path.isfile(regfileName):
+                print regfile + ' does not exist!'; regfileExist = False
+
+    if regfileExist:
+        for subj in subjlist:
+            SacDF, crlSac, FixDF, crlFix = u_cal_crlSacFix(direct, subj, regfileNameList, ExpType, recStatus, diff_ratio, frontrange_ratio, y_range, fix_method)
+            u_write_Sac_crlSac(direct, subj, SacDF, crlSac); u_write_Fix_crlFix(direct, subj, FixDF, crlFix)
         
 
 def u_read_cal_SRRasc(direct, datafile, regfileNameList, ExpType, rec_lastFix=False, lump_Fix=True, ln=50, zn=50, mn=50, recStatus=True, diff_ratio=0.6, frontrange_ratio=0.2, y_range=60, fix_method='DIFF'):
@@ -1869,10 +1902,17 @@ def u_read_cal_SRRasc(direct, datafile, regfileNameList, ExpType, rec_lastFix=Fa
         print datafile + ' does not exist!'; datafileExist = False
     
     regfileExist = True
-    for regfile in regfileNameList:
-        regfileName = direct + '/' + regfile
-        if not os.path.isfile(regfileName):
-            print regfile + ' does not exist!'; regfileExist = False
+    if len(regfileNameList) == 0:
+        # automatically gather all region files in direct
+        for file in os.listdir(direct):
+            if fnmatch.fnmatch(file, '*.region.csv'):
+                regfileNameList.append(str(file))
+    else:
+        # check whether particular region file exists!
+        for regfile in regfileNameList:
+            regfileName = direct + '/' + regfile
+            if not os.path.isfile(regfileName):
+                print regfile + ' does not exist!'; regfileExist = False
     
     # second, process the files
     if datafileExist and regfileExist:
@@ -1940,11 +1980,26 @@ def ub_read_cal_write_SRRasc(direct, regfileNameList, ExpType, rec_lastFix=False
     for file in os.listdir(direct):
         if fnmatch.fnmatch(file, '*.asc'):
             ascfiles.append(str(file))
-    if ascfiles == []:
-        print 'No asc files in the directory!'        
-    for asc in ascfiles:
-        SacDF, crlSac, FixDF, crlFix = u_read_cal_SRRasc(direct, asc, regfileNameList, ExpType, rec_lastFix, lump_Fix, ln, zn, mn, recStatus, diff_ratio, frontrange_ratio, y_range, fix_method)
-        u_write_Sac_crlSac(direct, asc.split('.')[0], SacDF, crlSac); u_write_Fix_crlFix(direct, asc.split('.')[0], FixDF, crlFix)
+    if len(ascfiles) == 0:
+        print 'No asc files in the directory!'
+
+    regfileExist = True
+    if len(regfileNameList) == 0:
+        # automatically gather all region files in direct
+        for file in os.listdir(direct):
+            if fnmatch.fnmatch(file, '*.region.csv'):
+                regfileNameList.append(str(file))
+    else:
+        # check whether particular region file exists!
+        for regfile in regfileNameList:
+            regfileName = direct + '/' + regfile
+            if not os.path.isfile(regfileName):
+                print regfile + ' does not exist!'; regfileExist = False
+    
+    if regfileExist:
+        for asc in ascfiles:
+            SacDF, crlSac, FixDF, crlFix = u_read_cal_SRRasc(direct, asc, regfileNameList, ExpType, rec_lastFix, lump_Fix, ln, zn, mn, recStatus, diff_ratio, frontrange_ratio, y_range, fix_method)
+            u_write_Sac_crlSac(direct, asc.split('.')[0], SacDF, crlSac); u_write_Fix_crlFix(direct, asc.split('.')[0], FixDF, crlFix)
 
     
 # -----------------------------------------------------------------------------
@@ -2228,18 +2283,32 @@ def u_draw_SacFix(direct, subj, regfileNameList, bitmapNameList, method, max_Fix
             print subj + '_crlFix.csv' + ' does not exist!'; datafileExist = False   
     
     regfileExist = True
-    for regfile in regfileNameList:
-        regfileName = direct + '/' + regfile
-        if not os.path.isfile(regfileName):
-            print regfile + ' does not exist!'; regfileExist = False
-
+    if len(regfileNameList) == 0:
+        # automatically gather all region files in direct
+        for file in os.listdir(direct):
+            if fnmatch.fnmatch(file, '*.region.csv'):
+                regfileNameList.append(str(file))
+    else:
+        # check whether particular region file exists!
+        for regfile in regfileNameList:
+            regfileName = direct + '/' + regfile
+            if not os.path.isfile(regfileName):
+                print regfile + ' does not exist!'; regfileExist = False
+                
     if PNGmethod == 0:
         bitmapExist = True
-        for bitmap in bitmapNameList:
-            bitmapName = direct + '/' + bitmap
-            if not os.path.isfile(bitmapName):
-                print bitmap + ' does not exist!'; bitmapExist = False
-            
+        if len(bitmapNameList) == 0:
+            # automatically gather all region files in direct
+            for file in os.listdir(direct):
+                if fnmatch.fnmatch(file, '*.png'):
+                    bitmapNameList.append(str(file))
+        else:
+            # check whether particular region file exists!
+            for bitmapfile in bitmapNameList:
+                bitmapfileName = direct + '/' + bitmapfile
+                if not os.path.isfile(bitmapfileName):
+                    print bitmapfile + ' does not exist!'; bitmapExist = False 
+                       
     # second, process the files
     if datafileExist and regfileExist and ((PNGmethod == 0 and bitmapExist) or PNGmethod == 1):
         # read files
@@ -2289,10 +2358,39 @@ def ub_draw_SacFix(direct, regfileNameList, bitmapNameList, method, max_FixRadiu
         if fnmatch.fnmatch(file, '*_*.csv'):
             subjlist.append(str(file).split('_')[0])
     subjlist = np.unique(subjlist)
-    if subjlist == []:
+    if len(subjlist) == 0:
         print 'No csv files in the directory!'        
-    for subj in subjlist:
-        u_draw_SacFix(direct, subj, regfileNameList, bitmapNameList, method, max_FixRadius, drawFinal, showNum, PNGmethod)
+
+    regfileExist = True
+    if len(regfileNameList) == 0:
+        # automatically gather all region files in direct
+        for file in os.listdir(direct):
+            if fnmatch.fnmatch(file, '*.region.csv'):
+                regfileNameList.append(str(file))
+    else:
+        # check whether particular region file exists!
+        for regfile in regfileNameList:
+            regfileName = direct + '/' + regfile
+            if not os.path.isfile(regfileName):
+                print regfile + ' does not exist!'; regfileExist = False
+
+    if PNGmethod == 0:
+        bitmapExist = True
+        if len(bitmapNameList) == 0:
+            # automatically gather all region files in direct
+            for file in os.listdir(direct):
+                if fnmatch.fnmatch(file, '*.png'):
+                    bitmapNameList.append(str(file))
+        else:
+            # check whether particular region file exists!
+            for bitmapfile in bitmapNameList:
+                bitmapfileName = direct + '/' + bitmapfile
+                if not os.path.isfile(bitmapfileName):
+                    print bitmapfile + ' does not exist!'; bitmapExist = False    
+    
+    if regfileExist and ((PNGmethod == 0 and bitmapExist) or PNGmethod == 1):
+        for subj in subjlist:
+            u_draw_SacFix(direct, subj, regfileNameList, bitmapNameList, method, max_FixRadius, drawFinal, showNum, PNGmethod)
 
 
 def u_draw_blinks(direct, trialNum):
@@ -2687,10 +2785,17 @@ def u_cal_write_EM(direct, subj, regfileNameList, addCharSp=1):
         print subj + '_Fix.csv' + ' does not exist!'; datafileExist = False
     
     regfileExist = True
-    for regfile in regfileNameList:
-        regfileName = direct + '/' + regfile
-        if not os.path.isfile(regfileName):
-            print regfile + ' does not exist!'; regfileExist = False
+    if len(regfileNameList) == 0:
+        # automatically gather all region files in direct
+        for file in os.listdir(direct):
+            if fnmatch.fnmatch(file, '*.region.csv'):
+                regfileNameList.append(str(file))
+    else:
+        # check whether particular region file exists!
+        for regfile in regfileNameList:
+            regfileName = direct + '/' + regfile
+            if not os.path.isfile(regfileName):
+                print regfile + ' does not exist!'; regfileExist = False
     
     # second, process the files
     if datafileExist and regfileExist:
@@ -2771,7 +2876,22 @@ def ub_cal_write_EM(direct, regfileNameList, addCharSp=1):
         if fnmatch.fnmatch(file, '*_Fix.csv'):
             subjlist.append(str(file).split('_')[0])
     subjlist = np.unique(subjlist)
-    if subjlist == []:
+    if len(subjlist) == 0:
         print 'No csv files in the directory!'       
-    for subj in subjlist:
-        u_cal_write_EM(direct, subj, regfileNameList)
+    
+    regfileExist = True
+    if len(regfileNameList) == 0:
+        # automatically gather all region files in direct
+        for file in os.listdir(direct):
+            if fnmatch.fnmatch(file, '*.region.csv'):
+                regfileNameList.append(str(file))
+    else:
+        # check whether particular region file exists!
+        for regfile in regfileNameList:
+            regfileName = direct + '/' + regfile
+            if not os.path.isfile(regfileName):
+                print regfile + ' does not exist!'; regfileExist = False
+    
+    if regfileExist:
+        for subj in subjlist:
+            u_cal_write_EM(direct, subj, regfileNameList)
