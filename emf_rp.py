@@ -476,6 +476,7 @@ def u_Gen_Bitmap_RegFile(direct, fontName, textFileNameList, genmethod=2, codeMe
         # read available text files and generate bitmaps and region files    
         for txtfile in textFileNameList:
             # read from the text file   
+            ID = txtfile.split('.')[0]; realtxtfile = direct + '/' + txtfile
             infileH = codecs.open(realtxtfile, mode="rb", encoding=codeMethod)
             print "Read text file: ", infileH.name; lines = infileH.readlines(); infileH.close()
 
