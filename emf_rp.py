@@ -476,6 +476,26 @@ def u_Gen_Bitmap_RegFile(direct, fontName, textFileNameList, genmethods=2, codeM
                 u_Praster(direct, fontpath, codeMethod=codeMethod, text=tmp1, dim=dim, fg=fg, bg=bg, lmargin=lmargin, tmargin=tmargin, linespace=linespace, 
                         fht=fht, fwd=fwd, bbox=bbox, bbox_big=bbox_big, addspace=addspace, ID=ID, log=log)
 
+    elif genmethods == 3:
+        # read all txt files from a fixed directory
+        textFileNameList = []
+        for file in os.listdir(direct):
+            if fnmatch.fnmatch(file, '*.txt'):
+                textFileNameList.append(str(file))
+        if textFileNameList == []:
+            print 'No text files in the directory!'
+        for txtfile in textFileNameList:
+            ID = txtfile.split('.')[0]; realtxtfile = direct + '/' + txtfile
+            # read from the text file   
+            infileH = codecs.open(realtxtfile, mode="rb", encoding=codeMethod)
+            print "Read text file: ", infileH.name; lines = infileH.readlines(); infileH.close()
+
+            tmp0 = [ii for ii in lines if not re.match("^#", ii)] # Squeeze out comments: lines that start with '#'
+            tmp1 = [re.sub(u"\r\n$", u"", ii) for ii in tmp0]    # remove "\r\n" at the ending of each line
+                
+            u_Praster(direct, fontpath, codeMethod=codeMethod, text=tmp1, dim=dim, fg=fg, bg=bg, lmargin=lmargin, tmargin=tmargin, linespace=linespace, 
+                      fht=fht, fwd=fwd, bbox=bbox, bbox_big=bbox_big, addspace=addspace, ID=ID, log=log)
+  
 
 def u_updReg(direct, regfileNameList, addspace):
     """
