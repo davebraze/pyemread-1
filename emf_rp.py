@@ -17,6 +17,9 @@ from PIL import Image, ImageDraw, ImageFont
 import matplotlib.font_manager as font_manager
 import matplotlib.pyplot as plt
 
+import turtle, winsound
+import time
+
 # functions starting with "u_" are user functions, the others are helper functions
 
 # -----------------------------------------------------------------------------
@@ -618,15 +621,23 @@ def gettdur(triallines):
     argument:
         triallines -- data lines of a trial
     return:
+        trialstart -- starting time of the trial
+        trialend -- ending time of the trial
         tdur -- estimated trial duration 
+        
     """
-    starttime, endtime = 0, 0
+    trialstart, trialend, tdur, recstart, recend = 0, 0, 0, 0, 0
     for line in triallines:
-        if re.search('START_RECORDING$', line):
-            starttime = int(line.split()[1])
-        if re.search('TIMER$', line):
-            endtime = int(line.split()[1])
-    return endtime - starttime        
+        if re.search('^START', line):
+            trialstart = int(line.split()[1])
+        if re.search('^END', line):
+            trialend = int(line.split()[1])
+        if re.search('ARECSTART', line):
+            recstart = int(line.split()[1]) - int(line.split()[2])
+        if re.search('ARECSTOP', line):
+            recend = int(line.split()[1]) - int(line.split()[2])
+    tdur = trialend - trialstart        
+    return trialstart, trialend, tdur, recstart, recend        
 
 
 def getRegDF(direct, regfileNameList, trialID):
@@ -1142,7 +1153,7 @@ def getcrlFix(RegDF, crlSac, FixDF, diff_ratio, frontrange_ratio, y_range, fix_m
     return crlFix, question    
 
 
-def recFix(RegDF, ExpType, trialID, blinklines, fixlines, sampfreq, eyerec, script, sessdate, srcfile, tdur, rec_lastFix, lump_Fix, ln, zn, mn):
+def recFix(RegDF, ExpType, trialID, blinklines, fixlines, sampfreq, eyerec, script, sessdate, srcfile, trialstart, trialend, tdur, recstart, recend, rec_lastFix, lump_Fix, ln, zn, mn):
     """
     get fixation data from trials
     arguments:
@@ -1156,7 +1167,11 @@ def recFix(RegDF, ExpType, trialID, blinklines, fixlines, sampfreq, eyerec, scri
         script -- script file
         sessdate -- session date
         srcfile -- source file
+        trialstart -- starting time of the trial
+        trialend -- ending time of the trial
         tdur -- estimated trial duration
+        recstart -- starting time of recording
+        recend -- ending time of recording
         rec_lastFix -- whether (True)or not (False) include the last fixation of a trial and allow it to trigger regression, default = False
         lump_Fix -- whether (True) or not (False) lump short fixations, default = True
         ln -- in lumping, maximum duration of a fixation to "lump", default = 50. Fixation <= this value is subject to lumping with adjacent and near enough (determined by zN) fixations
@@ -1171,10 +1186,13 @@ def recFix(RegDF, ExpType, trialID, blinklines, fixlines, sampfreq, eyerec, scri
     # First, record and lump fixations 
     if eyerec == 'L' or eyerec == 'R':
         # only left or right eye data are recorded
-        FixDF = pd.DataFrame(np.zeros((fix_number, 18)))
-        FixDF.columns = ['subj', 'trial_id', 'trial_type', 'sampfreq', 'script', 'sessdate', 'srcfile', 'tdur', 'blinks', 'eye', 'start_time', 'end_time', 'duration', 'x_pos', 'y_pos', 'pup_size', 'valid', 'line_no']
+        FixDF = pd.DataFrame(np.zeros((fix_number, 22)))
+        FixDF.columns = ['subj', 'trial_id', 'trial_type', 'sampfreq', 'script', 'sessdate', 'srcfile', 'trialstart', 'trialend', 'tdur', 'recstart', 'recend', 'blinks', 'eye', 'start_time', 'end_time', 'duration', 'x_pos', 'y_pos', 'pup_size', 'valid', 'line_no']
         FixDF.subj = srcfile.split('.')[0]; FixDF.trial_id = int(trialID)
-        FixDF.trial_type = ExpType + '_' + RegDF.Name[0]; FixDF.sampfreq = int(sampfreq); FixDF.script = script; FixDF.sessdate = sessdate; FixDF.srcfile = srcfile; FixDF.tdur = tdur; FixDF.blinks = int(blink_number)
+        FixDF.trial_type = ExpType + '_' + RegDF.Name[0]
+        FixDF.sampfreq = int(sampfreq); FixDF.script = script; FixDF.sessdate = sessdate; FixDF.srcfile = srcfile
+        FixDF.trialstart = trialstart; FixDF.trialend = trialend; FixDF.tdur = tdur; FixDF.recstart = recstart; FixDF.recend = recend
+        FixDF.blinks = int(blink_number)
     
         FixDF.eye = [line[1] for line in fixlines]; FixDF.start_time = [float(line[2]) for line in fixlines]; FixDF.end_time = [float(line[3]) for line in fixlines]; FixDF.duration = [float(line[4]) for line in fixlines]
         FixDF.x_pos = [float(line[5]) for line in fixlines]; FixDF.y_pos = [float(line[6]) for line in fixlines]; FixDF.pup_size = [float(line[7]) for line in fixlines]
@@ -1218,10 +1236,13 @@ def recFix(RegDF, ExpType, trialID, blinklines, fixlines, sampfreq, eyerec, scri
             lastLR = 'R'
         
         if numLeft != 0:
-            FixDF1 = pd.DataFrame(np.zeros((numLeft, 18)))
-            FixDF1.columns = ['subj', 'trial_id', 'trial_type', 'sampfreq', 'script', 'sessdate', 'srcfile', 'tdur', 'blinks', 'eye', 'start_time', 'end_time', 'duration', 'x_pos', 'y_pos', 'pup_size', 'valid', 'line_no']
+            FixDF1 = pd.DataFrame(np.zeros((numLeft, 22)))
+            FixDF1.columns = ['subj', 'trial_id', 'trial_type', 'sampfreq', 'script', 'sessdate', 'srcfile', 'trialstart', 'trialend', 'tdur', 'recstart', 'recend', 'blinks', 'eye', 'start_time', 'end_time', 'duration', 'x_pos', 'y_pos', 'pup_size', 'valid', 'line_no']
             FixDF1.subj = srcfile.split('.')[0]; FixDF1.trial_id = int(trialID)
-            FixDF1.trial_type = ExpType + '_' + RegDF.Name[0]; FixDF1.sampfreq = int(sampfreq); FixDF1.script = script; FixDF1.sessdate = sessdate; FixDF1.srcfile = srcfile; FixDF1.tdur = tdur; FixDF1.blinks = int(blink_number)
+            FixDF1.trial_type = ExpType + '_' + RegDF.Name[0]
+            FixDF1.sampfreq = int(sampfreq); FixDF1.script = script; FixDF1.sessdate = sessdate; FixDF1.srcfile = srcfile
+            FixDF1.trialstart = trialstart; FixDF1.trialend = trialend; FixDF1.tdur = tdur; FixDF1.recstart = recstart; FixDF1.recend = recend
+            FixDF1.blinks = int(blink_number)
             
             cur = 0
             for line in fixlines:
@@ -1252,10 +1273,13 @@ def recFix(RegDF, ExpType, trialID, blinklines, fixlines, sampfreq, eyerec, scri
                 FixDF1 = lumpFix(FixDF1, endindex1, short_index1, addtime, ln, zn)               
         
         if numRight != 0:
-            FixDF2 = pd.DataFrame(np.zeros((numRight, 18)))
-            FixDF2.columns = ['subj', 'trial_id', 'trial_type', 'sampfreq', 'script', 'sessdate', 'srcfile', 'tdur', 'blinks', 'eye', 'start_time', 'end_time', 'duration', 'x_pos', 'y_pos', 'pup_size', 'valid', 'line_no']
+            FixDF2 = pd.DataFrame(np.zeros((numRight, 22)))
+            FixDF2.columns = ['subj', 'trial_id', 'trial_type', 'sampfreq', 'script', 'sessdate', 'srcfile', 'trialstart', 'trialend', 'tdur', 'recstart', 'recend', 'blinks', 'eye', 'start_time', 'end_time', 'duration', 'x_pos', 'y_pos', 'pup_size', 'valid', 'line_no']
             FixDF2.subj = srcfile.split('.')[0]; FixDF2.trial_id = int(trialID)
-            FixDF2.trial_type = ExpType + '_' + RegDF.Name[0]; FixDF2.sampfreq = int(sampfreq); FixDF2.script = script; FixDF2.sessdate = sessdate; FixDF2.srcfile = srcfile; FixDF2.tdur = tdur; FixDF2.blinks = int(blink_number)
+            FixDF2.trial_type = ExpType + '_' + RegDF.Name[0]
+            FixDF2.sampfreq = int(sampfreq); FixDF2.script = script; FixDF2.sessdate = sessdate; FixDF2.srcfile = srcfile
+            FixDF2.trialstart = trialstart; FixDF2.trialend = trialend; FixDF2.tdur = tdur; FixDF2.recstart = recstart; FixDF2.recend = recend
+            FixDF2.blinks = int(blink_number)
 
             cur = 0        
             for line in fixlines:
@@ -1286,7 +1310,7 @@ def recFix(RegDF, ExpType, trialID, blinklines, fixlines, sampfreq, eyerec, scri
                 FixDF2 = lumpFix(FixDF2, endindex2, short_index2, addtime, ln, zn) 
         
         # merge all data
-        FixDF = pd.DataFrame(columns=('subj', 'trial_id', 'trial_type', 'sampfreq', 'script', 'sessdate', 'srcfile', 'tdur', 'blinks', 'eye', 'start_time', 'end_time', 'duration', 'x_pos', 'y_pos', 'pup_size', 'valid', 'line_no'))
+        FixDF = pd.DataFrame(columns=('subj', 'trial_id', 'trial_type', 'sampfreq', 'script', 'sessdate', 'srcfile', 'trialstart', 'trialend', 'tdur', 'recstart', 'recend', 'blinks', 'eye', 'start_time', 'end_time', 'duration', 'x_pos', 'y_pos', 'pup_size', 'valid', 'line_no'))
         if numLeft != 0:
             FixDF = FixDF.append(FixDF1, ignore_index=True)
         if numRight != 0:
@@ -1535,7 +1559,7 @@ def getcrlSac(RegDF, SacDF, diff_ratio, frontrange_ratio, y_range):
     return crlSac, question    
 
 
-def recSac(RegDF, ExpType, trialID, blinklines, saclines, sampfreq, eyerec, script, sessdate, srcfile, tdur):
+def recSac(RegDF, ExpType, trialID, blinklines, saclines, sampfreq, eyerec, script, sessdate, srcfile, trialstart, trialend, tdur, recstart, recend):
     """
     record saccade data from trials
     arguments:
@@ -1549,7 +1573,11 @@ def recSac(RegDF, ExpType, trialID, blinklines, saclines, sampfreq, eyerec, scri
         script -- script file
         sessdate -- session date
         srcfile -- source file
+        trialstart -- starting time of the trial
+        trialend -- ending time of the trial
         tdur -- estimated trial duration
+        recstart -- starting time of recording
+        recend -- ending time of recording
     return:
         SacDF -- saccade data of the trial
     """    
@@ -1565,10 +1593,13 @@ def recSac(RegDF, ExpType, trialID, blinklines, saclines, sampfreq, eyerec, scri
         if validData == False:
             saclines.remove(line); sac_number -= 1
     
-    SacDF = pd.DataFrame(np.zeros((sac_number, 20)))
-    SacDF.columns = ['subj', 'trial_id', 'trial_type', 'sampfreq', 'script', 'sessdate', 'srcfile', 'tdur', 'blinks', 'eye', 'start_time', 'end_time', 'duration', 'x1_pos', 'y1_pos', 'x2_pos', 'y2_pos', 'ampl', 'pk', 'line_no']
+    SacDF = pd.DataFrame(np.zeros((sac_number, 24)))
+    SacDF.columns = ['subj', 'trial_id', 'trial_type', 'sampfreq', 'script', 'sessdate', 'srcfile', 'trialstart', 'trialend', 'tdur', 'recstart', 'recend', 'blinks', 'eye', 'start_time', 'end_time', 'duration', 'x1_pos', 'y1_pos', 'x2_pos', 'y2_pos', 'ampl', 'pk', 'line_no']
     SacDF.subj = srcfile.split('.')[0]; SacDF.trial_id = int(trialID); 
-    SacDF.trial_type = ExpType + '_' + RegDF.Name[0]; SacDF.sampfreq = int(sampfreq); SacDF.script = script; SacDF.sessdate = sessdate; SacDF.srcfile = srcfile; SacDF.tdur = tdur; SacDF.blinks = int(blink_number)
+    SacDF.trial_type = ExpType + '_' + RegDF.Name[0]
+    SacDF.sampfreq = int(sampfreq); SacDF.script = script; SacDF.sessdate = sessdate; SacDF.srcfile = srcfile
+    SacDF.trialstart = trialstart; SacDF.trialend = trialend; SacDF.tdur = tdur; SacDF.recstart = recstart; SacDF.recend = recend
+    SacDF.blinks = int(blink_number)
 
     if eyerec == 'L' or eyerec == 'R':
         # single eye saccade
@@ -1654,20 +1685,21 @@ def u_read_SRRasc(direct, datafile, regfileNameList, ExpType, rec_lastFix=False,
         script, sessdate, srcfile = getHeader(lines)    # get header lines    
         T_idx, T_lines = getTrialReg(lines) # get trial regions
     
-        SacDF = pd.DataFrame(columns=('subj', 'trial_id', 'trial_type', 'sampfreq', 'script', 'sessdate', 'srcfile', 'tdur', 'blinks', 'eye', 'start_time', 'end_time', 'duration', 'x1_pos', 'y1_pos', 'x2_pos', 'y2_pos', 'ampl', 'pk', 'line_no'))
-        FixDF = pd.DataFrame(columns=('subj', 'trial_id', 'trial_type', 'sampfreq', 'script', 'sessdate', 'srcfile', 'tdur', 'blinks', 'eye', 'start_time', 'end_time', 'duration', 'x_pos', 'y_pos', 'pup_size', 'valid', 'line_no'))        
+        SacDF = pd.DataFrame(columns=('subj', 'trial_id', 'trial_type', 'sampfreq', 'script', 'sessdate', 'srcfile', 'trialstart', 'trialend', 'tdur', 'recstart', 'recend', 'blinks', 'eye', 'start_time', 'end_time', 'duration', 'x1_pos', 'y1_pos', 'x2_pos', 'y2_pos', 'ampl', 'pk', 'line_no'))
+        FixDF = pd.DataFrame(columns=('subj', 'trial_id', 'trial_type', 'sampfreq', 'script', 'sessdate', 'srcfile', 'trialstart', 'trialend', 'tdur', 'recstart', 'recend', 'blinks', 'eye', 'start_time', 'end_time', 'duration', 'x_pos', 'y_pos', 'pup_size', 'valid', 'line_no'))        
     
         for ind in range(len(T_lines)):
             triallines = lines[T_lines[ind,0]+1:T_lines[ind,1]]; trialID = int(T_idx[ind,0].split(' ')[-1])
-            blinklines, fixlines, saclines, sampfreq, eyerec = getBlink_Fix_Sac_SampFreq_EyeRec(triallines); tdur = gettdur(triallines)
+            blinklines, fixlines, saclines, sampfreq, eyerec = getBlink_Fix_Sac_SampFreq_EyeRec(triallines)
+            trialstart, trialend, tdur, recstart, recend = gettdur(triallines)
             RegDF = getRegDF(direct, regfileNameList, trialID)  # get region file
             # read saccade data
             print "Read Sac: Trial ", str(trialID)
-            SacDFtemp = recSac(RegDF, ExpType, trialID, blinklines, saclines, sampfreq, eyerec, script, sessdate, srcfile, tdur)
+            SacDFtemp = recSac(RegDF, ExpType, trialID, blinklines, saclines, sampfreq, eyerec, script, sessdate, srcfile, trialstart, trialend, tdur, recstart, recend)
             SacDF = SacDF.append(SacDFtemp, ignore_index=True)
             # read fixation data
             print "Read Fix: Trial ", str(trialID)
-            FixDFtemp = recFix(RegDF, ExpType, trialID, blinklines, fixlines, sampfreq, eyerec, script, sessdate, srcfile, tdur, rec_lastFix, lump_Fix, ln, zn, mn)        
+            FixDFtemp = recFix(RegDF, ExpType, trialID, blinklines, fixlines, sampfreq, eyerec, script, sessdate, srcfile, trialstart, trialend, tdur, recstart, recend, rec_lastFix, lump_Fix, ln, zn, mn)        
             FixDF = FixDF.append(FixDFtemp, ignore_index=True)
                 
         return SacDF, FixDF
@@ -1922,18 +1954,19 @@ def u_read_cal_SRRasc(direct, datafile, regfileNameList, ExpType, rec_lastFix=Fa
         script, sessdate, srcfile = getHeader(lines)    # get header lines    
         T_idx, T_lines = getTrialReg(lines) # get trial regions
     
-        SacDF = pd.DataFrame(columns=('subj', 'trial_id', 'trial_type', 'sampfreq', 'script', 'sessdate', 'srcfile', 'tdur', 'blinks', 'eye', 'start_time', 'end_time', 'duration', 'x1_pos', 'y1_pos', 'x2_pos', 'y2_pos', 'ampl', 'pk', 'line_no'))
-        FixDF = pd.DataFrame(columns=('subj', 'trial_id', 'trial_type', 'sampfreq', 'script', 'sessdate', 'srcfile', 'tdur', 'blinks', 'eye', 'start_time', 'end_time', 'duration', 'x_pos', 'y_pos', 'pup_size', 'valid', 'line_no'))        
+        SacDF = pd.DataFrame(columns=('subj', 'trial_id', 'trial_type', 'sampfreq', 'script', 'sessdate', 'srcfile', 'trialstart', 'trialend', 'tdur', 'recstart', 'recend', 'blinks', 'eye', 'start_time', 'end_time', 'duration', 'x1_pos', 'y1_pos', 'x2_pos', 'y2_pos', 'ampl', 'pk', 'line_no'))
+        FixDF = pd.DataFrame(columns=('subj', 'trial_id', 'trial_type', 'sampfreq', 'script', 'sessdate', 'srcfile', 'trialstart', 'trialend', 'tdur', 'recstart', 'recend', 'blinks', 'eye', 'start_time', 'end_time', 'duration', 'x_pos', 'y_pos', 'pup_size', 'valid', 'line_no'))        
         crlSac = pd.DataFrame(columns=('subj', 'trial_id', 'eye', 'startline', 'endline', 'SaclineIndex', 'start_time', 'end_time', 'duration', 'x1_pos', 'y1_pos', 'x2_pos', 'y2_pos', 'ampl', 'pk'))
         crlFix = pd.DataFrame(columns=('subj', 'trial_id', 'eye', 'startline', 'endline', 'FixlineIndex', 'start_time', 'end_time', 'duration', 'x_pos', 'y_pos', 'pup_size', 'valid'))
     
         for ind in range(len(T_lines)):
             triallines = lines[T_lines[ind,0]+1:T_lines[ind,1]]; trialID = int(T_idx[ind,0].split(' ')[-1])
-            blinklines, fixlines, saclines, sampfreq, eyerec = getBlink_Fix_Sac_SampFreq_EyeRec(triallines); tdur = gettdur(triallines)
+            blinklines, fixlines, saclines, sampfreq, eyerec = getBlink_Fix_Sac_SampFreq_EyeRec(triallines)
+            trialstart, trialend, tdur, recstart, recend = gettdur(triallines)
             RegDF = getRegDF(direct, regfileNameList, trialID)  # get region file
             # read saccade data and get crossline saccade
             print "Read Sac and Get crlSac: Trial ", str(trialID)
-            SacDFtemp = recSac(RegDF, ExpType, trialID, blinklines, saclines, sampfreq, eyerec, script, sessdate, srcfile, tdur)
+            SacDFtemp = recSac(RegDF, ExpType, trialID, blinklines, saclines, sampfreq, eyerec, script, sessdate, srcfile, trialstart, trialend, tdur, recstart, recend)
             crlSactemp, question = getcrlSac(RegDF, SacDFtemp, diff_ratio, frontrange_ratio, y_range)
             SacDF = SacDF.append(SacDFtemp, ignore_index=True); crlSac = crlSac.append(crlSactemp, ignore_index=True)
             if recStatus and question:
@@ -1943,7 +1976,7 @@ def u_read_cal_SRRasc(direct, datafile, regfileNameList, ExpType, rec_lastFix=Fa
 
             # read fixation data and get crossline fixation
             print "Read Fix and Get crlFix: Trial ", str(trialID)
-            FixDFtemp = recFix(RegDF, ExpType, trialID, blinklines, fixlines, sampfreq, eyerec, script, sessdate, srcfile, tdur, rec_lastFix, lump_Fix, ln, zn, mn)        
+            FixDFtemp = recFix(RegDF, ExpType, trialID, blinklines, fixlines, sampfreq, eyerec, script, sessdate, srcfile, trialstart, trialend, tdur, recstart, recend, rec_lastFix, lump_Fix, ln, zn, mn)        
             crlFixtemp, question = getcrlFix(RegDF, crlSactemp, FixDFtemp, diff_ratio, frontrange_ratio, y_range, fix_method)
             FixDF = FixDF.append(FixDFtemp, ignore_index=True); crlFix = crlFix.append(crlFixtemp, ignore_index=True)
             if recStatus and question:
@@ -2421,7 +2454,234 @@ def u_draw_blinks(direct, trialNum):
         plt.show()
         plt.savefig(direct + '/Hist_blinks_trial' + str(trialID) + '.png')
     
+
+# -----------------------------------------------------------------------------
+# -----------------------------------------------------------------------------
+# functions for animation of eye-movement
+def u_changePNG2GIF(direct):
+    """
+    change PNG bitmaps in direct to GIF bitmaps for animation
+    argument:
+        direct -- directory storing PNG bitmaps, the created GIF bitmaps are also there
+    """
+    PNGList = []
+    for file in os.listdir(direct):
+        if fnmatch.fnmatch(file, '*.png'):
+            PNGList.append(str(file))
+    if len(PNGList) == 0:
+        print 'PNG bitmap is missing!'
+    else:
+        for PNGfile in PNGList:
+            im = Image.open(direct + '/' + PNGfile)
+            im = im.convert('RGB').convert('P', palette = Image.ADAPTIVE)
+            im.save(direct + '/' + PNGfile.split('.')[0] + '.gif')
+
+
+def animate_EM(direct, subj, bitmapFile, soundFile, Fix, trialID, max_FixRadius=3):
+    """
+    animation of eye-movement of a trial
+    arguments:
+        direct -- directory to store bitmaps
+        subj -- subject ID
+        bitmapNameList -- list of the bitmap files as backgrounds
+        soundNameList -- list of the sound files to be played during animation
+        Fix -- fixation data of the trial
+        trialID -- trial ID
+        max_FixRadius -- maximum radius of the circle for fixation; default is 3
+    """
+    bitmapSize = Image.open(bitmapFile).size
+    # create screen and turtle
+    # create screen
+    screen = turtle.Screen()
+    screen.screensize(bitmapSize[0], bitmapSize[1]); screen.bgpic(bitmapFile)
+    if len(np.unique(Fix.eye)) == 1:
+        # single eye data
+        screen.title('Subject: ' +  subj + '; Trial: ' + str(trialID+1) + ' Eye: ' + np.unique(Fix.eye)[0])
+        # create turtle        
+        fix = turtle.Turtle(); 
+        if np.unique(Fix.eye)[0] == 'L':
+            fix.color('green')
+        elif np.unique(Fix.eye)[0] == 'R':
+            fix.color('red')
+        fix.shape('circle'); fix.speed(0); fix.resizemode("user")
+        fix.penup()
+    elif len(np.unique(Fix.eye)) == 2:
+        # both eyes data: left eye green circle; right eye red circle
+        screen.title('Subject: ' +  subj + '; Trial: ' + str(trialID+1) + ' Left eye: Green; Right: Red')
+        # create player turtle as fixation
+        fix_Left = turtle.Turtle(); fix_Left.color('green'); fix_Left.shape('circle'); fix_Left.speed(0); fix_Left.resizemode("user")
+        fix_Left.penup()
+        fix_Right = turtle.Turtle(); fix_Right.color('red'); fix_Right.shape('circle'); fix_Right.speed(0); fix_Right.resizemode("user")
+        fix_Right.penup()
     
+    # define binding functions
+    def startAni():
+        if len(np.unique(Fix.eye)) == 1:
+            # single eye data
+            # find the first fixation that starts after trialstart 
+            ind = 0; curTime = Fix.loc[ind, 'recstart'] 
+            while curTime > Fix.loc[ind, 'start_time']:
+                ind += 1
+            # start sound
+            winsound.PlaySound(soundFile,  winsound.SND_ALIAS | winsound.SND_ASYNC)
+            st_time = time.time()   # starting time
+            # start screen and turtle player
+            while ind < len(Fix) and not np.isnan(Fix.loc[ind, 'line_no']):
+                time_diff = (Fix.loc[ind, 'start_time'] - curTime)/1000
+                curTime = Fix.loc[ind, 'start_time']    # update curTime
+                now = time.time()
+                if time_diff - (now - st_time) > 0:
+                    time.sleep(time_diff - (now - st_time))
+                st_time = time.time()
+                # draw eye fixation
+                fix.setpos(Fix.loc[ind, 'x_pos'] - bitmapSize[0]/2, -(Fix.loc[ind, 'y_pos'] - bitmapSize[1]/2))
+                fix.shapesize(Fix.loc[ind, 'duration']/max(Fix.duration)*max_FixRadius, Fix.loc[ind, 'duration']/max(Fix.duration)*max_FixRadius)
+                ind += 1    # move to next fixation
+        
+        elif len(np.unique(Fix.eye)) == 2:
+            # both eyes data
+            FixLeft, FixRight = Fix[Fix.eye == 'L'].reset_index(), Fix[Fix.eye == 'R'].reset_index()
+            # find the first fixation that starts after trialstart
+            indLeft, indRight = 0, 0
+            curTime = FixLeft.loc[indLeft, 'recstart']
+            while curTime > FixLeft.loc[indLeft, 'start_time']:
+                indLeft += 1
+            while curTime > FixRight.loc[indRight, 'start_time']:
+                indRight += 1
+            timeLeft, timeRight = FixLeft.loc[indLeft, 'start_time'], FixRight.loc[indRight, 'start_time']
+            LeftFinish, RightFinish = False, False
+            # start sound
+            winsound.PlaySound(soundFile,  winsound.SND_ALIAS | winsound.SND_ASYNC)
+            st_time = time.time()
+            # start screen and turtle player            
+            while not LeftFinish or not RightFinish:
+                while timeLeft == timeRight and not LeftFinish and not RightFinish:
+                    time_diff = (FixLeft.loc[indLeft, 'start_time'] - curTime)/1000
+                    curTime = FixLeft.loc[indLeft, 'start_time']    # update curTime                        
+                    now = time.time()
+                    if time_diff - (now - st_time) > 0:
+                        time.sleep(time_diff - (now - st_time))
+                    st_time = time.time()
+                    # draw left eye fixation
+                    fix_Left.setpos(FixLeft.loc[indLeft, 'x_pos'] - bitmapSize[0]/2, -(FixLeft.loc[indLeft, 'y_pos'] - bitmapSize[1]/2))
+                    fix_Left.shapesize(FixLeft.loc[indLeft, 'duration']/max(Fix.duration)*max_FixRadius, FixLeft.loc[indLeft, 'duration']/max(Fix.duration)*max_FixRadius)
+                    indLeft += 1    # move to next fixation
+                    if indLeft >= len(FixLeft) or np.isnan(FixLeft.loc[indLeft, 'line_no']):
+                        LeftFinish = True
+                    else:
+                        timeLeft = FixLeft.loc[indLeft, 'start_time']   # move to next start_time
+                    # draw right eye fixation
+                    fix_Right.setpos(FixRight.loc[indRight, 'x_pos'] - bitmapSize[0]/2, -(FixLeft.loc[indLeft, 'y_pos'] - bitmapSize[1]/2))
+                    fix_Right.shapesize(FixRight.loc[indRight, 'duration']/max(Fix.duration)*max_FixRadius, FixRight.loc[indRight, 'duration']/max(Fix.duration)*max_FixRadius)
+                    indRight += 1   # move to next fixation
+                    if indRight >= len(FixRight) or np.isnan(FixRight.loc[indRight, 'line_no']):
+                        RightFinish = True
+                    else:
+                        timeRight = FixRight.loc[indRight, 'start_time']    # move to next start_time
+                while (timeLeft < timeRight and not LeftFinish and not RightFinish) or (not LeftFinish and RightFinish):
+                    time_diff = (FixLeft.loc[indLeft, 'start_time'] - curTime)/1000
+                    curTime = FixLeft.loc[indLeft, 'start_time']    # update curTime
+                    now = time.time()
+                    if time_diff - (now - st_time) > 0:
+                        time.sleep(time_diff - (now - st_time))
+                    st_time = time.time()
+                    # draw left eye fixation
+                    fix_Left.setpos(FixLeft.loc[indLeft, 'x_pos'] - bitmapSize[0]/2, -(FixLeft.loc[indLeft, 'y_pos'] - bitmapSize[1]/2))
+                    fix_Left.shapesize(FixLeft.loc[indLeft, 'duration']/max(Fix.duration)*max_FixRadius, FixLeft.loc[indLeft, 'duration']/max(Fix.duration)*max_FixRadius)
+                    indLeft += 1    # move to next fixation
+                    if indLeft >= len(FixLeft) or np.isnan(FixLeft.loc[indLeft, 'line_no']):
+                        LeftFinish = True
+                    else:
+                        timeLeft = FixLeft.loc[indLeft, 'start_time']  # move to next start_time
+                while (timeLeft > timeRight and not LeftFinish and not RightFinish) or (LeftFinish and not RightFinish):
+                    time_diff = (FixRight.loc[indRight, 'start_time'] - curTime)/1000
+                    curTime = FixRight.loc[indRight, 'start_time']
+                    now = time.time()
+                    if time_diff - (now - st_time) > 0:
+                        time.sleep(time_diff - (now - st_time))
+                    st_time = time.time()
+                    # draw right eye fixation
+                    fix_Right.setpos(FixRight.loc[indRight, 'x_pos'] - bitmapSize[0]/2, -(FixLeft.loc[indLeft, 'y_pos'] - bitmapSize[1]/2))
+                    fix_Right.shapesize(FixRight.loc[indRight, 'duration']/max(Fix.duration)*max_FixRadius, FixRight.loc[indRight, 'duration']/max(Fix.duration)*max_FixRadius)
+                    indRight += 1   # move to next fixation
+                    if indRight >= len(FixRight) or np.isnan(FixRight.loc[indRight, 'line_no']):
+                        RightFinish = True
+                    else:
+                        timeRight = FixRight.loc[indRight, 'start_time']   # move to next start_time                
+                
+    def endAni():
+        winsound.PlaySound(None, winsound.SND_ALIAS | winsound.SND_ASYNC)   # end sound
+        turtle.exitonclick()    # end screen
+    
+    # set keyboard bindings
+    turtle.listen()
+    turtle.onkey(startAni, 's') # key 's' to start animation
+    turtle.onkey(endAni, 'e')  # key 'e' to end animation
+    
+    turtle.exitonclick() # click to quit    
+    winsound.PlaySound(None, winsound.SND_ALIAS | winsound.SND_ASYNC) # end sound
+
+
+def u_animate(direct, subj, trialID):
+    """
+    draw animation of a trial
+    arguments: 
+        direct -- directory storing bitmaps, sound files, and fixation csv files
+        subj -- subject ID        
+        trialID -- trial ID
+    """
+    csvExist = False
+    csvlist = []
+    for file in os.listdir(direct):
+        if fnmatch.fnmatch(file, '*_Fix*.csv'):
+            csvlist.append(str(file))
+    if len(csvlist) == 0:
+        print 'No csv files in the directory!'        
+    for csvfile in csvlist:
+        if csvfile.split('_Fix')[0] == subj:
+            csvfile_subj = csvfile; csvExist = True
+    if not csvExist:
+        print 'Data of ' + subj + ' is missing!'
+    
+    bitmapExist = False
+    bitmapNameList = []
+    for file in os.listdir(direct):
+        if fnmatch.fnmatch(file, '*.gif'):
+            bitmapNameList.append(str(file))
+    if len(bitmapNameList) == 0:
+        print 'GIF bitmap is missing!'        
+    if trialID < 0 or (len(bitmapNameList) > 1 and trialID >= len(bitmapNameList)):
+        print 'Invalid trial ID!'
+    else:
+        bitmapExist = True
+    
+    soundExist, trialExist = False, False    
+    soundNameList = []
+    for file in os.listdir(direct):
+        if fnmatch.fnmatch(file, '*.wav'):
+            soundNameList.append(str(file))
+    if len(soundNameList) == 0:
+        print 'Sound file is missing!'        
+    for soundfile in soundNameList:
+        if soundfile.split('-')[0] == subj:
+            soundExist = True
+            if soundfile.split('-')[1].split('.')[0] == str(trialID + 1):
+                soundfile_subj = soundfile; trialExist = True
+    if not soundExist or not trialExist:
+        print 'Sound data of ' + subj + ' is missing!'
+    
+    if csvExist and bitmapExist and soundExist and trialExist:
+        csvFix = direct + '/' + csvfile_subj; FixDF = pd.read_csv(csvFix, sep=',')
+        Fix = FixDF[FixDF.trial_id == trialID].reset_index()
+        if len(bitmapNameList) == 1:
+            bitmapFile = direct + '/' + bitmapNameList[0]
+        else:
+            bitmapFile = direct + '/' + bitmapNameList[trialID]
+        soundFile = direct + '/' + soundfile_subj    
+        
+        animate_EM(direct, subj, bitmapFile, soundFile, Fix, trialID)
+        
+
 # -----------------------------------------------------------------------------
 # -----------------------------------------------------------------------------
 # functions for calculating eye-movement measures
@@ -2814,11 +3074,13 @@ def u_cal_write_EM(direct, subj, regfileNameList, addCharSp=1):
                 elif np.unique(SacDFtemp.eye)[0] == 'R':
                     print 'Cal EM measures: Subj: ' + subj + ', Trial: ' + str(trialID) + ' Right Eye'
                 # create result data frame
-                EMDF = pd.DataFrame(np.zeros((len(RegDF), 32)))
-                EMDF.columns = ['subj', 'trial_id', 'trial_type', 'tdur', 'blinks', 'eye', 'tffixos', 'tffixurt', 'tfixcnt', 'tregrcnt', 'region', 'reglen', 'word', 'line_no', 'x1_pos', 'x2_pos', 'mod_x1', 'mod_x2',
+                EMDF = pd.DataFrame(np.zeros((len(RegDF), 36)))
+                EMDF.columns = ['subj', 'trial_id', 'trial_type', 'trialstart', 'trialend', 'tdur', 'recstart', 'recend', 'blinks', 'eye', 'tffixos', 'tffixurt', 'tfixcnt', 'tregrcnt', 'region', 'reglen', 'word', 'line_no', 'x1_pos', 'x2_pos', 'mod_x1', 'mod_x2',
                                 'fpurt', 'fpcount', 'fpregres', 'fpregreg', 'fpregchr', 'ffos', 'ffixurt', 'spilover', 'rpurt', 'rpcount', 'rpregreg', 'rpregchr', 'spurt', 'spcount']
                 # copy values from FixDF about the whole trial               
-                EMDF.subj = subj; EMDF.trial_id = FixDFtemp.trial_id[0]; EMDF.trial_type = FixDFtemp.trial_type[0]; EMDF.tdur = FixDFtemp.tdur[0]; EMDF.blinks = FixDFtemp.blinks[0]; EMDF.eye = FixDFtemp.eye[0]
+                EMDF.subj = subj; EMDF.trial_id = FixDFtemp.trial_id[0]; EMDF.trial_type = FixDFtemp.trial_type[0]
+                EMDF.trialstart = FixDFtemp.trialstart[0]; EMDF.trialend = FixDFtemp.trialend; EMDF.tdur = FixDFtemp.tdur[0]; EMDF.recstart = FixDFtemp.recstart[0]; EMDF.recend = FixDFtemp.recend[0]
+                EMDF.blinks = FixDFtemp.blinks[0]; EMDF.eye = FixDFtemp.eye[0]
                 # copy values from RegDF about region        
                 EMDF.region = RegDF.WordID; EMDF.reglen = RegDF.length; EMDF.word = RegDF.Word; EMDF.line_no = RegDF.line_no; EMDF.x1_pos = RegDF.x1_pos; EMDF.x2_pos = RegDF.x2_pos
                 modEM(EMDF, addCharSp) # modify EMF's mod_x1 and mod_x2
@@ -2835,11 +3097,13 @@ def u_cal_write_EM(direct, subj, regfileNameList, addCharSp=1):
                 
                 print "Cal EM measures: Subj: " + subj + ", Trial: " + str(trialID) + ' Left Eye'
                 # create result data frame
-                EMDF_L = pd.DataFrame(np.zeros((len(RegDF), 32)))
-                EMDF_L.columns = ['subj', 'trial_id', 'trial_type', 'tdur', 'blinks', 'eye', 'tffixos', 'tffixurt', 'tfixcnt', 'tregrcnt', 'region', 'reglen', 'word', 'line_no', 'x1_pos', 'x2_pos', 'mod_x1', 'mod_x2',
+                EMDF_L = pd.DataFrame(np.zeros((len(RegDF), 36)))
+                EMDF_L.columns = ['subj', 'trial_id', 'trial_type', 'trialstart', 'trialend', 'tdur', 'recstart', 'recend', 'blinks', 'eye', 'tffixos', 'tffixurt', 'tfixcnt', 'tregrcnt', 'region', 'reglen', 'word', 'line_no', 'x1_pos', 'x2_pos', 'mod_x1', 'mod_x2',
                                   'fpurt', 'fpcount', 'fpregres', 'fpregreg', 'fpregchr', 'ffos', 'ffixurt', 'spilover', 'rpurt', 'rpcount', 'rpregreg', 'rpregchr', 'spurt', 'spcount']
                 # copy values from FixDF about the whole trial               
-                EMDF_L.subj = subj; EMDF_L.trial_id = FixDFtemp_L.trial_id[0]; EMDF_L.trial_type = FixDFtemp_L.trial_type[0]; EMDF_L.tdur = FixDFtemp_L.tdur[0]; EMDF_L.blinks = FixDFtemp_L.blinks[0]; EMDF_L.eye = FixDFtemp_L.eye[0]
+                EMDF_L.subj = subj; EMDF_L.trial_id = FixDFtemp_L.trial_id[0]; EMDF_L.trial_type = FixDFtemp_L.trial_type[0]
+                EMDF_L.trialstart = FixDFtemp_L.trialstart[0]; EMDF_L.trialend = FixDFtemp_L.trialend[0]; EMDF_L.tdur = FixDFtemp_L.tdur[0]; EMDF_L.recstart = FixDFtemp_L.recstart[0]; EMDF_L.recend = FixDFtemp_L.recend[0]
+                EMDF_L.blinks = FixDFtemp_L.blinks[0]; EMDF_L.eye = FixDFtemp_L.eye[0]
                 # copy values from RegDF about region        
                 EMDF_L.region = RegDF.WordID; EMDF_L.reglen = RegDF.length; EMDF_L.word = RegDF.Word; EMDF_L.line_no = RegDF.line_no; EMDF_L.x1_pos = RegDF.x1_pos; EMDF_L.x2_pos = RegDF.x2_pos
                 modEM(EMDF_L, addCharSp) # modify EMF's mod_x1 and mod_x2
@@ -2849,11 +3113,13 @@ def u_cal_write_EM(direct, subj, regfileNameList, addCharSp=1):
             
                 print "Cal EM measures: Subj: " + subj + ", Trial: " + str(trialID) + ' Right Eye'
                 # create result data frame
-                EMDF_R = pd.DataFrame(np.zeros((len(RegDF), 32)))
-                EMDF_R.columns = ['subj', 'trial_id', 'trial_type', 'tdur', 'blinks', 'eye', 'tffixos', 'tffixurt', 'tfixcnt', 'tregrcnt', 'region', 'reglen', 'word', 'line_no', 'x1_pos', 'x2_pos', 'mod_x1', 'mod_x2',
+                EMDF_R = pd.DataFrame(np.zeros((len(RegDF), 36)))
+                EMDF_R.columns = ['subj', 'trial_id', 'trial_type', 'trialstart', 'trialend', 'tdur', 'recstart', 'recend', 'blinks', 'eye', 'tffixos', 'tffixurt', 'tfixcnt', 'tregrcnt', 'region', 'reglen', 'word', 'line_no', 'x1_pos', 'x2_pos', 'mod_x1', 'mod_x2',
                                   'fpurt', 'fpcount', 'fpregres', 'fpregreg', 'fpregchr', 'ffos', 'ffixurt', 'spilover', 'rpurt', 'rpcount', 'rpregreg', 'rpregchr', 'spurt', 'spcount']
                 # copy values from FixDF about the whole trial               
-                EMDF_R.subj = subj; EMDF_R.trial_id = FixDFtemp_R.trial_id[0]; EMDF_R.trial_type = FixDFtemp_R.trial_type[0]; EMDF_R.tdur = FixDFtemp_R.tdur[0]; EMDF_R.blinks = FixDFtemp_R.blinks[0]; EMDF_R.eye = FixDFtemp_R.eye[0]
+                EMDF_R.subj = subj; EMDF_R.trial_id = FixDFtemp_R.trial_id[0]; EMDF_R.trial_type = FixDFtemp_R.trial_type[0]
+                EMDF_R.trialstart = FixDFtemp_R.trialstart[0]; EMDF_R.trialend = FixDFtemp_R.trialend[0]; EMDF_R.tdur = FixDFtemp_R.tdur[0]; EMDF_R.recstart = FixDFtemp_R.recstart[0]; EMDF_R.recend = FixDFtemp_R.recend[0]
+                EMDF_R.blinks = FixDFtemp_R.blinks[0]; EMDF_R.eye = FixDFtemp_R.eye[0]
                 # copy values from RegDF about region        
                 EMDF_R.region = RegDF.WordID; EMDF_R.reglen = RegDF.length; EMDF_R.word = RegDF.Word; EMDF_R.line_no = RegDF.line_no; EMDF_R.x1_pos = RegDF.x1_pos; EMDF_R.x2_pos = RegDF.x2_pos
                 modEM(EMDF_R, addCharSp) # modify EMF's mod_x1 and mod_x2
@@ -2895,4 +3161,4 @@ def ub_cal_write_EM(direct, regfileNameList, addCharSp=1):
     
     if regfileExist:
         for subj in subjlist:
-            u_cal_write_EM(direct, subj, regfileNameList)
+            u_cal_write_EM(direct, subj, regfileNameList)      
