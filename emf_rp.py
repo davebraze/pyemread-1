@@ -64,7 +64,7 @@ def _InputDict(resDict, curKey, Name, Word, length, height, baseline, curline, x
     return(resDict)
 
 
-def _writeCSV(regFile, resDict):
+def _writeCSV(regFile, resDict, codeMethod):
     """
     write resDict to csv file: Name, WordID, Word, length, height, baseline, line_no, x1_pos, y1_pos, x2_pos, y2_pos, b_x1, b_y1, b_x2, b_y2
     """
@@ -72,7 +72,8 @@ def _writeCSV(regFile, resDict):
     cur = 0    
     for key in resDict.keys():
         DF.loc[cur,0] = resDict[key][0]; DF.loc[cur,1] = key
-        for i in np.arange(1,14):
+        DF.loc[cur,2] = resDict[key][1].encode(codeMethod)
+        for i in np.arange(2,14):
             DF.loc[cur,i+1] = resDict[key][i]
         cur += 1
     DF.columns = ['Name', 'WordID', 'Word', 'length', 'height', 'baseline', 'line_no', 'x1_pos', 'y1_pos', 'x2_pos', 'y2_pos', 'b_x1', 'b_y1', 'b_x2', 'b_y2']        
@@ -246,7 +247,7 @@ def _cAspect(imgfont, char):
 
 
 # user functions for generating bitmaps and region files
-def Praster(direct, fontpath, codeMethod='utf_8', text=[u'The quick brown fox jumps over the lazy dog.', u'The lazy tabby cat sleeps in the sun all afternoon.'],
+def Praster(direct, fontpath, langType, codeMethod='utf_8', text=[u'The quick brown fox jumps over the lazy dog.', u'The lazy tabby cat sleeps in the sun all afternoon.'],
             dim=(1280,1024), fg=(0,0,0), bg=(232,232,232), wfont=None, regfile=True, lmargin=86, tmargin=86, linespace=43, fht=18, fwd=None, bbox=False, bbox_big=False, 
             ID='test', addspace=18, log=False):
     """
@@ -256,6 +257,7 @@ def Praster(direct, fontpath, codeMethod='utf_8', text=[u'The quick brown fox ju
     Arguments:
         direct          : directory storing the bitmap and/or region file
         fontpath        : fully qualified path to font file
+        langType        : type of language in shown text: 'English' or 'Korean'/'Chinese'/'Japanese'
         codeMethod      : for linux: utf_8; for Windows: cp1252
         text=[]         : text to be rasterized as a list of lines
         dim=(1280,1024) : (x,y) dimension of bitmap 
@@ -286,14 +288,15 @@ def Praster(direct, fontpath, codeMethod='utf_8', text=[u'The quick brown fox ju
     else:
         ttf = ImageFont.truetype(fontpath, fht) # init the specified font resource
     
-    # create descents and ascents dictionaries
-    descents = _getStrikeDescents(fontpath, fht); ascents = _getStrikeAscents(fontpath, fht)
+    if langType == 'English':
+        # create descents and ascents dictionaries
+        descents = _getStrikeDescents(fontpath, fht); ascents = _getStrikeAscents(fontpath, fht)
 
-    if log: 
-        import json
-        logfileH = codecs.open(direct + '/' + 'Praster.log', 'wb', encoding=codeMethod)
-        logfileH.write('ascents\n'); json.dump(ascents, logfileH); logfileH.write('\n')
-        logfileH.write('descents\n'); json.dump(descents, logfileH); logfileH.write('\n')
+        if log: 
+            import json
+            logfileH = codecs.open(direct + '/' + 'Praster.log', 'wb', encoding=codeMethod)
+            logfileH.write('ascents\n'); json.dump(ascents, logfileH); logfileH.write('\n')
+            logfileH.write('descents\n'); json.dump(descents, logfileH); logfileH.write('\n')
 
     # initialize the image
     img = Image.new('RGB', dim, bg) # 'RGB' specifies 8-bit per channel (32 bit color)
@@ -316,64 +319,115 @@ def Praster(direct, fontpath, codeMethod='utf_8', text=[u'The quick brown fox ju
     if len(text) == 1: vpos = dim[1]/2 # single line! center 1st line of text in the middle
     else: vpos = tmargin  # multiple lines! initialize vertical position to the top margin!
     
-    curline = 1
-    for line in text:
-        # break line into list of words and do some cleanup
-        words = line.split(' ')
-        if words.count(''): words.remove('')           # remove empty strings.
-        words = [re.sub('^', ' ', w) for w in words]   # add a space to beginning of each word.
-        if len(words) > 0: words[0] = words[0].strip() # remove space from beginning of first word in each line, guarding against empty wordlists.
+    if langType == 'English':
+        # show English text
+        curline = 1
+        for line in text:
+            # break line into list of words and do some cleanup
+            words = line.split(' ')
+            if words.count(''): words.remove('')           # remove empty strings.
+            words = [re.sub('^', ' ', w) for w in words]   # add a space to beginning of each word.
+            if len(words) > 0: words[0] = words[0].strip() # remove space from beginning of first word in each line, guarding against empty wordlists.
 
-        # paint the line into the image, one word at a time 
-        # calculate the minimum descent and maximum height in all words on the same line
-        mdes_all, mht_all = 0, 0
-        for w in words:
-            for c in w:
-                mdes_all = min(mdes_all, _getKeyVal(c, descents))    # get the biggest descent based on characters
-            (wd, ht) = ttf.getsize(w)   # get the biggest height based on words (getsize function has offsets!)
-            mht_all = max(mht_all, ht)
-        aboveBase, belowBase = mht_all + mdes_all, mdes_all
+            # paint the line into the image, one word at a time 
+            # calculate the minimum descent and maximum height in all words on the same line
+            mdes_all, mht_all = 0, 0
+            for w in words:
+                for c in w:
+                    mdes_all = min(mdes_all, _getKeyVal(c, descents))    # get the biggest descent based on characters
+                (wd, ht) = ttf.getsize(w)   # get the biggest height based on words (getsize function has offsets!)
+                mht_all = max(mht_all, ht)
+            aboveBase, belowBase = mht_all + mdes_all, mdes_all
 
-        # paint the line into the image, one word at a time 
-        xpos1 = lmargin # let edge of current word
-        for w in words:
-            wordlen = len(w) # should maybe trim leading space ?? punctuation ??    
-            (wd, ht) = ttf.getsize(w)   # only wd is accurate
-            xpos2 = xpos1 + wd    # right edge of current word
+            # paint the line into the image, one word at a time 
+            xpos1 = lmargin # let edge of current word
+            for w in words:
+                wordlen = len(w) # should maybe trim leading space ?? punctuation ??    
+                (wd, ht) = ttf.getsize(w)   # only wd is accurate
+                xpos2 = xpos1 + wd    # right edge of current word
             
-            (mdes, masc) = _getdesasc(w, descents, ascents)  # calculate descent and ascent of each word
-            ht = _getStrikeCenters(fontpath, fht) + masc - mdes  # calculate word height based on character
-            # get the correct text position!
-            vpos1 = vpos - ht - mdes
-            vpos2 = vpos1 + ht            
+                (mdes, masc) = _getdesasc(w, descents, ascents)  # calculate descent and ascent of each word
+                ht = _getStrikeCenters(fontpath, fht) + masc - mdes  # calculate word height based on character
+                # get the correct text position!
+                vpos1 = vpos - ht - mdes
+                vpos2 = vpos1 + ht            
             
-            # outline the word region!
-            if bbox: draw.rectangle([(xpos1, vpos1), (xpos2, vpos2)], outline=fg, fill=bg)
+                # outline the word region!
+                if bbox: draw.rectangle([(xpos1, vpos1), (xpos2, vpos2)], outline=fg, fill=bg)
                 
-            # outline the line region!    
-            vpos1_b, vpos2_b = vpos - aboveBase, vpos - belowBase    
-            if bbox_big: draw.rectangle([(xpos1, vpos1_b - addspace), (xpos2, vpos2_b + addspace)], outline=fg, fill=bg)
+                # outline the line region!    
+                vpos1_b, vpos2_b = vpos - aboveBase, vpos - belowBase    
+                if bbox_big: draw.rectangle([(xpos1, vpos1_b - addspace), (xpos2, vpos2_b + addspace)], outline=fg, fill=bg)
             
-            # draw current word
-            vpos1_text = vpos1 + masc - fht/4.5 - 1  # top edge of current word, masc - fht/4.5 - 1 is offset!.
-            draw.text((xpos1, vpos1_text), w, font=ttf, fill=fg) 
+                # draw current word
+                vpos1_text = vpos1 + masc - fht/4.5 - 1  # top edge of current word, masc - fht/4.5 - 1 is offset!.
+                draw.text((xpos1, vpos1_text), w, font=ttf, fill=fg) 
             
-            # output word regions
-            if regfile:
-                #wo = '%s|%s|%d|%d|%d|%d|%d|%d|%d|%d|%d|%d|%d|%d|%d' % (id, w, wordlen, ht, vpos, curline,
-                #                                                   xpos1, vpos1, xpos2, vpos2, xpos1, vpos1_b - addspace, xpos2, vpos2_b + addspace)
-                #regfileH.write(wo+'\n')
-                resDict = _InputDict(resDict, curKey, ID, w, wordlen, ht, vpos, curline, xpos1, vpos1, xpos2, vpos2, xpos1, vpos1_b - addspace, xpos2, vpos2_b + addspace)
-                curKey += 1
+                # output word regions
+                if regfile:
+                    #wo = '%s|%s|%d|%d|%d|%d|%d|%d|%d|%d|%d|%d|%d|%d|%d' % (id, w, wordlen, ht, vpos, curline,
+                    #                                                   xpos1, vpos1, xpos2, vpos2, xpos1, vpos1_b - addspace, xpos2, vpos2_b + addspace)
+                    #regfileH.write(wo+'\n')
+                    resDict = _InputDict(resDict, curKey, ID, w, wordlen, ht, vpos, curline, xpos1, vpos1, xpos2, vpos2, xpos1, vpos1_b - addspace, xpos2, vpos2_b + addspace)
+                    curKey += 1
                 
-            xpos1 = xpos2   # shift to next word's left edge
+                xpos1 = xpos2   # shift to next word's left edge
         
-        if vpos >= dim[1] + linespace: 
-            raise ValueError("%d warning! %s has too many words! They cannot be shown within one screen!" % (vpos, id))
-        else:
-            vpos += linespace   # shift to next line
-            curline += 1
+            if vpos >= dim[1] + linespace: 
+                raise ValueError("%d warning! %s has too many words! They cannot be shown within one screen!" % (vpos, id))
+            else:
+                vpos += linespace   # shift to next line
+                curline += 1    
+    
+    elif langType == 'Chinese' or langType == 'Korean' or langType == 'Japanese':      
+        # show Chinese, Korean or Japanese text
+        curline = 1
+        for line in text:
+            # break line into list of words and do some cleanup
+            words = line.split(' ')
+            
+            # paint the line into the image, one word at a time 
+            xpos1 = lmargin # let edge of current word
+            for w in words:
+                wordlen = len(w) # should maybe trim leading space ?? punctuation ??    
+                (wd, ht) = ttf.getsize(w)
 
+                xpos2 = xpos1 + wd    # right edge of current word
+            
+                vpos1 = vpos - ht
+                vpos2 = vpos1 + ht            
+            
+                # outline the word region!
+                if bbox: draw.rectangle([(xpos1, vpos1), (xpos2, vpos2)], outline=fg, fill=bg)
+                
+                # outline the line region!    
+                aboveBase, belowBase = ht, 0
+                vpos1_b, vpos2_b = vpos - aboveBase, vpos - belowBase    
+                if bbox_big: draw.rectangle([(xpos1, vpos1_b - addspace), (xpos2, vpos2_b + addspace)], outline=fg, fill=bg)
+            
+                # draw current word
+                vpos1_text = vpos1  # top edge of current word
+                draw.text((xpos1, vpos1_text), w, font=ttf, fill=fg) 
+            
+                # output word regions
+                if regfile:
+                    #wo = '%s|%s|%d|%d|%d|%d|%d|%d|%d|%d|%d|%d|%d|%d|%d' % (id, w, wordlen, ht, vpos, curline,
+                    #                                                   xpos1, vpos1, xpos2, vpos2, xpos1, vpos1_b - addspace, xpos2, vpos2_b + addspace)
+                    #regfileH.write(wo+'\n')
+                    resDict = _InputDict(resDict, curKey, ID, w, wordlen, ht, vpos, curline, xpos1, vpos1, xpos2, vpos2, xpos1, vpos1_b - addspace, xpos2, vpos2_b + addspace)
+                    curKey += 1
+                
+                xpos1 = xpos2   # shift to next word's left edge
+        
+            if vpos >= dim[1] + linespace: 
+                raise ValueError("%d warning! %s has too many words! They cannot be shown within one screen!" % (vpos, id))
+            else:
+                vpos += linespace   # shift to next line
+                curline += 1        
+    
+    else:
+        raise ValueError("invalid langType %s ! only 'English', 'Chinese', 'Korean', or 'Japanese' allowed" % langType)
+    
     # ### FIXME: watermark should (?) include more info. Maybe most arguments used in call to Sraster()
     # ### FIXME: need some error checking here.
     # if wfont:
@@ -390,23 +444,23 @@ def Praster(direct, fontpath, codeMethod='utf_8', text=[u'The quick brown fox ju
     #     #wcol=(bg[0]-2, bg[1]-2, bg[2]-2)                 # set wm color. FIXME: add error checking to ensure we have a valid color.
     #     draw.text((14, 14), id, font=wttf, fill=wcol)     # label image with stim ID
     # ### FIXME: Add Functionality to include full set of arguments to Sraster() in meta data for bitmap files.
-    # ### See PIL.ExifTags.TAGS
+    # ### See PIL.ExifTags.TAGS   
     
     # Wrap up
-    if regfile: 
-        _writeCSV(direct + '/' + ID + '.region.csv', resDict)
+    if regfile: _writeCSV(direct + '/' + ID + '.region.csv', resDict, codeMethod)
         
     if log: logfileH.close()  # close log file
     img.save(direct + '/' + ID + '.png','PNG') # write bitmap file
 
 
-def Gen_Bitmap_RegFile(direct, fontName, textFileNameList, genmethod=2, codeMethod='utf_8', dim=(1280,1024), fg=(0,0,0), bg=(232,232,232), 
+def Gen_Bitmap_RegFile(direct, fontName, langType, textFileNameList, genmethod=2, codeMethod='utf_8', dim=(1280,1024), fg=(0,0,0), bg=(232,232,232), 
     lmargin=215, tmargin=86, linespace=65, fht=18, fwd=None, bbox=False, bbox_big=False, addspace=18, log=False):
     """
     generate the bitmaps (PNG) and region files of single/multiple line story from text file
     arguments:
         direct -- directory of for text files
         fontName -- name of a font, e.g. 'LiberationMono'
+        langType -- type of language in shown text: 'English' or 'Korean'/'Chinese'/'Japanese'
         textFileNameList -- a list of one or multiple text file for generating bitmaps
         genmethod -- methods to generate: 0: simple test (simple texts); 1: read from one text file; 2: read from many text files;
      the following arguments are identical to Praster    
@@ -434,10 +488,15 @@ def Gen_Bitmap_RegFile(direct, fontName, textFileNameList, genmethod=2, codeMeth
     
     if genmethod == 0:
         # Simple tests.
-        Praster(direct, fontpath, fht=fht, bbox=True, log=True)
-        Praster(direct, fontpath, text=["This is a test.", "This is another."], fht=fht)
-        Praster(direct, fontpath, text=["This is a one-liner."], fht=fht)
-
+        if langType == 'English':
+            Praster(direct, fontpath, langType, fht=fht, bbox=True, log=True)
+            Praster(direct, fontpath, langType, text=[u'This is a test.', u'This is another.'], fht=fht)
+            Praster(direct, fontpath, langType, text=[u'This is a one-liner.'], fht=fht)
+        elif langType == 'Chinese' or langType == 'Korean' or langType == 'Japanese':
+            Praster(direct, fontpath, langType, text=[u'我们\t爱\t你', u'为什么\t不让\t他\t走?'], fht=fht)
+        else:
+            raise ValueError("invalid langType %s! only 'English', 'Chinese', 'Korean', or 'Japanese' allowed" % langType)
+    
     elif genmethod == 1:
         # first, check whether the text file exists
         txtfile = textFileNameList[0]; realtxtfile = direct + '/' + txtfile
@@ -459,7 +518,7 @@ def Gen_Bitmap_RegFile(direct, fontName, textFileNameList, genmethod=2, codeMeth
 
             for i, P in enumerate(tmp3): 
                 s = "storyID = %02.d line = %d" % (i+1, len(P)); print(s)
-                Praster(direct, fontpath, codeMethod=codeMethod, text=P, dim=dim, fg=fg, bg=bg, lmargin=lmargin, tmargin=tmargin, linespace=linespace, 
+                Praster(direct, fontpath, langType, codeMethod=codeMethod, text=P, dim=dim, fg=fg, bg=bg, lmargin=lmargin, tmargin=tmargin, linespace=linespace, 
                         fht=fht, fwd=fwd, bbox=bbox, bbox_big=bbox_big, addspace=addspace, ID='story%02.d' % (i+1), log=log)
 
     elif genmethod == 2:
@@ -486,7 +545,7 @@ def Gen_Bitmap_RegFile(direct, fontName, textFileNameList, genmethod=2, codeMeth
             tmp0 = [ii for ii in lines if not re.match("^#", ii)] # Squeeze out comments: lines that start with '#'
             tmp1 = [re.sub(u"\r\n$", u"", ii) for ii in tmp0]    # remove "\r\n" at the ending of each line
                 
-            Praster(direct, fontpath, codeMethod=codeMethod, text=tmp1, dim=dim, fg=fg, bg=bg, lmargin=lmargin, tmargin=tmargin, linespace=linespace, 
+            Praster(direct, fontpath, langType, codeMethod=codeMethod, text=tmp1, dim=dim, fg=fg, bg=bg, lmargin=lmargin, tmargin=tmargin, linespace=linespace, 
                     fht=fht, fwd=fwd, bbox=bbox, bbox_big=bbox_big, addspace=addspace, ID=ID, log=log)
   
 
@@ -1852,10 +1911,14 @@ def cal_crlSacFix(direct, subj, regfileNameList, ExpType, recStatus=True, diff_r
             
             # assign region_no in FixDFtemp
             for curFix in range(len(FixDFtemp)):
-                for curReg in range(len(RegDF)):
-                    if FixDFtemp.loc[curFix,'line_no'] == RegDF.loc[curReg,'line_no'] and RegDF.loc[curReg,'mod_x1'] <= FixDFtemp.loc[curFix,'x_pos'] and FixDFtemp.loc[curFix,'x_pos'] <= RegDF.loc[curReg,'mod_x2']:
-                        FixDFtemp.loc[curFix,'region_no'] = RegDF.loc[curReg, 'WordID']
-                        break
+                if not np.isnan(FixDFtemp.loc[curFix, 'line_no']):
+                    indlist = RegDF[(RegDF['line_no'] == FixDFtemp.loc[curFix,'line_no']) & ((RegDF['mod_x1'] <= FixDFtemp.loc[curFix,'x_pos']) & (RegDF['mod_x2'] >= FixDFtemp.loc[curFix,'x_pos']))].index.tolist()
+                    if len(indlist) == 1:
+                        FixDFtemp.loc[curFix,'region_no'] = int(RegDF.WordID[indlist[0]])
+                    else:
+                        FixDFtemp.loc[curFix,'region_no'] = np.nan
+                else:
+                    FixDFtemp.loc[curFix,'region_no'] = np.nan
             
             newFixDF = newFixDF.append(FixDFtemp, ignore_index=True); crlFix = crlFix.append(crlFixtemp, ignore_index=True)
             if recStatus and question:
@@ -2017,11 +2080,15 @@ def read_cal_SRRasc(direct, datafile, regfileNameList, ExpType, rec_lastFix=Fals
             
             # assign region_no in FixDFtemp
             for curFix in range(len(FixDFtemp)):
-                for curReg in range(len(RegDF)):
-                    if FixDFtemp.loc[curFix,'line_no'] == RegDF.loc[curReg,'line_no'] and RegDF.loc[curReg,'mod_x1'] <= FixDFtemp.loc[curFix,'x_pos'] and FixDFtemp.loc[curFix,'x_pos'] <= RegDF.loc[curReg,'mod_x2']:
-                        FixDFtemp.loc[curFix,'region_no'] = RegDF.loc[curReg,'WordID']
+                if not np.isnan(FixDFtemp.loc[curFix, 'line_no']):
+                    indlist = RegDF[(RegDF['line_no'] == FixDFtemp.loc[curFix,'line_no']) & ((RegDF['mod_x1'] <= FixDFtemp.loc[curFix,'x_pos']) & (RegDF['mod_x2'] >= FixDFtemp.loc[curFix,'x_pos']))].index.tolist()
+                    if len(indlist) == 1:
+                        FixDFtemp.loc[curFix,'region_no'] = int(RegDF.WordID[indlist[0]])
+                    else:
+                        FixDFtemp.loc[curFix,'region_no'] = np.nan
+                else:
+                    FixDFtemp.loc[curFix,'region_no'] = np.nan
             
-
             FixDF = FixDF.append(FixDFtemp, ignore_index=True); crlFix = crlFix.append(crlFixtemp, ignore_index=True)
             if recStatus and question:
                 logfile = open(direct + '/log.txt', 'a+')
@@ -2812,7 +2879,7 @@ def _chk_fp_reg(FixDF, EMDF, stFix, endFix, curEM):
             EMDF.loc[curEM,'fpregres'] = 1
             # search the region where regression fixation falls into
             for cur in range(len(EMDF)):
-                if FixDF.loc[endFix,'valid'] == 'yes' and FixDF.loc[endFix,'line_no'] == EMDF.loc[cur,'line_no'] and EMDF.loc[cur,'mod_x1'] <= FixDF.loc[endFix,'x_pos'] and FixDF.loc[endFix,'x_pos'] <= EMDF.loc[cur,'mod_x2']:
+                if FixDF.loc[endFix,'region_no'] == EMDF.loc[cur,'region']:
                     EMDF.loc[curEM,'fpregreg'] = EMDF.loc[cur,'region']
                     if cur == 0:
                         EMDF.loc[curEM,'fpregchr'] = np.ceil((FixDF.loc[endFix,'x_pos'] - EMDF.loc[cur,'mod_x1'])/np.float(EMDF.loc[cur,'mod_x2'] - EMDF.loc[cur,'mod_x1']) * EMDF.loc[cur,'reglen']) - 1
@@ -2829,7 +2896,7 @@ def _chk_fp_reg(FixDF, EMDF, stFix, endFix, curEM):
             EMDF.loc[curEM,'fpregres'] = 1
             # search the region where regression fixation falls into
             for cur in range(len(EMDF)):
-                if FixDF.loc[endFix,'valid'] == 'yes' and FixDF.loc[endFix,'line_no'] == EMDF.loc[cur,'line_no'] and EMDF.loc[cur,'mod_x1'] <= FixDF.loc[endFix,'x_pos'] and FixDF.loc[endFix,'x_pos'] <= EMDF.loc[cur,'mod_x2']:
+                if FixDF.loc[endFix,'region_no'] == EMDF.loc[cur,'region']:
                     EMDF.loc[curEM,'fpregreg'] = EMDF.loc[cur,'region']
                     if cur == 0:
                         EMDF.loc[curEM,'fpregchr'] = np.ceil((FixDF.loc[endFix,'x_pos'] - EMDF.loc[cur,'mod_x1'])/np.float(EMDF.loc[cur,'mod_x2'] - EMDF.loc[cur,'mod_x1']) * EMDF.loc[cur,'reglen']) - 1
@@ -2850,10 +2917,14 @@ def _getReg(FixDF, curFix, EMDF):
         EMDF -- result data frame containing all region information
     return: index in EMF    
     """
-    for curEM in range(len(EMDF)):
-        if FixDF.loc[curFix,'region_no'] == EMDF.loc[curEM, 'region']:         
-            break
-    return curEM
+    if np.isnan(FixDF.line_no[curFix]) or np.isnan(FixDF.region_no[curFix]):
+        return 0
+    else:
+        indlist = EMDF[(EMDF['line_no']==FixDF.line_no[curFix]) & (EMDF['region']==FixDF.region_no[curFix])].index.tolist()
+        if len(indlist) == 1:
+            return indlist[0]
+        else:
+            return 0
 
 
 def _chk_rp_reg(FixDF, EMDF, stFix, endFix, curEM):
@@ -2937,7 +3008,7 @@ def _chk_sp_fix(FixDF, EMDF, endFix, curEM):
         curEM -- current region in the result data frame            
     """
     for curFix in range(endFix, len(FixDF)):
-        if FixDF.loc[curFix,'valid'] == 'yes' and FixDF.loc[curFix,'line_no'] == EMDF.loc[curEM,'line_no'] and EMDF.loc[curEM,'mod_x1'] <= FixDF.loc[curFix,'x_pos'] and FixDF.loc[curFix,'x_pos'] <= EMDF.loc[curEM,'mod_x2']:
+        if FixDF.loc[curFix,'region_no'] == EMDF.loc[curEM,'region']:
             EMDF.loc[curEM,'spurt'] += FixDF.loc[curFix,'duration'] # add spurt: second pass fixation time
             EMDF.loc[curEM,'spcount'] += 1  # add spcount: the number of second pass fixations            
     
@@ -3036,7 +3107,7 @@ def _cal_EM(RegDF, FixDF, SacDF, EMDF):
     # region (each word) measures
     for curEM in range(len(EMDF)):
         for curFix in range(len(FixDF)):
-            if FixDF.loc[curFix,'valid'] == 'yes' and FixDF.loc[curFix,'line_no'] == EMDF.loc[curEM,'line_no'] and EMDF.loc[curEM,'mod_x1'] <= FixDF.loc[curFix,'x_pos'] and FixDF.loc[curFix,'x_pos'] <= EMDF.loc[curEM,'mod_x2']:
+            if FixDF.loc[curFix,'region_no'] == EMDF.loc[curEM,'region']:
                 # find a first pass fixation on the current word!                    
                 stFix, endFix = _chk_fp_fix(FixDF, EMDF, curFix, curEM) # calculate first pass fixation measures: fpurt, fpcount, ffos, ffixurt, spilover  
                 _chk_fp_reg(FixDF, EMDF, stFix, endFix, curEM) # calculate first pass regression measures: fpregres, fpregreg, fpregchr
@@ -3046,6 +3117,16 @@ def _cal_EM(RegDF, FixDF, SacDF, EMDF):
                 break
                 
     # change fpurt == 0, fpcount == 0, ffixurt == 0, spilover == 0 with NA
+    EMDF.loc[EMDF[EMDF.fpurt==0].index,'fpurt'] = np.nan
+    EMDF.loc[EMDF[EMDF.fpcount==0].index,'fpcount'] = np.nan
+    EMDF.loc[EMDF[EMDF.ffixurt==0].index,'ffixurt'] = np.nan
+    EMDF.loc[EMDF[EMDF.spilover==0].index,'spilover'] = np.nan
+    EMDF.loc[EMDF[EMDF.spurt==0].index,'spurt'] = np.nan
+    EMDF.loc[EMDF[EMDF.spcount==0].index,'spcount'] = np.nan
+    EMDF.loc[EMDF[np.isnan(EMDF.fpurt)].index,'rpurt'] = np.nan
+    EMDF.loc[EMDF[np.isnan(EMDF.fpurt)].index,'rpcount'] = np.nan          
+    EMDF.loc[EMDF[np.isnan(EMDF.fpurt)].index,'rpregreg'] = np.nan
+    """    
     for curEM in range(len(EMDF)):
         if EMDF.loc[curEM,'fpurt'] == 0:
             EMDF.loc[curEM,'fpurt'] = np.nan
@@ -3063,7 +3144,7 @@ def _cal_EM(RegDF, FixDF, SacDF, EMDF):
             EMDF.loc[curEM,'rpurt'] = np.nan
             EMDF.loc[curEM,'rpcount'] = np.nan
             EMDF.loc[curEM,'rpregreg'] = np.nan            
-    
+    """
     # whole trial measures
     EMDF.tffixos = _chk_tffixos(EMDF)  # tffixos: offset of the first fixation in trial in letters from the beginning of the sentence       
     EMDF.ttfixurt = sum(x for x in EMDF.fpurt if not np.isnan(x))     # tffixurt: duration of the first fixation in trial
