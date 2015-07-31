@@ -6,21 +6,14 @@ Summary EMF ASCII file recording eye-movement data
 @author: tg422
 """
 # imported packages
-import os 
-import fnmatch
-import re
-import csv
-import codecs
+import os, sys, fnmatch, re, csv, codecs, turtle, time
 import pandas as pd
 import numpy as np
 from PIL import Image, ImageDraw, ImageFont
 import matplotlib.font_manager as font_manager
 import matplotlib.pyplot as plt
 
-import turtle, winsound
-import time
-
-# functions starting with "_" are helper functions
+# functions starting with "_" are helper functions, ending with "_b" are batch user functions
 
 # -----------------------------------------------------------------------------
 # -----------------------------------------------------------------------------
@@ -69,6 +62,7 @@ def _writeCSV(regFile, resDict, codeMethod):
     write resDict to csv file: Name, WordID, Word, length, height, baseline, line_no, x1_pos, y1_pos, x2_pos, y2_pos, b_x1, b_y1, b_x2, b_y2
     """
     DF = pd.DataFrame(np.zeros((len(resDict), 15)))
+    col = ['Name', 'WordID', 'Word', 'length', 'height', 'baseline', 'line_no', 'x1_pos', 'y1_pos', 'x2_pos', 'y2_pos', 'b_x1', 'b_y1', 'b_x2', 'b_y2']
     cur = 0    
     for key in resDict.keys():
         DF.loc[cur,0] = resDict[key][0]; DF.loc[cur,1] = key
@@ -76,8 +70,7 @@ def _writeCSV(regFile, resDict, codeMethod):
         for i in np.arange(2,14):
             DF.loc[cur,i+1] = resDict[key][i]
         cur += 1
-    DF.columns = ['Name', 'WordID', 'Word', 'length', 'height', 'baseline', 'line_no', 'x1_pos', 'y1_pos', 'x2_pos', 'y2_pos', 'b_x1', 'b_y1', 'b_x2', 'b_y2']        
-    DF.sort(columns='WordID')
+    DF.columns = col; DF.sort(columns='WordID')
     DF.to_csv(regFile, index=False)
 
 
@@ -294,7 +287,7 @@ def Praster(direct, fontpath, langType, codeMethod='utf_8', text=[u'The quick br
 
         if log: 
             import json
-            logfileH = codecs.open(direct + '/' + 'Praster.log', 'wb', encoding=codeMethod)
+            logfileH = codecs.open(os.path.join(direct, 'Praster.log'), 'wb', encoding=codeMethod)
             logfileH.write('ascents\n'); json.dump(ascents, logfileH); logfileH.write('\n')
             logfileH.write('descents\n'); json.dump(descents, logfileH); logfileH.write('\n')
 
@@ -447,10 +440,10 @@ def Praster(direct, fontpath, langType, codeMethod='utf_8', text=[u'The quick br
     # ### See PIL.ExifTags.TAGS   
     
     # Wrap up
-    if regfile: _writeCSV(direct + '/' + ID + '.region.csv', resDict, codeMethod)
+    if regfile: _writeCSV(os.path.join(direct, ID + '.region.csv'), resDict, codeMethod)
         
     if log: logfileH.close()  # close log file
-    img.save(direct + '/' + ID + '.png','PNG') # write bitmap file
+    img.save(os.path.join(direct, ID + '.png'), 'PNG') # write bitmap file
 
 
 def Gen_Bitmap_RegFile(direct, fontName, langType, textFileNameList, genmethod=2, codeMethod='utf_8', dim=(1280,1024), fg=(0,0,0), bg=(232,232,232), 
@@ -492,14 +485,18 @@ def Gen_Bitmap_RegFile(direct, fontName, langType, textFileNameList, genmethod=2
             Praster(direct, fontpath, langType, fht=fht, bbox=True, log=True)
             Praster(direct, fontpath, langType, text=[u'This is a test.', u'This is another.'], fht=fht)
             Praster(direct, fontpath, langType, text=[u'This is a one-liner.'], fht=fht)
-        elif langType == 'Chinese' or langType == 'Korean' or langType == 'Japanese':
-            Praster(direct, fontpath, langType, text=[u'我们\t爱\t你', u'为什么\t不让\t他\t走?'], fht=fht)
+        elif langType == 'Chinese':
+            Praster(direct, fontpath, langType, text=[u'我们 爱 你。', u'为什么 不让 他 走？'], fht=fht)
+        elif langType == 'Korean':
+            Praster(direct, fontpath, langType, text=[u'저는 7년 동안 한국에서 살았어요'], fht=fht)
+        elif langType == 'Japanese':
+            Praster(direct, fontpath, langType, text=[u'むかし、 むかし、 ある ところ に'], fht=fht)
         else:
             raise ValueError("invalid langType %s! only 'English', 'Chinese', 'Korean', or 'Japanese' allowed" % langType)
     
     elif genmethod == 1:
         # first, check whether the text file exists
-        txtfile = textFileNameList[0]; realtxtfile = direct + '/' + txtfile
+        txtfile = textFileNameList[0]; realtxtfile = os.path.join(direct, txtfile)
         if not os.path.isfile(realtxtfile):
             print txtfile + ' does not exist!'
         else:
@@ -531,14 +528,14 @@ def Gen_Bitmap_RegFile(direct, fontName, langType, textFileNameList, genmethod=2
         else:
             # read specific text files in direct; check whether the file exists!
             for txtfile in textFileNameList:
-                ID = txtfile.split('.')[0]; realtxtfile = direct + '/' + txtfile
+                ID = txtfile.split('.')[0]; realtxtfile = os.path.join(direct, txtfile)
                 if not os.path.isfile(realtxtfile):
                     print ID + ' does not exist!'
                     textFileNameList.remove(txtfile)
         # read available text files and generate bitmaps and region files    
         for txtfile in textFileNameList:
             # read from the text file   
-            ID = txtfile.split('.')[0]; realtxtfile = direct + '/' + txtfile
+            ID = txtfile.split('.')[0]; realtxtfile = os.path.join(direct, txtfile)
             infileH = codecs.open(realtxtfile, mode="rb", encoding=codeMethod)
             print "Read text file: ", infileH.name; lines = infileH.readlines(); infileH.close()
 
@@ -558,7 +555,7 @@ def updReg(direct, regfileNameList, addspace):
         addspace -- added space for bigger boundary surrounding lines of texts
     """
     for trialID in range(len(regfileNameList)):
-        RegDF = pd.read_csv(direct + '/' + regfileNameList[trialID], sep=',', header=None)
+        RegDF = pd.read_csv(os.path.join(direct, regfileNameList[trialID]), sep=',', header=None)
         RegDF.columns = ['Name', 'Word', 'length', 'x1_pos', 'y1_pos', 'x2_pos', 'y2_pos']
         # add WordID
         RegDF['WordID'] = range(1,len(RegDF)+1)        
@@ -589,7 +586,7 @@ def updReg(direct, regfileNameList, addspace):
             RegDF.loc[RegDF.line_no==lineNum,'b_y1'] = max(RegDF.loc[RegDF.line_no==lineNum,'y1_pos']) - addspace
             RegDF.loc[RegDF.line_no==lineNum,'b_y2'] = min(RegDF.loc[RegDF.line_no==lineNum,'y2_pos']) + addspace
         RegDF = RegDF[['Name', 'WordID', 'Word', 'length', 'height', 'baseline', 'line_no', 'x1_pos', 'y1_pos', 'x2_pos', 'y2_pos', 'b_x1', 'b_y1', 'b_x2', 'b_y2']]     
-        RegDF.to_csv(direct + '/' + regfileNameList[trialID], index=False)            
+        RegDF.to_csv(os.path.join(direct, regfileNameList[trialID]), index=False)            
 
     
 # -----------------------------------------------------------------------------
@@ -620,7 +617,8 @@ def _getHeader(lines):
         if re.search('CONVERTED FROM', line):
             m = re.search(' FROM (.+?) using', line)
             if m:
-                srcfile = os.path.basename(m.group(1))
+                #srcfile = os.path.basename(m.group(1))
+                srcfile = m.group(1).split('\\')[-1]
     
     return script, sessdate, srcfile            
 
@@ -711,7 +709,7 @@ def _getRegDF(direct, regfileNameList, trialID):
     """
     if trialID < 0 or trialID >= len(regfileNameList):
         raise ValueError("invalid trialID! must be within [0, " + str(len(regfileNameList)) + ")")
-    RegDF = pd.read_csv(direct + '/' + regfileNameList[trialID], sep=',')
+    RegDF = pd.read_csv(os.path.join(direct, regfileNameList[trialID]), sep=',')
     return RegDF
 
 
@@ -1744,7 +1742,7 @@ def read_SRRasc(direct, datafile, regfileNameList, ExpType, rec_lastFix=False, l
     """    
     # first, check whether the required files are there:
     datafileExist = True
-    datafileName = direct + '/' + datafile
+    datafileName = os.path.join(direct, datafile)
     if not os.path.isfile(datafileName):
         print datafile + ' does not exist!'; datafileExist = False
     
@@ -1757,13 +1755,13 @@ def read_SRRasc(direct, datafile, regfileNameList, ExpType, rec_lastFix=False, l
     else:
         # check whether particular region file exists!            
         for regfile in regfileNameList:
-            regfileName = direct + '/' + regfile
+            regfileName = os.path.join(direct, regfile)
             if not os.path.isfile(regfileName):
                 print regfile + ' does not exist!'; regfileExist = False
     
     # second, process the files
     if datafileExist and regfileExist:
-        f = open(direct + '/' + datafile, 'r'); print "Read ASC: ", f.name; lines = f.readlines(); f.close()   # read EMF file    
+        f = open(os.path.join(direct, datafile), 'r'); print "Read ASC: ", f.name; lines = f.readlines(); f.close()   # read EMF file    
         script, sessdate, srcfile = _getHeader(lines)    # get header lines    
         T_idx, T_lines = _getTrialReg(lines) # get trial regions
     
@@ -1791,16 +1789,57 @@ def write_Sac_Report(direct, SacDF):
     """
     write SacDF to csv file
     """
-    resName = direct + '/' + SacDF.srcfile[0].split('.')[0]; SacDF.to_csv(resName + '_Sac.csv', index=False)
+    resName = os.path.join(direct, SacDF.srcfile[0].split('.')[0]); SacDF.to_csv(resName + '_Sac.csv', index=False)
 
 
 def write_Fix_Report(direct, FixDF):
     """
     write FixDF to csv file
     """
-    resName = direct + '/' + FixDF.srcfile[0].split('.')[0]; FixDF.to_csv(resName + '_Fix.csv', index=False)
+    resName = os.path.join(direct, FixDF.srcfile[0].split('.')[0]); FixDF.to_csv(resName + '_Fix.csv', index=False)
 
 
+def read_write_SRRasc(direct, datafile, regfileNameList, ExpType, rec_lastFix=False, lump_Fix=True, ln=50, zn=50, mn=50):
+    """
+    processing a subject's saccades and fixations, read them from ascii files and write them into csv files
+    arguments:
+        direct -- directory containing specific asc file, the output csv files are stored there
+        datafile -- asc file name
+        regfileNameList -- a list of region file names (trial_id will help select corresponding region files)
+        ExpType -- type of experiments: 'RAN', 'RP'
+        rec_lastFix -- whether (True)or not (False) include the last fixation of a trial and allow it to trigger regression, default = False
+        lump_Fix -- whether (True) or not (False) lump short fixations, default = True
+        ln -- for lumping fixations, maximum duration of a fixation to "lump", default = 50. Fixation <= this value is subject to lumping with adjacent and near enough (determined by zN) fixations
+        zn -- for lumping fixations, maximum distance (in pixels) between two fixations for "lumping"; default = 50, roughly 1.5 character (12/8s)
+        mn -- for lumping fixations, minimum legal fixation duration, default = 50 ms
+    output:
+        SacDF -- saccade data in different trials
+        FixDF -- fixation data in different trials   
+    All these data frames are stored into csv files    
+    """
+    datafileExist = True
+    datafileName = os.path.join(direct, datafile)
+    if not os.path.isfile(datafileName):
+        print datafile + ' does not exist!'; datafileExist = False
+        
+    regfileExist = True    
+    if len(regfileNameList) == 0:
+        # automatically gather all region files in direct
+        for file in os.listdir(direct):
+            if fnmatch.fnmatch(file, '*.region.csv'):
+                regfileNameList.append(str(file))
+    else:
+        # check whether the region file exists in direct
+        for regfile in regfileNameList:
+            regfileName = os.path.join(direct, regfile)
+            if not os.path.isfile(regfileName):
+                print regfile + ' does not exist!'; regfileExist = False
+    
+    if datafileExist and regfileExist:            
+        SacDF, FixDF = read_SRRasc(direct, datafile, regfileNameList, ExpType, rec_lastFix, lump_Fix, ln, zn, mn)
+        write_Sac_Report(direct, SacDF); write_Fix_Report(direct, FixDF)
+
+    
 def read_write_SRRasc_b(direct, regfileNameList, ExpType, rec_lastFix=False, lump_Fix=True, ln=50, zn=50, mn=50):
     """
     processing all subjects' saccades and fixations, read them from ascii files and write them into csv files
@@ -1814,8 +1853,9 @@ def read_write_SRRasc_b(direct, regfileNameList, ExpType, rec_lastFix=False, lum
         zn -- for lumping fixations, maximum distance (in pixels) between two fixations for "lumping"; default = 50, roughly 1.5 character (12/8s)
         mn -- for lumping fixations, minimum legal fixation duration, default = 50 ms
     output:
-        FixDF -- fixation data in different trials of different subjects
-        SacDF -- saccade data in different trials of different subjects
+        SacDF -- saccade data in different trials
+        FixDF -- fixation data in different trials
+    All these data frames are stored into csv files    
     """
     ascfiles = []
     for file in os.listdir(direct):
@@ -1833,7 +1873,7 @@ def read_write_SRRasc_b(direct, regfileNameList, ExpType, rec_lastFix=False, lum
     else:
         # check whether the region file exists in direct
         for regfile in regfileNameList:
-            regfileName = direct + '/' + regfile
+            regfileName = os.path.join(direct, regfile)
             if not os.path.isfile(regfileName):
                 print regfile + ' does not exist!'; regfileExist = False
     
@@ -1865,7 +1905,7 @@ def cal_crlSacFix(direct, subj, regfileNameList, ExpType, recStatus=True, diff_r
     """
     # first, check whether the required files are there:
     datafileExist = True
-    datafileName1 = direct + '/' + subj + '_Sac.csv'; datafileName2 = direct + '/' + subj + '_Fix.csv'
+    datafileName1 = os.path.join(direct, subj + '_Sac.csv'); datafileName2 = os.path.join(direct, subj + '_Fix.csv')
     if not os.path.isfile(datafileName1):
         print subj + '_Sac.csv' + ' does not exist!'; datafileExist = False
     if not os.path.isfile(datafileName2):
@@ -1880,13 +1920,13 @@ def cal_crlSacFix(direct, subj, regfileNameList, ExpType, recStatus=True, diff_r
     else:
         # check whether particular region file exists!
         for regfile in regfileNameList:
-            regfileName = direct + '/' + regfile
+            regfileName = os.path.join(direct, regfile)
             if not os.path.isfile(regfileName):
                 print regfile + ' does not exist!'; regfileExist = False
     
     # second, process the files
     if datafileExist and regfileExist:
-        nameSac = direct + '/' + subj + '_Sac.csv'; nameFix = direct + '/' + subj + '_Fix.csv'
+        nameSac = os.path.join(direct, subj + '_Sac.csv'); nameFix = os.path.join(direct, subj + '_Fix.csv')
         SacDF = pd.read_csv(nameSac, sep=','); FixDF = pd.read_csv(nameFix, sep=',')    
         newSacDF = pd.DataFrame(); newFixDF = pd.DataFrame()     
         crlSac = pd.DataFrame(columns=('subj', 'trial_id', 'eye', 'startline', 'endline', 'SaclineIndex', 'start_time', 'end_time', 'duration', 'x1_pos', 'y1_pos', 'x2_pos', 'y2_pos', 'ampl', 'pk'))
@@ -1938,8 +1978,8 @@ def write_Sac_crlSac(direct, subj, SacDF, crlSac):
         SacDF -- saccade data in different trials with updated line numbers
         crlSac -- crossline saccade data in different trials
     """            
-    nameSac = direct + '/' + subj + '_Sac.csv'; SacDF.to_csv(nameSac, index=False)
-    namecrlSac = direct + '/' + subj + '_crlSac.csv'; crlSac.to_csv(namecrlSac, index=False)
+    nameSac = os.path.join(direct, subj + '_Sac.csv'); SacDF.to_csv(nameSac, index=False)
+    namecrlSac = os.path.join(direct, subj + '_crlSac.csv'); crlSac.to_csv(namecrlSac, index=False)
 
 
 def write_Fix_crlFix(direct, subj, FixDF, crlFix):
@@ -1951,8 +1991,54 @@ def write_Fix_crlFix(direct, subj, FixDF, crlFix):
         FixDF -- fixation data in different trials with updated line numbers
         crlFix -- crossline fixation data in different trials
     """            
-    nameFix = direct + '/' + subj + '_Fix.csv'; FixDF.to_csv(nameFix, index=False)
-    namecrlFix = direct + '/' + subj + '_crlFix.csv'; crlFix.to_csv(namecrlFix, index=False)
+    nameFix = os.path.join(direct, subj + '_Fix.csv'); FixDF.to_csv(nameFix, index=False)
+    namecrlFix = os.path.join(direct, subj + '_crlFix.csv'); crlFix.to_csv(namecrlFix, index=False)
+
+
+def cal_write_SacFix_crlSacFix(direct, subj, regfileNameList, ExpType, recStatus=True, diff_ratio=0.6, frontrange_ratio=0.2, y_range=60, fix_method='DIFF', addCharSp=1):
+    """
+    processing a subject's saccades and fixations, read them from csv files and store them into csv files
+    arguments:
+        direct -- directory containing all asc files
+        subj -- subject ID
+        regfileNameList -- a list of region file names (trial_id will help select corresponding region files)
+        ExpType -- type of experiments: 'RAN', 'RP'
+        recStatus -- whether (True) or not (False) record questionable saccades and fixations, default = True 
+        diff_ratio -- for calculating crossline saccades(fixations), the ratio of maximum distance between the center of the last word and the center of the first word in a line, default = 0.6
+        frontrange_ratio -- for calculating crossline saccades(fixations), the ratio to check backward crossline saccade or fixation: such saccade or fixation usually starts around the line beginning, default = 0.2
+        y_range -- for calculating crossline saccades(fixations), the biggest y difference indicating the eyes are crossing lines or moving away from that line (this must be similar to the distance between two lines), default = 60
+        fix_method -- fixation method: 'DIFF': based on difference in x_axis; 'SAC': based on crosslineSac ('SAC' is preferred since saccade is kinda more accurate!), default = 'DIFF'
+        addCharSp -- number of single character space added to EMF for catching overshoot fixations; default is 1
+    output:
+        SacDF -- saccade data in different trials with updated line numbers of different subjects
+        crlSac -- crossline saccade data in different trials of different subjects
+        FixDF -- fixation data in different trials with updated line numbers of different subjects
+        crlFix -- crossline fixation data in different trials of different subjects
+    All these data frames are stored in csv files
+    """
+    datafileExist = True
+    datafileName1 = os.path.join(direct, subj + '_Fix.csv'); datafileName2 = os.path.join(direct, subj + '_Sac.csv')
+    if not os.path.isfile(datafileName1):
+        print subj + '_Fix.csv' + ' does not exist!'; datafileExist = False
+    if not os.path.isfile(datafileName2):
+        print subj + '_Sac.csv' + ' does not exist!'; datafileExist = False
+    
+    regfileExist = True
+    if len(regfileNameList) == 0:
+        # automatically gather all region files in direct
+        for file in os.listdir(direct):
+            if fnmatch.fnmatch(file, '*.region.csv'):
+                regfileNameList.append(str(file))
+    else:
+        # check whether particular region file exists!
+        for regfile in regfileNameList:
+            regfileName = os.path.join(direct, regfile)
+            if not os.path.isfile(regfileName):
+                print regfile + ' does not exist!'; regfileExist = False
+
+    if datafileExist and regfileExist:
+        SacDF, crlSac, FixDF, crlFix = cal_crlSacFix(direct, subj, regfileNameList, ExpType, recStatus, diff_ratio, frontrange_ratio, y_range, fix_method, addCharSp)
+        write_Sac_crlSac(direct, subj, SacDF, crlSac); write_Fix_crlFix(direct, subj, FixDF, crlFix)
 
 
 def cal_write_SacFix_crlSacFix_b(direct, regfileNameList, ExpType, recStatus=True, diff_ratio=0.6, frontrange_ratio=0.2, y_range=60, fix_method='DIFF', addCharSp=1):
@@ -1991,7 +2077,7 @@ def cal_write_SacFix_crlSacFix_b(direct, regfileNameList, ExpType, recStatus=Tru
     else:
         # check whether particular region file exists!
         for regfile in regfileNameList:
-            regfileName = direct + '/' + regfile
+            regfileName = os.path.join(direct, regfile)
             if not os.path.isfile(regfileName):
                 print regfile + ' does not exist!'; regfileExist = False
 
@@ -2028,7 +2114,7 @@ def read_cal_SRRasc(direct, datafile, regfileNameList, ExpType, rec_lastFix=Fals
     """
     # first, check whether the required files are there:
     datafileExist = True
-    datafileName = direct + '/' + datafile
+    datafileName = os.path.join(direct, datafile)
     if not os.path.isfile(datafileName):
         print datafile + ' does not exist!'; datafileExist = False
     
@@ -2041,14 +2127,14 @@ def read_cal_SRRasc(direct, datafile, regfileNameList, ExpType, rec_lastFix=Fals
     else:
         # check whether particular region file exists!
         for regfile in regfileNameList:
-            regfileName = direct + '/' + regfile
+            regfileName = os.path.join(direct, regfile)
             if not os.path.isfile(regfileName):
                 print regfile + ' does not exist!'; regfileExist = False
     
     # second, process the files
     if datafileExist and regfileExist:
         # read EMF file
-        f = open(direct + '/' + datafile, 'r'); print "Read ASC: ", f.name; lines = f.readlines(); f.close()   # read EMF file    
+        f = open(os.path.join(direct, datafile), 'r'); print "Read ASC: ", f.name; lines = f.readlines(); f.close()   # read EMF file    
         script, sessdate, srcfile = _getHeader(lines)    # get header lines    
         T_idx, T_lines = _getTrialReg(lines) # get trial regions
     
@@ -2097,7 +2183,56 @@ def read_cal_SRRasc(direct, datafile, regfileNameList, ExpType, rec_lastFix=Fals
     
         return SacDF, crlSac, FixDF, crlFix
         
+
+def read_cal_write_SRRasc(direct, datafile, regfileNameList, ExpType, rec_lastFix=False, lump_Fix=True, ln=50, zn=50, mn=50, recStatus=True, diff_ratio=0.6, frontrange_ratio=0.2, y_range=60, fix_method='DIFF', addCharSp=1):
+    """
+    processing a subject's fixation and saccade data
+    arguments:
+        direct -- directory containing all asc files
+        datafile -- asc file name
+        regfileNameList -- a list of region file names (trial_id will help select corresponding region files)
+        ExpType -- type of experiments: 'RAN', 'RP'
+        rec_lastFix -- whether (True)or not (False) include the last fixation of a trial and allow it to trigger regression, default = False
+        lump_Fix -- whether (True) or not (False) lump short fixations, default = True
+        ln -- for lumping fixations, maximum duration of a fixation to "lump", default = 50. Fixation <= this value is subject to lumping with adjacent and near enough (determined by zN) fixations
+        zn -- for lumping fixations, maximum distance (in pixels) between two fixations for "lumping"; default = 50, roughly 1.5 character (12/8s)
+        mn -- for lumping fixations, minimum legal fixation duration, default = 50 ms
+        recStatus -- whether (True) or not (False) record questionable saccades and fixations, default = True 
+        diff_ratio -- for calculating crossline saccades(fixations), the ratio of maximum distance between the center of the last word and the center of the first word in a line, default = 0.6
+        frontrange_ratio -- for calculating crossline saccades(fixations), the ratio to check backward crossline saccade or fixation: such saccade or fixation usually starts around the line beginning, default = 0.2
+        y_range -- for calculating crossline saccades(fixations), the biggest y difference indicating the eyes are crossing lines or moving away from that line (this must be similar to the distance between two lines), default = 60
+        fix_method -- fixation method: 'DIFF': based on difference in x_axis; 'SAC': based on crosslineSac ('SAC' is preferred since saccade is kinda more accurate!), default = 'DIFF'
+        addCharSp -- number of single character space added to RegDF for catching overshoot fixations; default is 1
+    output:
+        SacDF -- saccade data in different trials of different subjects
+        crlSacDF -- crossline saccade data in different trials of different subjects
+        FixDF -- fixation data in different trials of different subjects
+        crlFixDF -- crossline fixation data in different trials of different subjects
+    All these data frames are stored into csv files    
+    """
+    datafileExist = True
+    datafileName = os.path.join(direct, datafile)
+    if not os.path.isfile(datafileName):
+        print datafile + ' does not exist!'; datafileExist = False
+
+    regfileExist = True
+    if len(regfileNameList) == 0:
+        # automatically gather all region files in direct
+        for file in os.listdir(direct):
+            if fnmatch.fnmatch(file, '*.region.csv'):
+                regfileNameList.append(str(file))
+    else:
+        # check whether particular region file exists!
+        for regfile in regfileNameList:
+            regfileName = os.path.join(direct, regfile)
+            if not os.path.isfile(regfileName):
+                print regfile + ' does not exist!'; regfileExist = False
     
+    if datafileExist and regfileExist:
+        SacDF, crlSac, FixDF, crlFix = read_cal_SRRasc(direct, datafile, regfileNameList, ExpType, rec_lastFix, lump_Fix, ln, zn, mn, recStatus, diff_ratio, frontrange_ratio, y_range, fix_method, addCharSp)
+        write_Sac_crlSac(direct, datafile.split('.')[0], SacDF, crlSac); write_Fix_crlFix(direct, datafile.split('.')[0], FixDF, crlFix)
+
+  
 def read_cal_write_SRRasc_b(direct, regfileNameList, ExpType, rec_lastFix=False, lump_Fix=True, ln=50, zn=50, mn=50, recStatus=True, diff_ratio=0.6, frontrange_ratio=0.2, y_range=60, fix_method='DIFF', addCharSp=1):
     """
     processing all subjects' fixation and saccade data
@@ -2121,6 +2256,7 @@ def read_cal_write_SRRasc_b(direct, regfileNameList, ExpType, rec_lastFix=False,
         crlSacDF -- crossline saccade data in different trials of different subjects
         FixDF -- fixation data in different trials of different subjects
         crlFixDF -- crossline fixation data in different trials of different subjects
+    All these data frames are stored into csv files    
     """
     ascfiles = []
     for file in os.listdir(direct):
@@ -2138,7 +2274,7 @@ def read_cal_write_SRRasc_b(direct, regfileNameList, ExpType, rec_lastFix=False,
     else:
         # check whether particular region file exists!
         for regfile in regfileNameList:
-            regfileName = direct + '/' + regfile
+            regfileName = os.path.join(direct, regfile)
             if not os.path.isfile(regfileName):
                 print regfile + ' does not exist!'; regfileExist = False
     
@@ -2186,8 +2322,8 @@ def _image_SacFix(direct, subj, bitmapNameList, Sac, crlSac, Fix, crlFix, RegDF,
     xsz = 18; ttf = ImageFont.truetype(fontpath, xsz)
     if PNGmethod == 0:
         # open the bitmap of the paragraph
-        img1 = Image.open(direct + '/' + bitmapNameList[trialID]); draw1 = ImageDraw.Draw(img1)
-        img2 = Image.open(direct + '/' + bitmapNameList[trialID]); draw2 = ImageDraw.Draw(img2)
+        img1 = Image.open(os.path.join(direct, bitmapNameList[trialID])); draw1 = ImageDraw.Draw(img1)
+        img2 = Image.open(os.path.join(direct, bitmapNameList[trialID])); draw2 = ImageDraw.Draw(img2)
     elif PNGmethod == 1:        
         descents = _getStrikeDescents(fontpath, xsz); ascents = _getStrikeAscents(fontpath, xsz)   
         fg = (0,0,0); bg = (232,232,232); dim = (1280,1024)
@@ -2301,8 +2437,8 @@ def _image_SacFix(direct, subj, bitmapNameList, Sac, crlSac, Fix, crlFix, RegDF,
                 draw2.line((crlSac.x1_pos[ind], crlSac.y1_pos[ind], crlSac.x2_pos[ind], crlSac.y2_pos[ind]), fill=col_leftSac, width=2)
 
         # save img1 and img2
-        img1.save(direct + '/' + subj + '_FixSac_trial' + str(trialID) + '.png', 'PNG')
-        img2.save(direct + '/' + subj + '_crlFixSac_trial' + str(trialID) + '.png', 'PNG')                
+        img1.save(os.path.join(direct, subj + '_FixSac_trial' + str(trialID) + '.png'), 'PNG')
+        img2.save(os.path.join(direct, subj + '_crlFixSac_trial' + str(trialID) + '.png'), 'PNG')                
     
     elif method == 'SAC':
         # draw saccades on img1
@@ -2329,8 +2465,8 @@ def _image_SacFix(direct, subj, bitmapNameList, Sac, crlSac, Fix, crlFix, RegDF,
                 draw2.line((crlSac.x1_pos[ind], crlSac.y1_pos[ind], crlSac.x2_pos[ind], crlSac.y2_pos[ind]), fill=col_leftSac, width=2)
 
         # save img1 and img2
-        img1.save(direct + '/' + subj + '_Sac_trial' + str(trialID) + '.png', 'PNG')
-        img2.save(direct + '/' + subj + '_crlSac_trial' + str(trialID) + '.png', 'PNG')        
+        img1.save(os.path.join(direct, subj + '_Sac_trial' + str(trialID) + '.png'), 'PNG')
+        img2.save(os.path.join(direct, subj + '_crlSac_trial' + str(trialID) + '.png'), 'PNG')        
         
     elif method == 'FIX':
         radius_ratio = max_FixRadius/max(Fix.duration)
@@ -2372,8 +2508,8 @@ def _image_SacFix(direct, subj, bitmapNameList, Sac, crlSac, Fix, crlFix, RegDF,
                 draw2.text((crlFix.x_pos[ind], crlFix.y_pos[ind]), str(crlFix.duration[ind]), font=ttf, fill=col_num)
         
         # save img1 and img2
-        img1.save(direct + '/' + subj + '_Fix_trial' + str(trialID) + '.png', 'PNG') 
-        img2.save(direct + '/' + subj + '_crlFix_trial' + str(trialID) + '.png', 'PNG') 
+        img1.save(os.path.join(direct, subj + '_Fix_trial' + str(trialID) + '.png'), 'PNG') 
+        img2.save(os.path.join(direct, subj + '_crlFix_trial' + str(trialID) + '.png'), 'PNG') 
 
 
 # main functions for drawing saccades and fixations
@@ -2406,8 +2542,8 @@ def draw_SacFix(direct, subj, regfileNameList, bitmapNameList, method, max_FixRa
     """
     # first, check whether the required files are there:
     datafileExist = True
-    datafileName1 = direct + '/' + subj + '_Sac.csv'; datafileName2 = direct + '/' + subj + '_Fix.csv' 
-    datafileName3 = direct + '/' + subj + '_crlSac.csv'; datafileName4 = direct + '/' + subj + '_crlFix.csv'
+    datafileName1 = os.path.join(direct, subj + '_Sac.csv'); datafileName2 = os.path.join(direct, subj + '_Fix.csv') 
+    datafileName3 = os.path.join(direct, subj + '_crlSac.csv'); datafileName4 = os.path.join(direct, subj + '_crlFix.csv')
     if method == 'ALL':
         if not os.path.isfile(datafileName1):
             print subj + '_Sac.csv' + ' does not exist!'; datafileExist = False
@@ -2437,7 +2573,7 @@ def draw_SacFix(direct, subj, regfileNameList, bitmapNameList, method, max_FixRa
     else:
         # check whether particular region file exists!
         for regfile in regfileNameList:
-            regfileName = direct + '/' + regfile
+            regfileName = os.path.join(direct, regfile)
             if not os.path.isfile(regfileName):
                 print regfile + ' does not exist!'; regfileExist = False
                 
@@ -2451,15 +2587,15 @@ def draw_SacFix(direct, subj, regfileNameList, bitmapNameList, method, max_FixRa
         else:
             # check whether particular region file exists!
             for bitmapfile in bitmapNameList:
-                bitmapfileName = direct + '/' + bitmapfile
+                bitmapfileName = os.path.join(direct, bitmapfile)
                 if not os.path.isfile(bitmapfileName):
                     print bitmapfile + ' does not exist!'; bitmapExist = False 
                        
     # second, process the files
     if datafileExist and regfileExist and ((PNGmethod == 0 and bitmapExist) or PNGmethod == 1):
         # read files
-        nameSac = direct + '/' + subj + '_Sac.csv'; nameFix = direct + '/' + subj + '_Fix.csv' 
-        namecrlSac = direct + '/' + subj + '_crlSac.csv'; namecrlFix = direct + '/' + subj + '_crlFix.csv'
+        nameSac = os.path.join(direct, subj + '_Sac.csv'); nameFix = os.path.join(direct, subj + '_Fix.csv') 
+        namecrlSac = os.path.join(direct, subj + '_crlSac.csv'); namecrlFix = os.path.join(direct, subj + '_crlFix.csv')
         SacDF = pd.read_csv(nameSac, sep=','); FixDF = pd.read_csv(nameFix, sep=',')
         crlSacDF = pd.read_csv(namecrlSac, sep=','); crlFixDF = pd.read_csv(namecrlFix, sep=',')
     
@@ -2516,7 +2652,7 @@ def draw_SacFix_b(direct, regfileNameList, bitmapNameList, method, max_FixRadius
     else:
         # check whether particular region file exists!
         for regfile in regfileNameList:
-            regfileName = direct + '/' + regfile
+            regfileName = os.path.join(direct, regfile)
             if not os.path.isfile(regfileName):
                 print regfile + ' does not exist!'; regfileExist = False
 
@@ -2530,7 +2666,7 @@ def draw_SacFix_b(direct, regfileNameList, bitmapNameList, method, max_FixRadius
         else:
             # check whether particular region file exists!
             for bitmapfile in bitmapNameList:
-                bitmapfileName = direct + '/' + bitmapfile
+                bitmapfileName = os.path.join(direct, bitmapfile)
                 if not os.path.isfile(bitmapfileName):
                     print bitmapfile + ' does not exist!'; bitmapExist = False    
     
@@ -2555,7 +2691,7 @@ def draw_blinks(direct, trialNum):
     for trialID in range(trialNum):
         blinksdata = []
         for subj in subjlist:
-            FixDF = pd.read_csv(direct + '/' + subj + '_Fix.csv', sep=',')
+            FixDF = pd.read_csv(os.path.join(direct, subj + '_Fix.csv'), sep=',')
             FixDFtemp = FixDF[FixDF.trial_id==trialID].reset_index(); blinksdata.append(FixDFtemp.blinks[0])
         # draw histogram    
         fig = plt.figure()
@@ -2584,9 +2720,29 @@ def changePNG2GIF(direct):
         print 'PNG bitmap is missing!'
     else:
         for PNGfile in PNGList:
-            im = Image.open(direct + '/' + PNGfile)
+            im = Image.open(os.path.join(direct, PNGfile))
             im = im.convert('RGB').convert('P', palette = Image.ADAPTIVE)
-            im.save(direct + '/' + PNGfile.split('.')[0] + '.gif')
+            im.save(os.path.join(direct, PNGfile.split('.')[0] + '.gif'))
+
+
+def playWav(soundFile, cond):
+    """
+    play a sound in background
+    arguments:
+        soundfile -- name of wav sound file
+        cond -- 0, stop; 1, start
+    """
+    if sys.platform.startswith('win'):
+        # under Windows
+        import winsound
+        if cond == 0:
+            winsound.PlaySound(None, winsound.SND_ALIAS | winsound.SND_ASYNC)   # end sound
+        elif cond == 1:
+            winsound.PlaySound(soundFile,  winsound.SND_ALIAS | winsound.SND_ASYNC) # start sound
+
+    elif sys.platform.startswith('linux') > -1:
+        # under Linux/Mac
+        os.system("start " + soundFile)        
 
 
 def _animate_EM(direct, subj, bitmapFile, soundFile, Fix, trialID, max_FixRadius=3):
@@ -2635,7 +2791,7 @@ def _animate_EM(direct, subj, bitmapFile, soundFile, Fix, trialID, max_FixRadius
             while curTime > Fix.loc[ind, 'start_time']:
                 ind += 1
             # start sound
-            winsound.PlaySound(soundFile,  winsound.SND_ALIAS | winsound.SND_ASYNC)
+            playWav(soundFile, 1)
             st_time = time.time()   # starting time
             # start screen and turtle player
             while ind < len(Fix) and not np.isnan(Fix.loc[ind, 'line_no']):
@@ -2663,7 +2819,7 @@ def _animate_EM(direct, subj, bitmapFile, soundFile, Fix, trialID, max_FixRadius
             timeLeft, timeRight = FixLeft.loc[indLeft, 'start_time'], FixRight.loc[indRight, 'start_time']
             LeftFinish, RightFinish = False, False
             # start sound
-            winsound.PlaySound(soundFile,  winsound.SND_ALIAS | winsound.SND_ASYNC)
+            playWav(soundFile, 1)
             st_time = time.time()
             # start screen and turtle player            
             while not LeftFinish or not RightFinish:
@@ -2722,16 +2878,16 @@ def _animate_EM(direct, subj, bitmapFile, soundFile, Fix, trialID, max_FixRadius
                         timeRight = FixRight.loc[indRight, 'start_time']   # move to next start_time                
                 
     def endAni():
-        winsound.PlaySound(None, winsound.SND_ALIAS | winsound.SND_ASYNC)   # end sound
+        playWav(soundFile, 0)   # end sound            
         turtle.exitonclick()    # end screen
     
     # set keyboard bindings
     turtle.listen()
     turtle.onkey(startAni, 's') # key 's' to start animation
     turtle.onkey(endAni, 'e')  # key 'e' to end animation
-    
-    turtle.exitonclick() # click to quit    
-    winsound.PlaySound(None, winsound.SND_ALIAS | winsound.SND_ASYNC) # end sound
+
+    playWav(soundFile, 0)   # end sound    
+    turtle.exitonclick() # click to quit
 
 
 def animate(direct, subj, trialID):
@@ -2783,13 +2939,13 @@ def animate(direct, subj, trialID):
         print 'Sound data of ' + subj + ' is missing!'
     
     if csvExist and bitmapExist and soundExist and trialExist:
-        csvFix = direct + '/' + csvfile_subj; FixDF = pd.read_csv(csvFix, sep=',')
+        csvFix = os.path.join(direct, csvfile_subj); FixDF = pd.read_csv(csvFix, sep=',')
         Fix = FixDF[FixDF.trial_id == trialID].reset_index()
         if len(bitmapNameList) == 1:
-            bitmapFile = direct + '/' + bitmapNameList[0]
+            bitmapFile = os.path.join(direct, bitmapNameList[0])
         else:
-            bitmapFile = direct + '/' + bitmapNameList[trialID]
-        soundFile = direct + '/' + soundfile_subj    
+            bitmapFile = os.path.join(direct, bitmapNameList[trialID])
+        soundFile = os.path.join(direct, soundfile_subj)    
         
         _animate_EM(direct, subj, bitmapFile, soundFile, Fix, trialID)
         
@@ -3165,7 +3321,7 @@ def cal_write_EM(direct, subj, regfileNameList, addCharSp=1):
     """
     # first, check whether the required files are there:
     datafileExist = True
-    datafileName1 = direct + '/' + subj + '_Sac.csv'; datafileName2 = direct + '/' + subj + '_Fix.csv' 
+    datafileName1 = os.path.join(direct, subj + '_Sac.csv'); datafileName2 = os.path.join(direct, subj + '_Fix.csv') 
     if not os.path.isfile(datafileName1):
         print subj + '_Sac.csv' + ' does not exist!'; datafileExist = False
     elif not os.path.isfile(datafileName2):
@@ -3180,14 +3336,14 @@ def cal_write_EM(direct, subj, regfileNameList, addCharSp=1):
     else:
         # check whether particular region file exists!
         for regfile in regfileNameList:
-            regfileName = direct + '/' + regfile
+            regfileName = os.path.join(direct, regfile)
             if not os.path.isfile(regfileName):
                 print regfile + ' does not exist!'; regfileExist = False
     
     # second, process the files
     if datafileExist and regfileExist:
-        nameSac = direct + '/' + subj + '_Sac.csv'; SacDF = pd.read_csv(nameSac, sep=',')   # read saccade data
-        nameFix = direct + '/' + subj + '_Fix.csv'; FixDF = pd.read_csv(nameFix, sep=',')   # read fixation data
+        nameSac = os.path.join(direct, subj + '_Sac.csv'); SacDF = pd.read_csv(nameSac, sep=',')   # read saccade data
+        nameFix = os.path.join(direct, subj + '_Fix.csv'); FixDF = pd.read_csv(nameFix, sep=',')   # read fixation data
         for trialID in range(len(regfileNameList)):
             RegDF = _getRegDF(direct, regfileNameList, trialID) # get region file 
             SacDFtemp = SacDF[SacDF.trial_id==trialID].reset_index()  # get saccade of the trial
@@ -3213,9 +3369,9 @@ def cal_write_EM(direct, subj, regfileNameList, addCharSp=1):
                 _cal_EM(RegDF, FixDFtemp, SacDFtemp, EMDF)
                 # store results
                 if np.unique(SacDFtemp.eye)[0] == 'L':
-                    nameEM = direct + '/' + subj + '_EM_trial' + str(trialID) + '_L.csv'; EMDF.to_csv(nameEM, index=False)
+                    nameEM = os.path.join(direct, subj + '_EM_trial' + str(trialID) + '_L.csv'); EMDF.to_csv(nameEM, index=False)
                 elif np.unique(SacDFtemp.eye)[0] == 'R':
-                    nameEM = direct + '/' + subj + '_EM_trial' + str(trialID) + '_R.csv'; EMDF.to_csv(nameEM, index=False)   
+                    nameEM = os.path.join(direct, subj + '_EM_trial' + str(trialID) + '_R.csv'); EMDF.to_csv(nameEM, index=False)   
             else:
                 # double eye data
                 SacDFtemp_L = SacDFtemp[SacDFtemp.eye=='L'].reset_index(); SacDFtemp_R = SacDFtemp[SacDFtemp.eye=='R'].reset_index()                 
@@ -3235,7 +3391,7 @@ def cal_write_EM(direct, subj, regfileNameList, addCharSp=1):
                 _modEM(EMDF_L, addCharSp) # modify EMF's mod_x1 and mod_x2
                 _cal_EM(RegDF, FixDFtemp_L, SacDFtemp_L, EMDF_L)
                 # store results
-                nameEM_L = direct + '/' + subj + '_EM_trial' + str(trialID) + '_L.csv'; EMDF_L.to_csv(nameEM_L, index=False)
+                nameEM_L = os.path.join(direct, subj + '_EM_trial' + str(trialID) + '_L.csv'); EMDF_L.to_csv(nameEM_L, index=False)
             
                 print "Cal EM measures: Subj: " + subj + ", Trial: " + str(trialID) + ' Right Eye'
                 # create result data frame
@@ -3251,7 +3407,7 @@ def cal_write_EM(direct, subj, regfileNameList, addCharSp=1):
                 _modEM(EMDF_R, addCharSp) # modify EMF's mod_x1 and mod_x2
                 _cal_EM(RegDF, FixDFtemp_R, SacDFtemp_R, EMDF_R)
                 # store results
-                nameEM_R = direct + '/' + subj + '_EM_trial' + str(trialID) + '_R.csv'; EMDF_R.to_csv(nameEM_R, index=False)
+                nameEM_R = os.path.join(direct, subj + '_EM_trial' + str(trialID) + '_R.csv'); EMDF_R.to_csv(nameEM_R, index=False)
 
 
 def cal_write_EM_b(direct, regfileNameList, addCharSp=1):
@@ -3281,10 +3437,10 @@ def cal_write_EM_b(direct, regfileNameList, addCharSp=1):
     else:
         # check whether particular region file exists!
         for regfile in regfileNameList:
-            regfileName = direct + '/' + regfile
+            regfileName = os.path.join(direct, regfile)
             if not os.path.isfile(regfileName):
                 print regfile + ' does not exist!'; regfileExist = False
     
     if regfileExist:
         for subj in subjlist:
-            cal_write_EM(direct, subj, regfileNameList)      
+            cal_write_EM(direct, subj, regfileNameList)  
