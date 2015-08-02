@@ -13,6 +13,12 @@ from PIL import Image, ImageDraw, ImageFont
 import matplotlib.font_manager as font_manager
 import matplotlib.pyplot as plt
 
+# global variables for language types
+EngLangList = ['English', 'French', 'German', 'Dutch', 'Spanish', 'Italian', 'Greek']
+ChnLangList = ['Chinese']
+KJLangList = ['Korean', 'Japanese']
+puncList = [u'，', u'。', u'、', u'：', u'？', u'！']
+
 # functions starting with "_" are helper functions, ending with "_b" are batch user functions
 
 # -----------------------------------------------------------------------------
@@ -47,11 +53,11 @@ def readDict(fn):
 # -----------------------------------------------------------------------------
 # -----------------------------------------------------------------------------
 # functions for generating bitmap used for paragraph reading
-def _InputDict(resDict, curKey, Name, Word, length, height, baseline, curline, x1_pos, y1_pos, x2_pos, y2_pos, b_x1, b_y1, b_x2, b_y2):
+def _InputDict(resDict, curKey, Name, langType, Word, length, height, baseline, curline, x1_pos, y1_pos, x2_pos, y2_pos, b_x1, b_y1, b_x2, b_y2):
     """
     write result of each word into resDict: note that dictionary value may have a different sequence as in the final csv
     """
-    resDict[curKey] = Name; resDict[curKey] = Word; resDict[curKey] = length; resDict[curKey] = height; resDict[curKey] = baseline; resDict[curKey] = curline
+    resDict[curKey] = Name; resDict[curKey] = langType; resDict[curKey] = Word; resDict[curKey] = length; resDict[curKey] = height; resDict[curKey] = baseline; resDict[curKey] = curline
     resDict[curKey] = x1_pos; resDict[curKey] = y1_pos; resDict[curKey] = x2_pos; resDict[curKey] = y2_pos
     resDict[curKey] = b_x1; resDict[curKey] = b_y1; resDict[curKey] = b_x2; resDict[curKey] = b_y2    
     return(resDict)
@@ -59,15 +65,16 @@ def _InputDict(resDict, curKey, Name, Word, length, height, baseline, curline, x
 
 def _writeCSV(regFile, resDict, codeMethod):
     """
-    write resDict to csv file: Name, WordID, Word, length, height, baseline, line_no, x1_pos, y1_pos, x2_pos, y2_pos, b_x1, b_y1, b_x2, b_y2
+    write resDict to csv file: Name, Language, WordID, Word, length, height, baseline, line_no, x1_pos, y1_pos, x2_pos, y2_pos, b_x1, b_y1, b_x2, b_y2
     """
-    DF = pd.DataFrame(np.zeros((len(resDict), 15)))
-    col = ['Name', 'WordID', 'Word', 'length', 'height', 'baseline', 'line_no', 'x1_pos', 'y1_pos', 'x2_pos', 'y2_pos', 'b_x1', 'b_y1', 'b_x2', 'b_y2']
+    DF = pd.DataFrame(np.zeros((len(resDict), 16)))
+    col = ['Name', 'Language', 'WordID', 'Word', 'length', 'height', 'baseline', 'line_no', 'x1_pos', 'y1_pos', 'x2_pos', 'y2_pos', 'b_x1', 'b_y1', 'b_x2', 'b_y2']
     cur = 0    
     for key in resDict.keys():
-        DF.loc[cur,0] = resDict[key][0]; DF.loc[cur,1] = key
-        DF.loc[cur,2] = resDict[key][1].encode(codeMethod)
-        for i in np.arange(2,14):
+        DF.loc[cur,0] = resDict[key][0]; DF.loc[cur,1] = resDict[key][1]
+        DF.loc[cur,2] = key        
+        DF.loc[cur,3] = resDict[key][2].encode(codeMethod)
+        for i in np.arange(3,15):
             DF.loc[cur,i+1] = resDict[key][i]
         cur += 1
     DF.columns = col; DF.sort(columns='WordID')
@@ -143,13 +150,18 @@ class FontDict(dict):
 # functions for calculating descents and ascents of characters in words 
 def _getStrikeAscents(fontFileName, size):
     """
-    Build and return a dictionary of ascents (in pixels) for a specific font/size:    
+    Build and return a dictionary of ascents (in pixels) for a specific font/size:
+    For English:
     group1: u'bdfhijkl|()\"\''
     group2: u't'
     group3: u'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
     group4: u'0123456789'
     group5: u'?!'
     group6: u'%&@$'
+    For English-like languages (e.g., Spanish, French, Italian, Greek):
+    group7: u'àáâãäåèéêëìíîïñòóôõöùúûüāăćĉċčēĕėěĩīĭńňōŏőŕřśŝšũūŭůűŵźżž'
+    group8: u'ÀÁÂÃÄÅÆÈÉÊËÌÍÎÏÐÑÒÓÔÕÖØÙÚÛÜÝĀĂĆĈĊČĎĒđĔĖĚĜĞĠĤĥĴĹĺłŃŇŊŌŎŐŒŔŘŚŜŠŤŦŨŪŬŮŰŴŶŸŹŻŽƁſ'
+    group9: u'ßÞƀƄƚɓɫɬʖʕʔʡʢ'
     """
     ttf = ImageFont.truetype(fontFileName, size) # init the specified font resource
     (wd_o, ht_o) = ttf.getsize(u'o')    # used as the baseline character
@@ -161,12 +173,20 @@ def _getStrikeAscents(fontFileName, size):
     (wd_ques, ht_ques) = ttf.getsize(u'?')  # representative of group 5
     (wd_and, ht_and) = ttf.getsize(u'&')    # representative of group 6
     
+    (wd_sap, ht_sap) = ttf.getsize(u'à')   # representative of group 7
+    (wd_cAp, ht_cAp) = ttf.getsize(u'À')   # representative of group 8 
+    (wd_beta, ht_beta) = ttf.getsize(u'ß')  # representative of group 9
+    
     return ({u'bdfhijkl|()\"\'': ht_b - ht_o,
              u't': ht_t - ht_o,
              u'ABCDEFGHIJKLMNOPQRSTUVWXYZ': ht_A - ht_o,
              u'0123456789': ht_0 - ht_o,
              u'?!': ht_ques - ht_o,
-             u'%&@$': ht_and - ht_o})
+             u'%&@$': ht_and - ht_o,
+             u'àáâãäåèéêëìíîïñòóôõöùúûüāăćĉċčēĕėěĩīĭńňōŏőŕřśŝšũūŭůűŵźżž': ht_sap - ht_o,
+             u'ÀÁÂÃÄÅÆÈÉÊËÌÍÎÏÐÑÒÓÔÕÖØÙÚÛÜÝĀĂĆĈĊČĎĒđĔĖĚĜĞĠĤĥĴĹĺłŃŇŊŌŎŐŒŔŘŚŜŠŤŦŨŪŬŮŰŴŶŸŹŻŽƁſ': ht_cAp - ht_o,
+             u'ßÞƀƄƚɓɫɬʖʕʔʡʢ': ht_beta - ht_o             
+            })
 
 
 def _getStrikeCenters(fontFileName, size):  
@@ -181,7 +201,17 @@ def _getStrikeCenters(fontFileName, size):
 def _getStrikeDescents(fontFileName, size):
     """
     Build and return a dictionary of descents (in pixels) for a specific font/size.
-    group1: u'gpqy'; group2: u'j'; group3: u'Q@&$'; group4: u','; group5: u';'; group6: (u'|()_'
+    For English:
+    group1: u'gpqy'
+    group2: u'j'
+    group3: u'Q@&$'
+    group4: u','
+    group5: u';'
+    group6: (u'|()_'
+    For English-like languages (e.g., Spanish, French, Italian, Greek):
+    group7: u'çęŋųƍƹȝȷȿɿʅųƺņŗş'
+    group8: u'ýÿĝğġģįĵţÿĝğġģįĵţ'
+    group9: u'ÇĄĢĘĮĶĻļŅŖŞŢŲ'
     """
     ttf = ImageFont.truetype(fontFileName, size) # init the specified font resource
     (wd_o, ht_o) = ttf.getsize(u'o')    # used as the baseline for "gpqy"    
@@ -200,14 +230,22 @@ def _getStrikeDescents(fontFileName, size):
     (wd_semicolon, ht_semicolon) = ttf.getsize(u';')
     
     (wd_l, ht_l) = ttf.getsize(u'l')    # used as the baseline for "|()_"
-    (wd_or, ht_or) = ttf.getsize(u'|')    
-
+    (wd_or, ht_or) = ttf.getsize(u'|')  
+    
+    (wd_scbelow, ht_scbelow) = ttf.getsize(u'ç')
+    (wd_yhead, ht_yhead) = ttf.getsize(u'ý')
+    (wd_cCbelow, ht_cCbelow) = ttf.getsize(u'Ç')
+    
     return ({u'gpqy': ht_o - ht_g, 
              u'j': ht_i - ht_j,
              u'Q@&$': ht_O - ht_Q,
              u',': ht_dot - ht_comma,
              u';': ht_colon - ht_semicolon,
-             u'|()_': ht_l - ht_or})
+             u'|()_': ht_l - ht_or,
+             u'çęŋųƍƹȝȷȿɿʅ': ht_o - ht_scbelow,
+             u'ýÿĝğġģįĵţÿĝğġģįĵţ': ht_l - ht_yhead, 
+             u'ÇĄĢĘĮĶĻļŅŖŞŢŲ': ht_O - ht_cCbelow 
+            })
 
 
 def _getKeyVal(char, desasc_dict):
@@ -240,8 +278,10 @@ def _cAspect(imgfont, char):
 
 
 # user functions for generating bitmaps and region files
-def Praster(direct, fontpath, langType, codeMethod='utf_8', text=[u'The quick brown fox jumps over the lazy dog.', u'The lazy tabby cat sleeps in the sun all afternoon.'],
-            dim=(1280,1024), fg=(0,0,0), bg=(232,232,232), wfont=None, regfile=True, lmargin=86, tmargin=86, linespace=43, fht=18, fwd=None, bbox=False, bbox_big=False, 
+def Praster(direct, fontpath, langType, codeMethod='utf_8', 
+            text=[u'The quick brown fox jumps over the lazy dog.', u'The lazy tabby cat sleeps in the sun all afternoon.'],
+            dim=(1280,1024), fg=(0,0,0), bg=(232,232,232), wfont=None, regfile=True, lmargin=86, tmargin=86, 
+            linespace=43, fht=18, fwd=None, bbox=False, bbox_big=False, 
             ID='test', addspace=18, log=False):
     """
     Rasterize 'text' using 'font' according to the specified parameters. 
@@ -281,24 +321,14 @@ def Praster(direct, fontpath, langType, codeMethod='utf_8', text=[u'The quick br
     else:
         ttf = ImageFont.truetype(fontpath, fht) # init the specified font resource
     
-    if langType == 'English':
-        # create descents and ascents dictionaries
-        descents = _getStrikeDescents(fontpath, fht); ascents = _getStrikeAscents(fontpath, fht)
-
-        if log: 
-            import json
-            logfileH = codecs.open(os.path.join(direct, 'Praster.log'), 'wb', encoding=codeMethod)
-            logfileH.write('ascents\n'); json.dump(ascents, logfileH); logfileH.write('\n')
-            logfileH.write('descents\n'); json.dump(descents, logfileH); logfileH.write('\n')
-
     # initialize the image
     img = Image.new('RGB', dim, bg) # 'RGB' specifies 8-bit per channel (32 bit color)
     draw = ImageDraw.Draw(img)
-
+    
     ### open the region file: use codecs.open() to properly support writing unicode strings
     if regfile: 
         resDict = Dictlist(); curKey = 1
-          
+
     # output file: 
     #       id: story id 
     #      len: length of each word, include ahead bracket or quotation, or behind punctuation, 
@@ -311,8 +341,17 @@ def Praster(direct, fontpath, langType, codeMethod='utf_8', text=[u'The quick br
     ### Paint each line onto the image a word at a time, including preceding space.
     if len(text) == 1: vpos = dim[1]/2 # single line! center 1st line of text in the middle
     else: vpos = tmargin  # multiple lines! initialize vertical position to the top margin!
-    
-    if langType == 'English':
+   
+    if langType in EngLangList:
+        # create descents and ascents dictionaries
+        descents = _getStrikeDescents(fontpath, fht); ascents = _getStrikeAscents(fontpath, fht)
+
+        if log: 
+            import json
+            logfileH = codecs.open(os.path.join(direct, 'Praster.log'), 'wb', encoding=codeMethod)
+            logfileH.write('ascents\n'); json.dump(ascents, logfileH); logfileH.write('\n')
+            logfileH.write('descents\n'); json.dump(descents, logfileH); logfileH.write('\n')
+
         # show English text
         curline = 1
         for line in text:
@@ -341,27 +380,28 @@ def Praster(direct, fontpath, langType, codeMethod='utf_8', text=[u'The quick br
             
                 (mdes, masc) = _getdesasc(w, descents, ascents)  # calculate descent and ascent of each word
                 ht = _getStrikeCenters(fontpath, fht) + masc - mdes  # calculate word height based on character
-                # get the correct text position!
-                vpos1 = vpos - ht - mdes
-                vpos2 = vpos1 + ht            
-            
-                # outline the word region!
-                if bbox: draw.rectangle([(xpos1, vpos1), (xpos2, vpos2)], outline=fg, fill=bg)
                 
-                # outline the line region!    
-                vpos1_b, vpos2_b = vpos - aboveBase, vpos - belowBase    
-                if bbox_big: draw.rectangle([(xpos1, vpos1_b - addspace), (xpos2, vpos2_b + addspace)], outline=fg, fill=bg)
-            
+                # get word's border
+                vpos1 = vpos - ht - mdes; vpos2 = vpos1 + ht
+
                 # draw current word
-                vpos1_text = vpos1 + masc - fht/4.5 - 1  # top edge of current word, masc - fht/4.5 - 1 is offset!.
+                if sys.platform.startswith('win'): vpos1_text = vpos - _getStrikeCenters(fontpath, fht) # Windows system   
+                elif sys.platform.startswith('linux') > -1: vpos1_text = vpos - _getStrikeCenters(fontpath, fht) - fht/4.5 - 1 # # Linux system: add some offset (fht/4.5 - 1)
                 draw.text((xpos1, vpos1_text), w, font=ttf, fill=fg) 
-            
+                
+                # outline word region
+                if bbox: draw.rectangle([(xpos1, vpos1), (xpos2, vpos2)], outline=fg)
+                
+                # outline line region
+                vpos1_b, vpos2_b = vpos - aboveBase, vpos - belowBase    
+                if bbox_big: draw.rectangle([(xpos1, vpos1_b - addspace), (xpos2, vpos2_b + addspace)], outline=fg)
+                            
                 # output word regions
                 if regfile:
-                    #wo = '%s|%s|%d|%d|%d|%d|%d|%d|%d|%d|%d|%d|%d|%d|%d' % (id, w, wordlen, ht, vpos, curline,
+                    #wo = '%s|%s|%s|%d|%d|%d|%d|%d|%d|%d|%d|%d|%d|%d|%d|%d' % (id, langType, w, wordlen, ht, vpos, curline,
                     #                                                   xpos1, vpos1, xpos2, vpos2, xpos1, vpos1_b - addspace, xpos2, vpos2_b + addspace)
                     #regfileH.write(wo+'\n')
-                    resDict = _InputDict(resDict, curKey, ID, w, wordlen, ht, vpos, curline, xpos1, vpos1, xpos2, vpos2, xpos1, vpos1_b - addspace, xpos2, vpos2_b + addspace)
+                    resDict = _InputDict(resDict, curKey, ID, langType, w, wordlen, ht, vpos, curline, xpos1, vpos1, xpos2, vpos2, xpos1, vpos1_b - addspace, xpos2, vpos2_b + addspace)
                     curKey += 1
                 
                 xpos1 = xpos2   # shift to next word's left edge
@@ -372,42 +412,98 @@ def Praster(direct, fontpath, langType, codeMethod='utf_8', text=[u'The quick br
                 vpos += linespace   # shift to next line
                 curline += 1    
     
-    elif langType == 'Chinese' or langType == 'Korean' or langType == 'Japanese':      
-        # show Chinese, Korean or Japanese text
+    elif langType in ChnLangList:      
+        # show Chinese text
         curline = 1
         for line in text:
             # break line into list of words and do some cleanup
-            words = line.split(' ')
+            words = line.split('|')
             
             # paint the line into the image, one word at a time 
             xpos1 = lmargin # let edge of current word
             for w in words:
                 wordlen = len(w) # should maybe trim leading space ?? punctuation ??    
                 (wd, ht) = ttf.getsize(w)
-
                 xpos2 = xpos1 + wd    # right edge of current word
-            
-                vpos1 = vpos - ht
-                vpos2 = vpos1 + ht            
-            
-                # outline the word region!
-                if bbox: draw.rectangle([(xpos1, vpos1), (xpos2, vpos2)], outline=fg, fill=bg)
                 
-                # outline the line region!    
-                aboveBase, belowBase = ht, 0
-                vpos1_b, vpos2_b = vpos - aboveBase, vpos - belowBase    
-                if bbox_big: draw.rectangle([(xpos1, vpos1_b - addspace), (xpos2, vpos2_b + addspace)], outline=fg, fill=bg)
+                # get word's border
+                vpos1 = vpos - ht; vpos2 = vpos1 + ht            
             
                 # draw current word
                 vpos1_text = vpos1  # top edge of current word
                 draw.text((xpos1, vpos1_text), w, font=ttf, fill=fg) 
+                
+                # outline word region!
+                if bbox: draw.rectangle([(xpos1, vpos1), (xpos2, vpos2)], outline=fg)
+                
+                # outline line region!    
+                aboveBase, belowBase = ht, 0
+                vpos1_b, vpos2_b = vpos - aboveBase, vpos - belowBase    
+                if bbox_big: draw.rectangle([(xpos1, vpos1_b - addspace), (xpos2, vpos2_b + addspace)], outline=fg)
             
                 # output word regions
                 if regfile:
-                    #wo = '%s|%s|%d|%d|%d|%d|%d|%d|%d|%d|%d|%d|%d|%d|%d' % (id, w, wordlen, ht, vpos, curline,
+                    #wo = '%s|%s|%s|%d|%d|%d|%d|%d|%d|%d|%d|%d|%d|%d|%d|%d' % (id, langType, w, wordlen, ht, vpos, curline,
                     #                                                   xpos1, vpos1, xpos2, vpos2, xpos1, vpos1_b - addspace, xpos2, vpos2_b + addspace)
                     #regfileH.write(wo+'\n')
-                    resDict = _InputDict(resDict, curKey, ID, w, wordlen, ht, vpos, curline, xpos1, vpos1, xpos2, vpos2, xpos1, vpos1_b - addspace, xpos2, vpos2_b + addspace)
+                    resDict = _InputDict(resDict, curKey, ID, langType, w, wordlen, ht, vpos, curline, xpos1, vpos1, xpos2, vpos2, xpos1, vpos1_b - addspace, xpos2, vpos2_b + addspace)
+                    curKey += 1
+                
+                xpos1 = xpos2   # shift to next word's left edge
+        
+            if vpos >= dim[1] + linespace: 
+                raise ValueError("%d warning! %s has too many words! They cannot be shown within one screen!" % (vpos, id))
+            else:
+                vpos += linespace   # shift to next line
+                curline += 1        
+
+    elif langType in KJLangList:
+        # show Korean or Japanese text
+        curline = 1
+        for line in text:
+            # break line into list of words and do some cleanup
+            words = line.split(' ')
+            if words.count(''): words.remove('')           # remove empty strings.
+            words = [re.sub('^', ' ', w) for w in words]   # add a space to beginning of each word.
+            if len(words) > 0: words[0] = words[0].strip() # remove space from beginning of first word in each line, guarding against empty wordlists.
+            # if the previous word ending with a punctuation, remove added space of the next word
+            for ind_w in range(1, len(words)):
+                if words[ind_w-1][-1] in puncList:
+                    words[ind_w] = re.sub('^ ', '', words[ind_w])          
+            
+            # paint the line into the image, one word at a time 
+            xpos1 = lmargin # let edge of current word
+            for w in words:
+                wordlen = len(w) # should maybe trim leading space ?? punctuation ??    
+                (wd, ht) = ttf.getsize(w)
+                xpos2 = xpos1 + wd    # right edge of current word
+            
+                # get word's border
+                vpos1 = vpos - ht; vpos2 = vpos1 + ht            
+                
+                # draw current word
+                if sys.platform.startswith('win'):
+                    # Windows system
+                    if langType == 'Korean': vpos1_text = vpos - ht
+                    elif langType == 'Japanese': vpos1_text = vpos
+                elif sys.platform.startswith('linux') > -1: vpos1_text = vpos - fht*13/15.0 # Linux system: add some offset (fht/4.5 - 1)
+                #vpos1_text = vpos1  # top edge of current word
+                draw.text((xpos1, vpos1_text), w, font=ttf, fill=fg) 
+            
+                # outline word region
+                if bbox: draw.rectangle([(xpos1, vpos1), (xpos2, vpos2)], outline=fg)
+                
+                # outline line region    
+                aboveBase, belowBase = ht, 0
+                vpos1_b, vpos2_b = vpos - aboveBase, vpos - belowBase    
+                if bbox_big: draw.rectangle([(xpos1, vpos1_b - addspace), (xpos2, vpos2_b + addspace)], outline=fg)
+                    
+                # output word regions
+                if regfile:
+                    #wo = '%s|%s|%s|%d|%d|%d|%d|%d|%d|%d|%d|%d|%d|%d|%d|%d' % (id, langType, w, wordlen, ht, vpos, curline,
+                    #                                                   xpos1, vpos1, xpos2, vpos2, xpos1, vpos1_b - addspace, xpos2, vpos2_b + addspace)
+                    #regfileH.write(wo+'\n')
+                    resDict = _InputDict(resDict, curKey, ID, langType, w, wordlen, ht, vpos, curline, xpos1, vpos1, xpos2, vpos2, xpos1, vpos1_b - addspace, xpos2, vpos2_b + addspace)
                     curKey += 1
                 
                 xpos1 = xpos2   # shift to next word's left edge
@@ -419,7 +515,7 @@ def Praster(direct, fontpath, langType, codeMethod='utf_8', text=[u'The quick br
                 curline += 1        
     
     else:
-        raise ValueError("invalid langType %s ! only 'English', 'Chinese', 'Korean', or 'Japanese' allowed" % langType)
+        raise ValueError("invalid langType %s !" % langType)
     
     # ### FIXME: watermark should (?) include more info. Maybe most arguments used in call to Sraster()
     # ### FIXME: need some error checking here.
@@ -474,25 +570,30 @@ def Gen_Bitmap_RegFile(direct, fontName, langType, textFileNameList, genmethod=2
         log             : log for recording intermediate result
     output: for genmethods = 1, generate png and region files
     """
-    fd = FontDict(); fontpath = fd.fontGet(fontName,'Regular')    
-    # set up font related information
-    fontpathlist = font_manager.findSystemFonts() # Get paths to all installed font files (any system?).
-    fontpathlist.sort()
+    if langType in EngLangList:
+        # for English, get fontpath from FontDict()
+        fd = FontDict(); fontpath = fd.fontGet(fontName,'Regular')    
+        # set up font related information
+        fontpathlist = font_manager.findSystemFonts() # Get paths to all installed font files (any system?).
+        fontpathlist.sort()
+    else:
+        # for other languages, directly use .ttc or .tff font file name
+        fontpath = fontName 
     
     if genmethod == 0:
         # Simple tests.
-        if langType == 'English':
+        if langType in EngLangList:
             Praster(direct, fontpath, langType, fht=fht, bbox=True, log=True)
             Praster(direct, fontpath, langType, text=[u'This is a test.', u'This is another.'], fht=fht)
             Praster(direct, fontpath, langType, text=[u'This is a one-liner.'], fht=fht)
-        elif langType == 'Chinese':
-            Praster(direct, fontpath, langType, text=[u'我们 爱 你。', u'为什么 不让 他 走？'], fht=fht)
+        elif langType in ChnLangList:
+            Praster(direct, fontpath, langType, text=[u'我们|爱|你。', u'为什么|不让|他|走？'], fht=fht)
         elif langType == 'Korean':
-            Praster(direct, fontpath, langType, text=[u'저는 7년 동안 한국에서 살았어요'], fht=fht)
+            Praster(direct, fontpath, langType, text=[u'저는 7년 동안 한국에서 살았어요', u'이름은 무엇입니까?'], fht=fht)
         elif langType == 'Japanese':
-            Praster(direct, fontpath, langType, text=[u'むかし、 むかし、 ある ところ に'], fht=fht)
+            Praster(direct, fontpath, langType, text=[u'むかし、 むかし、 ある ところ に', u'おじいさん と おばあさん が いました。'], fht=fht)
         else:
-            raise ValueError("invalid langType %s! only 'English', 'Chinese', 'Korean', or 'Japanese' allowed" % langType)
+            raise ValueError("invalid langType %s!" % langType)
     
     elif genmethod == 1:
         # first, check whether the text file exists
@@ -503,9 +604,11 @@ def Gen_Bitmap_RegFile(direct, fontName, langType, textFileNameList, genmethod=2
             # read from a single text file (containing many stories)
             infileH = codecs.open(realtxtfile, mode="rb", encoding=codeMethod)
             print "Read text file: ", infileH.name; lines = infileH.readlines(); infileH.close()
+            lines[0] = re.sub(u"\ufeff", u"", lines[0]) # remove file starter '\ufeff'     
             
             tmp0 = [ii for ii in lines if not re.match("^#", ii)] # Squeeze out comments: lines that start with '#'
             tmp1 = ''.join(tmp0)    # join list of strings into one long string
+             
             tmp2 = re.split(u"\r\n\r\n", tmp1)  
                    # Split string to lists by delimiter "\r\n\r\n", which corresponds to blank line in original text file (infileH).
                    # At this point, each list item corresponds to 1, possibly multi-line, string.
@@ -538,10 +641,11 @@ def Gen_Bitmap_RegFile(direct, fontName, langType, textFileNameList, genmethod=2
             ID = txtfile.split('.')[0]; realtxtfile = os.path.join(direct, txtfile)
             infileH = codecs.open(realtxtfile, mode="rb", encoding=codeMethod)
             print "Read text file: ", infileH.name; lines = infileH.readlines(); infileH.close()
-
+            lines[0] = re.sub(u"\ufeff", u"", lines[0]) # remove file starter '\ufeff'     
+            
             tmp0 = [ii for ii in lines if not re.match("^#", ii)] # Squeeze out comments: lines that start with '#'
             tmp1 = [re.sub(u"\r\n$", u"", ii) for ii in tmp0]    # remove "\r\n" at the ending of each line
-                
+            
             Praster(direct, fontpath, langType, codeMethod=codeMethod, text=tmp1, dim=dim, fg=fg, bg=bg, lmargin=lmargin, tmargin=tmargin, linespace=linespace, 
                     fht=fht, fwd=fwd, bbox=bbox, bbox_big=bbox_big, addspace=addspace, ID=ID, log=log)
   
