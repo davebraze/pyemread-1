@@ -20,6 +20,8 @@ KJLangList = ['Korean', 'Japanese']
 puncList = [u'，', u'。', u'、', u'：', u'？', u'！']
 
 # functions starting with "_" are helper functions, ending with "_b" are batch user functions
+# make the system default codeing as "utf-8"
+reload(sys); sys.setdefaultencoding("utf-8")
 
 # -----------------------------------------------------------------------------
 # -----------------------------------------------------------------------------
