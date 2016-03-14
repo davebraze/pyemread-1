@@ -545,7 +545,7 @@ def Praster(direct, fontpath, langType, codeMethod='utf_8',
 
 
 def Gen_Bitmap_RegFile(direct, fontName, langType, textFileNameList, genmethod=2, codeMethod='utf_8', dim=(1280,1024), fg=(0,0,0), bg=(232,232,232), 
-    lmargin=215, tmargin=86, linespace=65, fht=18, fwd=None, bbox=False, bbox_big=False, addspace=18, log=False):
+    lmargin=215, tmargin=86, linespace=65, fht=18, fwd=None, bbox=False, bbox_big=False, ID='test', addspace=18, log=False):
     """
     generate the bitmaps (PNG) and region files of single/multiple line story from text file
     arguments:
@@ -621,7 +621,7 @@ def Gen_Bitmap_RegFile(direct, fontName, langType, textFileNameList, genmethod=2
             for i, P in enumerate(tmp3): 
                 s = "storyID = %02.d line = %d" % (i+1, len(P)); print(s)
                 Praster(direct, fontpath, langType, codeMethod=codeMethod, text=P, dim=dim, fg=fg, bg=bg, lmargin=lmargin, tmargin=tmargin, linespace=linespace, 
-                        fht=fht, fwd=fwd, bbox=bbox, bbox_big=bbox_big, addspace=addspace, ID='Story%02.d' % (i+1), log=log)
+                        fht=fht, fwd=fwd, bbox=bbox, bbox_big=bbox_big, ID=ID+'%02.d' % (i+1), addspace=addspace, log=log)
 
     elif genmethod == 2:
         # read from multiple text files
@@ -649,7 +649,7 @@ def Gen_Bitmap_RegFile(direct, fontName, langType, textFileNameList, genmethod=2
             tmp1 = [re.sub(u"\r\n$", u"", ii) for ii in tmp0]    # remove "\r\n" at the ending of each line
             
             Praster(direct, fontpath, langType, codeMethod=codeMethod, text=tmp1, dim=dim, fg=fg, bg=bg, lmargin=lmargin, tmargin=tmargin, linespace=linespace, 
-                    fht=fht, fwd=fwd, bbox=bbox, bbox_big=bbox_big, addspace=addspace, ID=ID, log=log)
+                    fht=fht, fwd=fwd, bbox=bbox, bbox_big=bbox_big, ID=ID, addspace=addspace, log=log)
   
 
 def updReg(direct, regfileNameList, addspace):
