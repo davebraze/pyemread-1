@@ -280,7 +280,7 @@ def _cAspect(imgfont, char):
 
 
 # user functions for generating bitmaps and region files
-def Praster(direct, fontpath, langType, codeMethod='utf_8', 
+def Praster(direct, fontpath, stPos, langType, codeMethod='utf_8', 
             text=[u'The quick brown fox jumps over the lazy dog.', u'The lazy tabby cat sleeps in the sun all afternoon.'],
             dim=(1280,1024), fg=(0,0,0), bg=(232,232,232), wfont=None, regfile=True, lmargin=86, tmargin=86, 
             linespace=43, fht=18, fwd=None, bbox=False, bbox_big=False, 
@@ -292,6 +292,7 @@ def Praster(direct, fontpath, langType, codeMethod='utf_8',
     Arguments:
         direct          : directory storing the bitmap and/or region file
         fontpath        : fully qualified path to font file
+        stPos           : starting from top left corner ('TopLeft') or center ('Center') or auto ('Auto')        
         langType        : type of language in shown text: 'English' or 'Korean'/'Chinese'/'Japanese'
         codeMethod      : for linux: utf_8; for Windows: cp1252
         text=[]         : text to be rasterized as a list of lines
@@ -341,9 +342,16 @@ def Praster(direct, fontpath, langType, codeMethod='utf_8',
     # brec_x1, brec_y1, brec_x2, brec_y2: the rectangle bounding text based on the line (work properly!)      
     
     ### Paint each line onto the image a word at a time, including preceding space.
-    if len(text) == 1: vpos = dim[1]/2 # single line! center 1st line of text in the middle
-    else: vpos = tmargin  # multiple lines! initialize vertical position to the top margin!
-   
+    if stPos == 'Center': 
+        if langType == 'Chinese' or langType == 'Japanese' or langType == 'Korean': vpos = dim[1]/2.0 + fht/2.0 
+        else: vpos = dim[1]/2.0 # single line! center 1st line of text in the middle
+    elif stPos == 'TopLeft': 
+        if langType == 'Chinese' or langType == 'Japanese' or langType == 'Korean': vpos = tmargin + fht/2.0
+        else: vpos = tmargin  # multiple lines! initialize vertical position to the top margin!
+    if stPos == 'Auto':
+        if langType == 'Chinese' or langType == 'Japanese' or langType == 'Korean': vpos = dim[1]/2.0 - (len(text)-1)/2.0*linespace + fht/2.0      
+        else: vpos = dim[1]/2.0 - (len(text)-1)/2.0*linespace
+    
     if langType in EngLangList:
         # create descents and ascents dictionaries
         descents = _getStrikeDescents(fontpath, fht); ascents = _getStrikeAscents(fontpath, fht)
@@ -544,8 +552,8 @@ def Praster(direct, fontpath, langType, codeMethod='utf_8',
     img.save(os.path.join(direct, ID + '.png'), 'PNG') # write bitmap file
 
 
-def Gen_Bitmap_RegFile(direct, fontName, langType, textFileNameList, genmethod=2, codeMethod='utf_8', dim=(1280,1024), fg=(0,0,0), bg=(232,232,232), 
-    lmargin=215, tmargin=86, linespace=65, fht=18, fwd=None, bbox=False, bbox_big=False, ID='test', addspace=18, log=False):
+def Gen_Bitmap_RegFile(direct, fontName, stPos, langType, textFileNameList, genmethod=2, codeMethod='utf_8', dim=(1280,1024), fg=(0,0,0), bg=(232,232,232), 
+    lmargin=215, tmargin=86, linespace=65, fht=18, fwd=None, bbox=False, bbox_big=False, ID='story', addspace=18, log=False):
     """
     generate the bitmaps (PNG) and region files of single/multiple line story from text file
     arguments:
@@ -553,6 +561,7 @@ def Gen_Bitmap_RegFile(direct, fontName, langType, textFileNameList, genmethod=2
         fontName -- name of a font, e.g. 'LiberationMono'
         langType -- type of language in shown text: 'English' or 'Korean'/'Chinese'/'Japanese'
         textFileNameList -- a list of one or multiple text file for generating bitmaps
+        stPos -- starting from top left corner ('TopLeft') or center ('Center') or auto ('Auto')         
         genmethod -- methods to generate: 0: simple test (simple texts); 1: read from one text file; 2: read from many text files;
      the following arguments are identical to Praster    
         codeMethod      : for linux: utf_8; for Windows: cp1252
@@ -585,15 +594,15 @@ def Gen_Bitmap_RegFile(direct, fontName, langType, textFileNameList, genmethod=2
     if genmethod == 0:
         # Simple tests.
         if langType in EngLangList:
-            Praster(direct, fontpath, langType, fht=fht, bbox=True, log=True)
-            Praster(direct, fontpath, langType, text=[u'This is a test.', u'This is another.'], fht=fht)
-            Praster(direct, fontpath, langType, text=[u'This is a one-liner.'], fht=fht)
+            Praster(direct, fontpath, stPos, langType, fht=fht, bbox=True, log=True)
+            Praster(direct, fontpath, stPos, langType, text=[u'This is a test.', u'This is another.'], fht=fht)
+            Praster(direct, fontpath, stPos, langType, text=[u'This is a one-liner.'], fht=fht)
         elif langType in ChnLangList:
-            Praster(direct, fontpath, langType, text=[u'我们|爱|你。', u'为什么|不让|他|走？'], fht=fht)
+            Praster(direct, fontpath, stPos, langType, text=[u'我们|爱|你。', u'为什么|不让|他|走？'], fht=fht)
         elif langType == 'Korean':
-            Praster(direct, fontpath, langType, text=[u'저는 7년 동안 한국에서 살았어요', u'이름은 무엇입니까?'], fht=fht)
+            Praster(direct, fontpath, stPos, langType, text=[u'저는 7년 동안 한국에서 살았어요', u'이름은 무엇입니까?'], fht=fht)
         elif langType == 'Japanese':
-            Praster(direct, fontpath, langType, text=[u'むかし、 むかし、 ある ところ に', u'おじいさん と おばあさん が いました。'], fht=fht)
+            Praster(direct, fontpath, stPos, langType, text=[u'むかし、 むかし、 ある ところ に', u'おじいさん と おばあさん が いました。'], fht=fht)
         else:
             raise ValueError("invalid langType %s!" % langType)
     
@@ -620,7 +629,7 @@ def Gen_Bitmap_RegFile(direct, fontName, langType, textFileNameList, genmethod=2
 
             for i, P in enumerate(tmp3): 
                 s = "storyID = %02.d line = %d" % (i+1, len(P)); print(s)
-                Praster(direct, fontpath, langType, codeMethod=codeMethod, text=P, dim=dim, fg=fg, bg=bg, lmargin=lmargin, tmargin=tmargin, linespace=linespace, 
+                Praster(direct, fontpath, stPos, langType, codeMethod=codeMethod, text=P, dim=dim, fg=fg, bg=bg, lmargin=lmargin, tmargin=tmargin, linespace=linespace, 
                         fht=fht, fwd=fwd, bbox=bbox, bbox_big=bbox_big, ID=ID+'%02.d' % (i+1), addspace=addspace, log=log)
 
     elif genmethod == 2:
@@ -648,7 +657,7 @@ def Gen_Bitmap_RegFile(direct, fontName, langType, textFileNameList, genmethod=2
             tmp0 = [ii for ii in lines if not re.match("^#", ii)] # Squeeze out comments: lines that start with '#'
             tmp1 = [re.sub(u"\r\n$", u"", ii) for ii in tmp0]    # remove "\r\n" at the ending of each line
             
-            Praster(direct, fontpath, langType, codeMethod=codeMethod, text=tmp1, dim=dim, fg=fg, bg=bg, lmargin=lmargin, tmargin=tmargin, linespace=linespace, 
+            Praster(direct, fontpath, stPos, langType, codeMethod=codeMethod, text=tmp1, dim=dim, fg=fg, bg=bg, lmargin=lmargin, tmargin=tmargin, linespace=linespace, 
                     fht=fht, fwd=fwd, bbox=bbox, bbox_big=bbox_big, ID=ID, addspace=addspace, log=log)
   
 
@@ -818,7 +827,7 @@ def _gettdur(triallines):
     """
     trial_type, trialstart, trialend, tdur, recstart, recend = np.nan, 0, 0, 0, 0, 0
     for line in triallines:
-        if re.search('!V TRIAL_VAR trial', line): trial_type = line.split()[-1]
+        if re.search('!V TRIAL_VAR picture_name', line): trial_type = (line.split()[-1]).split('.')[0]
         if re.search('^START', line): trialstart = int(line.split()[1])
         if re.search('^END', line): trialend = int(line.split()[1])
         if re.search('ARECSTART', line): recstart = int(line.split()[1]) - int(line.split()[2])
@@ -1152,17 +1161,17 @@ def _getCrosslineFix(CrossLineInfo, startline, endline, Df, diff_ratio, frontran
     return lines, curline, question
 
 
-def _getFixLine(RegDF, crlSac, FixDF, diff_ratio, frontrange_ratio, y_range, fix_method):
+def _getFixLine(RegDF, crlSac, FixDF, classify_method, diff_ratio, frontrange_ratio, y_range):
     """
     add line information for each FixDF
     arguments:
         RegDF -- region file data frame (with line information)
         crlSac -- data frame storing identified cross line saccades
         FixDF -- fixation data of the trial
+        classify_method -- fixation method: 'DIFF': based on difference in x_axis; 'SAC': based on crosslineSac ('SAC' is preferred since saccade is kinda more accurate!), default = 'DIFF'
         diff_ratio -- for calculating crossline saccades(fixations), the ratio of maximum distance between the center of the last word and the center of the first word in a line, default = 0.6
         frontrange_ratio -- for calculating crossline saccades(fixations), the ratio to check backward crossline saccade or fixation: such saccade or fixation usually starts around the line beginning, default = 0.2
         y_range -- for calculating crossline saccades(fixations), the biggest y difference indicating the eyes are crossing lines or moving away from that line (this must be similar to the distance between two lines), default = 60
-        fix_method -- fixation method: 'DIFF': based on difference in x_axis; 'SAC': based on crosslineSac ('SAC' is preferred since saccade is kinda more accurate!), default = 'DIFF'
     return:
         line -- cross line fixations: previous fixation is in previous line, current fixation is in next line
     FixDF as a data frame is mutable, no need to return    
@@ -1172,7 +1181,7 @@ def _getFixLine(RegDF, crlSac, FixDF, diff_ratio, frontrange_ratio, y_range, fix
     
     if len(np.unique(FixDF.eye)) == 1 and (np.unique(FixDF.eye)[0] == 'L' or np.unique(FixDF.eye)[0] == 'R'):
         # single eye data
-        if fix_method == 'DIFF':
+        if classify_method == 'DIFF':
             # method 1: based on difference in x_axis
             lines, curline, question = _getCrosslineFix(CrossLineInfo, 0, len(FixDF), FixDF, diff_ratio, frontrange_ratio)        
             endline = len(FixDF)        
@@ -1193,7 +1202,7 @@ def _getFixLine(RegDF, crlSac, FixDF, diff_ratio, frontrange_ratio, y_range, fix
                 curlow = curline[3]
             for line in range(curlow, endline):
                 FixDF.loc[line,'line_no'] = lines[-1][2]        
-        elif fix_method == 'SAC':
+        elif classify_method == 'SAC':
             # method 2: based on crosslineSac
             lines = []            
             curlow = 0
@@ -1215,7 +1224,7 @@ def _getFixLine(RegDF, crlSac, FixDF, diff_ratio, frontrange_ratio, y_range, fix
     else:
         # double eye data
         numLeft = len(FixDF[FixDF.eye == 'L']); numRight = len(FixDF[FixDF.eye == 'R']) 
-        if fix_method == 'DIFF':
+        if classify_method == 'DIFF':
             # method 1: based on differences in x_axis 
             # first, left eye data
             lines_Left, curline_Left, ques1 = _getCrosslineFix(CrossLineInfo, 0, numLeft, FixDF, diff_ratio, frontrange_ratio)        
@@ -1262,7 +1271,7 @@ def _getFixLine(RegDF, crlSac, FixDF, diff_ratio, frontrange_ratio, y_range, fix
             lines = lines_Left + lines_Right
             if ques1 or ques2:
                 question = True
-        elif fix_method == 'SAC':
+        elif classify_method == 'SAC':
             # method 2: based on crosslineSac
             lines = []
             curlow = 0
@@ -1304,23 +1313,23 @@ def _getFixLine(RegDF, crlSac, FixDF, diff_ratio, frontrange_ratio, y_range, fix
     return lines, question
     
     
-def _getcrlFix(RegDF, crlSac, FixDF, diff_ratio, frontrange_ratio, y_range, fix_method):
+def _getcrlFix(RegDF, crlSac, FixDF, classify_method, diff_ratio, frontrange_ratio, y_range):
     """
     get crossline Fix
     arguments:
         RegDF -- region file data frame
         crlSac -- crossline saccades
         FixDF -- fixation data of the trial
+        classify_method -- fixation method: 'DIFF': based on difference in x_axis; 'SAC': based on crosslineSac ('SAC' is preferred since saccade is kinda more accurate!), default = 'DIFF'
         diff_ratio -- for calculating crossline saccades(fixations), the ratio of maximum distance between the center of the last word and the center of the first word in a line, default = 0.6
         frontrange_ratio -- for calculating crossline saccades(fixations), the ratio to check backward crossline saccade or fixation: such saccade or fixation usually starts around the line beginning, default = 0.2
         y_range -- for calculating crossline saccades(fixations), the biggest y difference indicating the eyes are crossing lines or moving away from that line (this must be similar to the distance between two lines), default = 60
-        fix_method -- fixation method: 'DIFF': based on difference in x_axis; 'SAC': based on crosslineSac ('SAC' is preferred since saccade is kinda more accurate!), default = 'DIFF'
     return:
         crlFix -- crossline fixations of the trial
     FixDF is mutable, no need to return
     """                   
     # Second, get line information of each fixation
-    lines, question = _getFixLine(RegDF, crlSac, FixDF, diff_ratio, frontrange_ratio, y_range, fix_method)
+    lines, question = _getFixLine(RegDF, crlSac, FixDF, classify_method, diff_ratio, frontrange_ratio, y_range)
     
     crlFix = pd.DataFrame(np.zeros((len(lines), 13)))
     crlFix.columns = ['subj', 'trial_id', 'eye', 'startline', 'endline', 'FixlineIndex', 'start_time', 'end_time', 'duration', 'x_pos', 'y_pos', 'pup_size', 'valid']
@@ -1338,11 +1347,10 @@ def _getcrlFix(RegDF, crlSac, FixDF, diff_ratio, frontrange_ratio, y_range, fix_
     return crlFix, question    
     
 
-def _recStamp(RegDF, ExpType, trialID, blinklines, stamplines, sampfreq, eyerec, script, sessdate, srcfile, trial_type, trialstart, trialend, tdur, recstart, recend, error_free):
+def _recTimeStamp(ExpType, trialID, blinklines, stamplines, sampfreq, eyerec, script, sessdate, srcfile, trial_type, trialstart, trialend, tdur, recstart, recend, error_free=1):
     """
     get fixation data from trials
     arguments:
-        RegDF -- region file data frame
         ExpType -- type of experiments: 'RAN', 'RP'        
         trailID -- trail ID of the data
         blinklines -- blink lines of a trial
@@ -1358,7 +1366,7 @@ def _recStamp(RegDF, ExpType, trialID, blinklines, stamplines, sampfreq, eyerec,
         tdur -- estimated trial duration
         recstart -- starting time of recording
         recend -- ending time of recording
-        error_free -- error_free of that trial
+        error_free -- error_free of that trial; 1, free of error; 0, error; default 1
     return:
         StampDF -- stamp data of the trial
     """            
@@ -1377,8 +1385,7 @@ def _recStamp(RegDF, ExpType, trialID, blinklines, stamplines, sampfreq, eyerec,
         StampDF.x_pos1 = [line[1] for line in stamplines]; StampDF.loc[StampDF.x_pos1 == '.', 'x_pos1'] = np.nan; StampDF.x_pos1 = StampDF.x_pos1.astype(float)
         StampDF.y_pos1 = [line[2] for line in stamplines]; StampDF.loc[StampDF.y_pos1 == '.', 'y_pos1'] = np.nan; StampDF.y_pos1 = StampDF.y_pos1.astype(float)
         StampDF.pup_size1 = [line[3] for line in stamplines]; StampDF.loc[StampDF.pup_size1 == '.', 'pup_size1'] = np.nan; StampDF.pup_size1 = StampDF.pup_size1.astype(float)
-        StampDF.x_pos2 = np.nan 
-        StampDF.y_pos2 = np.nan 
+        StampDF.x_pos2 = np.nan; StampDF.y_pos2 = np.nan 
         StampDF.pup_size2 = np.nan
     elif eyerec == 'LR':
         StampDF.x_pos1 = [line[1] for line in stamplines]; StampDF.loc[StampDF.x_pos1 == '.', 'x_pos1'] = np.nan; StampDF.x_pos1 = StampDF.x_pos1.astype(float)
@@ -1393,11 +1400,10 @@ def _recStamp(RegDF, ExpType, trialID, blinklines, stamplines, sampfreq, eyerec,
     return StampDF
 
         
-def _recFix(RegDF, ExpType, trialID, blinklines, fixlines, sampfreq, eyerec, script, sessdate, srcfile, trial_type, trialstart, trialend, tdur, recstart, recend, rec_lastFix, lump_Fix, ln, zn, mn):
+def _recFix(ExpType, trialID, blinklines, fixlines, sampfreq, eyerec, script, sessdate, srcfile, trial_type, trialstart, trialend, tdur, recstart, recend, rec_lastFix, lump_Fix, ln, zn, mn):
     """
     get fixation data from trials
     arguments:
-        RegDF -- region file data frame
         ExpType -- type of experiments: 'RAN', 'RP'        
         trailID -- trail ID of the data
         blinklines -- blink lines of a trial
@@ -1479,7 +1485,7 @@ def _recFix(RegDF, ExpType, trialID, blinklines, fixlines, sampfreq, eyerec, scr
             FixDF1 = pd.DataFrame(np.zeros((numLeft, 23)))
             FixDF1.columns = ['subj', 'trial_id', 'trial_type', 'sampfreq', 'script', 'sessdate', 'srcfile', 'trialstart', 'trialend', 'tdur', 'recstart', 'recend', 'blinks', 'eye', 'start_time', 'end_time', 'duration', 'x_pos', 'y_pos', 'pup_size', 'valid', 'line_no', 'region_no']
             FixDF1.subj = srcfile.split('.')[0]; FixDF1.trial_id = int(trialID)
-            FixDF1.trial_type = ExpType + '_' + RegDF.Name[0]
+            FixDF1.trial_type = trial_type
             FixDF1.sampfreq = int(sampfreq); FixDF1.script = script; FixDF1.sessdate = sessdate; FixDF1.srcfile = srcfile
             FixDF1.trialstart = trialstart; FixDF1.trialend = trialend; FixDF1.tdur = tdur; FixDF1.recstart = recstart; FixDF1.recend = recend
             FixDF1.blinks = int(blink_number)
@@ -1516,7 +1522,7 @@ def _recFix(RegDF, ExpType, trialID, blinklines, fixlines, sampfreq, eyerec, scr
             FixDF2 = pd.DataFrame(np.zeros((numRight, 23)))
             FixDF2.columns = ['subj', 'trial_id', 'trial_type', 'sampfreq', 'script', 'sessdate', 'srcfile', 'trialstart', 'trialend', 'tdur', 'recstart', 'recend', 'blinks', 'eye', 'start_time', 'end_time', 'duration', 'x_pos', 'y_pos', 'pup_size', 'valid', 'line_no', 'region_no']
             FixDF2.subj = srcfile.split('.')[0]; FixDF2.trial_id = int(trialID)
-            FixDF2.trial_type = ExpType + '_' + RegDF.Name[0]
+            FixDF2.trial_type = trial_type
             FixDF2.sampfreq = int(sampfreq); FixDF2.script = script; FixDF2.sessdate = sessdate; FixDF2.srcfile = srcfile
             FixDF2.trialstart = trialstart; FixDF2.trialend = trialend; FixDF2.tdur = tdur; FixDF2.recstart = recstart; FixDF2.recend = recend
             FixDF2.blinks = int(blink_number)
@@ -1800,11 +1806,10 @@ def _getcrlSac(RegDF, SacDF, diff_ratio, frontrange_ratio, y_range):
     return crlSac, question    
 
 
-def _recSac(RegDF, ExpType, trialID, blinklines, saclines, sampfreq, eyerec, script, sessdate, srcfile, trial_type, trialstart, trialend, tdur, recstart, recend):
+def _recSac(ExpType, trialID, blinklines, saclines, sampfreq, eyerec, script, sessdate, srcfile, trial_type, trialstart, trialend, tdur, recstart, recend):
     """
     record saccade data from trials
     arguments:
-        RegDF -- region file dataframe
         ExpType -- type of experiments: 'RAN', 'RP'
         trailID -- trail ID of the data
         blinklines -- blink lines of a trial
@@ -2045,25 +2050,26 @@ def _crtFixRepDic(sit, direct, subjID):
     return FixRepExist, FixRepDic
 
 
-def _calStamp(alignmethod, trial_type, trialstart, RegDF, StampDFtemp, FixRepDF, SacDF, FixDF):
+def _calTimeStamp(align_method, trial_type, trialstart, RegDF, StampDFtemp, FixRepDF, SacDF, FixDF):
     """
     assign line_no based on FixRep or Fix_Sac
     arguments:
-        alignmethod -- 'FixRep': based on FixRepDF; 'Fix_Sac': based on SacDF, FixDF
+        align_method -- 'FixRep': based on FixRepDF; 'Fix_Sac': based on SacDF, FixDF
     """
-    if alignmethod == 'FixRep':
+    if align_method == 'FixRep':
         # use FixRepDF
         FixRep_cur = FixRepDF[FixRepDF.trial == trial_type].reset_index()          
         line_idx, line_time = _getLineInfo(FixRep_cur)            
         for curind in range(len(line_idx)):
             StampDFtemp.loc[(StampDFtemp.time >= line_time[curind][0] + trialstart) & (StampDFtemp.time <= line_time[curind][1] + trialstart), 'line_no'] = line_idx[curind]
             StampDFtemp.loc[(StampDFtemp.time >= line_time[curind][0] + trialstart) & (StampDFtemp.time <= line_time[curind][1] + trialstart), 'Fix_Sac'] = 'Fix'
-    elif alignmethod == 'Fix_Sac':
+    elif align_method == 'Fix_Sac':
         # use SacDF and FixDF
         SacDF_cur = SacDF[SacDF.trial_type == trial_type].reset_index()  
         FixDF_cur = FixDF[FixDF.trial_type == trial_type].reset_index()
         for curind in range(len(SacDF_cur)):
             starttime = SacDF_cur.start_time[curind]; endtime = SacDF_cur.end_time[curind]
+            StampDFtemp.loc[(StampDFtemp.time >= starttime) & (StampDFtemp.time <= endtime), 'line_no'] = SacDF_cur.line_no[curind]
             StampDFtemp.loc[(StampDFtemp.time >= starttime) & (StampDFtemp.time <= endtime), 'Fix_Sac'] = 'Sac'
         for curind in range(len(FixDF_cur)):
             starttime = FixDF_cur.start_time[curind]; endtime = FixDF_cur.end_time[curind]
@@ -2072,68 +2078,21 @@ def _calStamp(alignmethod, trial_type, trialstart, RegDF, StampDFtemp, FixRepDF,
         
     # assign region_no in StampDFtemp
     for curStamp in range(len(StampDFtemp)):
-        if not np.isnan(StampDFtemp.loc[curStamp, 'x_pos1']) and not np.isnan(StampDFtemp.loc[curStamp, 'line_no']):
+        if not np.isnan(StampDFtemp.loc[curStamp, 'x_pos1']) and StampDFtemp.loc[curStamp, 'Fix_Sac'] == 'Fix' and not np.isnan(StampDFtemp.loc[curStamp, 'line_no']):
             indlist = RegDF[(RegDF['line_no'] == StampDFtemp.loc[curStamp,'line_no']) & ((RegDF['mod_x1'] <= StampDFtemp.loc[curStamp,'x_pos1']) & (RegDF['mod_x2'] >= StampDFtemp.loc[curStamp,'x_pos1']))].index.tolist()
             if len(indlist) == 1:
                 StampDFtemp.loc[curStamp,'gaze_region_no'] = int(RegDF.WordID[indlist[0]])
                 StampDFtemp.loc[curStamp,'label'] = RegDF.Word[indlist[0]]
-            else:
-                StampDFtemp.loc[curStamp,'gaze_region_no'] = np.nan
-        else:
-            StampDFtemp.loc[curStamp,'gaze_region_no'] = np.nan
+            else: StampDFtemp.loc[curStamp,'gaze_region_no'] = np.nan
+        else: StampDFtemp.loc[curStamp,'gaze_region_no'] = np.nan
 
 
-# user function for getting saccades and fixations
-def read_Stamp(direct, subjID, regfileNameList, ExpType):
-    """
-    read SRR ascii file and extract time stamped eye movements
-    arguments:
-        direct -- directory for storing output files
-        subjID -- subject ID
-        regionfileNameList -- a list of region file names (trial_id will help select corresponding region files)
-        ExpType -- type of experiments: 'RAN', 'RP'
-    output:
-        StampDF -- time stamped eye movement data in different trials
-    """    
-    # first, check whether ascii file and region files are there:
-    ascfileExist, ascfileDic = _crtASC_dic(0, direct, subjID)
-    regfileExist, regfileDic = _crtRegion_dic(direct, regfileNameList)
-    
-    ETRANfileExist = True
-    ETRANfileName = os.path.join(direct, 'ETRAN.csv')
-    if not os.path.isfile(ETRANfileName):
-        print ETRANfileName + ' does not exist!'; ETRANfileExist = False
-    else:
-        ETRANDF = pd.read_csv(ETRANfileName); ETRANDF.SubjectID = ETRANDF.SubjectID.str.lower()
-    
-    # second, process the files
-    if ascfileExist and regfileExist and ETRANfileExist:
-        f = open(ascfileDic[subjID], 'r'); print "Read ASC: ", f.name; lines = f.readlines(); f.close()   # read EMF file    
-        script, sessdate, srcfile = _getHeader(lines)    # get header lines    
-        T_idx, T_lines = _getTrialReg(lines) # get trial regions
-    
-        StampDF = pd.DataFrame(columns=('subj', 'trial_id', 'trial_type', 'sampfreq', 'script', 'sessdate', 'srcfile', 'trialstart', 'trialend', 'tdur', 'recstart', 'recend', 'blinks', 'eye', 'time', 'x_pos1', 'y_pos1', 'pup_size1', 'x_pos2', 'y_pos2', 'pup_size2', 'line_no', 'gaze_region_no', 'label', 'error_free', 'Fix_Sac'))        
-        for ind in range(len(T_lines)):
-            triallines = lines[T_lines[ind,0]+1:T_lines[ind,1]]; trialID = int(T_idx[ind,0].split(' ')[-1])
-            blinklines, stamplines, sampfreq, eyerec = _getBlink_Fix_Sac_SampFreq_EyeRec(triallines, 1)
-            trial_type, trialstart, trialend, tdur, recstart, recend = _gettdur(triallines)
-            error_free = _getErrorFree(ETRANDF, subjID, trial_type)
-            RegDF = _getRegDF(regfileDic, trial_type)  # get region file
-            # read time stamped eye-movement data
-            print "Read Stamped Eye Movements: Trial ", str(trialID), "; Type ", trial_type
-            StampDFtemp = _recStamp(RegDF, ExpType, trialID, blinklines, stamplines, sampfreq, eyerec, script, sessdate, srcfile, trial_type, trialstart, trialend, tdur, recstart, recend, error_free)        
-            StampDF = StampDF.append(StampDFtemp, ignore_index=True)
-                
-        return StampDF
-
-
-def read_SRRasc(direct, subjID, regfileNameList, ExpType, rec_lastFix=False, lump_Fix=True, ln=50, zn=50, mn=50):
+def read_SRRasc(direct, subjID, ExpType, rec_lastFix=False, lump_Fix=True, ln=50, zn=50, mn=50):
     """
     read SRR ascii file and extract saccades and fixations
     arguments:
         direct -- directory for storing output files
         subjID -- subject ID
-        regionfileNameList -- a list of region file names (trial_id will help select corresponding region files)
         ExpType -- type of experiments: 'RAN', 'RP'
         rec_lastFix -- whether (True)or not (False) include the last fixation of a trial and allow it to trigger regression, default = False
         lump_Fix -- whether (True) or not (False) lump short fixations, default = True
@@ -2146,10 +2105,9 @@ def read_SRRasc(direct, subjID, regfileNameList, ExpType, rec_lastFix=False, lum
     """    
     # first, check whether the ascii and region files are there:
     ascfileExist, ascfileDic = _crtASC_dic(0, direct, subjID)
-    regfileExist, regfileDic = _crtRegion_dic(direct, regfileNameList)
     
     # second, process the files
-    if ascfileExist and regfileExist:
+    if ascfileExist:
         f = open(ascfileDic[subjID], 'r'); print "Read ASC: ", f.name; lines = f.readlines(); f.close()   # read EMF file    
         script, sessdate, srcfile = _getHeader(lines)    # get header lines    
         T_idx, T_lines = _getTrialReg(lines) # get trial regions
@@ -2161,24 +2119,16 @@ def read_SRRasc(direct, subjID, regfileNameList, ExpType, rec_lastFix=False, lum
             triallines = lines[T_lines[ind,0]+1:T_lines[ind,1]]; trialID = int(T_idx[ind,0].split(' ')[-1])
             blinklines, fixlines, saclines, sampfreq, eyerec = _getBlink_Fix_Sac_SampFreq_EyeRec(triallines, 0)
             trial_type, trialstart, trialend, tdur, recstart, recend = _gettdur(triallines)
-            RegDF = _getRegDF(regfileDic, trial_type)  # get region file
             # read saccade data
             print "Read Sac: Trial ", str(trialID), " Type ", trial_type
-            SacDFtemp = _recSac(RegDF, ExpType, trialID, blinklines, saclines, sampfreq, eyerec, script, sessdate, srcfile, trial_type, trialstart, trialend, tdur, recstart, recend)
+            SacDFtemp = _recSac(ExpType, trialID, blinklines, saclines, sampfreq, eyerec, script, sessdate, srcfile, trial_type, trialstart, trialend, tdur, recstart, recend)
             SacDF = SacDF.append(SacDFtemp, ignore_index=True)
             # read fixation data
             print "Read Fix: Trial ", str(trialID), " Type ", trial_type
-            FixDFtemp = _recFix(RegDF, ExpType, trialID, blinklines, fixlines, sampfreq, eyerec, script, sessdate, srcfile, trial_type, trialstart, trialend, tdur, recstart, recend, rec_lastFix, lump_Fix, ln, zn, mn)        
+            FixDFtemp = _recFix(ExpType, trialID, blinklines, fixlines, sampfreq, eyerec, script, sessdate, srcfile, trial_type, trialstart, trialend, tdur, recstart, recend, rec_lastFix, lump_Fix, ln, zn, mn)        
             FixDF = FixDF.append(FixDFtemp, ignore_index=True)
                 
         return SacDF, FixDF
-
-
-def write_Stamp_Report(direct, subjID, StampDF):
-    """
-    write StampDF to csv file
-    """    
-    StampDF.to_csv(os.path.join(direct, subjID, subjID + '_Stamp.csv'), index=False)
 
 
 def write_Sac_Report(direct, subjID, SacDF):
@@ -2195,48 +2145,19 @@ def write_Fix_Report(direct, subjID, FixDF):
     FixDF.to_csv(os.path.join(direct, subjID, subjID + '_Fix.csv'), index=False)
 
 
-def read_write_Stamp(direct, subjID, regfileNameList, ExpType):
+def write_TimeStamp_Report(direct, subjID, StampDF):
     """
-    processing a subject's time stamped data, read them from ascii files and write them into csv files
-    arguments:
-        direct -- directory containing specific asc file, the output csv files are stored there
-        subjID -- subject ID
-        regfileNameList -- a list of region file names (trial_id will help select corresponding region files)
-        ExpType -- type of experiments: 'RAN', 'RP'
-    output:
-        StampDF -- time stamped data in different trials
-    The data frame is stored into a csv file    
-    """
-    StampDF = read_Stamp(direct, subjID, regfileNameList, ExpType)
-    write_Stamp_Report(direct, subjID, StampDF)
+    write StampDF to csv file
+    """    
+    StampDF.to_csv(os.path.join(direct, subjID, subjID + '_Stamp.csv'), index=False)
 
 
-def read_write_Stamp_b(direct, regfileNameList, ExpType):
-    """
-    processing all subjects' time stamped data, read them from ascii files and write them into csv files
-    arguments:
-        direct -- directory containing all asc files
-        regfileNameList -- a list of region file names (trial_id will help select corresponding region files)
-        ExpType -- type of experiments: 'RAN', 'RP'
-    output:
-        StampDF -- time stamped data in different trials
-    The data frames are stored into csv files    
-    """
-    ascfileExist, ascfileDic = _crtASC_dic(1, direct, '')    
-    regfileExist, regfileDic = _crtRegion_dic(direct, regfileNameList)
-    if ascfileExist and regfileExist:
-        for subjID in ascfileDic.keys():
-            StampDF = read_Stamp(direct, subjID, regfileNameList, ExpType)
-            write_Stamp_Report(direct, subjID, StampDF)
-
-
-def read_write_SRRasc(direct, subjID, regfileNameList, ExpType, rec_lastFix=False, lump_Fix=True, ln=50, zn=50, mn=50):
+def read_write_SRRasc(direct, subjID, ExpType, rec_lastFix=False, lump_Fix=True, ln=50, zn=50, mn=50):
     """
     processing a subject's saccades and fixations, read them from ascii files and write them into csv files
     arguments:
         direct -- directory containing specific asc file, the output csv files are stored there
         subjID -- subject ID
-        regfileNameList -- a list of region file names (trial_id will help select corresponding region files)
         ExpType -- type of experiments: 'RAN', 'RP'
         rec_lastFix -- whether (True)or not (False) include the last fixation of a trial and allow it to trigger regression, default = False
         lump_Fix -- whether (True) or not (False) lump short fixations, default = True
@@ -2248,17 +2169,16 @@ def read_write_SRRasc(direct, subjID, regfileNameList, ExpType, rec_lastFix=Fals
         FixDF -- fixation data in different trials   
     All these data frames are stored into csv files    
     """
-    SacDF, FixDF = read_SRRasc(direct, subjID, regfileNameList, ExpType, rec_lastFix, lump_Fix, ln, zn, mn)
+    SacDF, FixDF = read_SRRasc(direct, subjID, ExpType, rec_lastFix, lump_Fix, ln, zn, mn)
     write_Sac_Report(direct, subjID, SacDF)
     write_Fix_Report(direct, subjID, FixDF)
 
     
-def read_write_SRRasc_b(direct, regfileNameList, ExpType, rec_lastFix=False, lump_Fix=True, ln=50, zn=50, mn=50):
+def read_write_SRRasc_b(direct, ExpType, rec_lastFix=False, lump_Fix=True, ln=50, zn=50, mn=50):
     """
     processing all subjects' saccades and fixations, read them from ascii files and write them into csv files
     arguments:
         direct -- directory containing all asc files
-        regfileNameList -- a list of region file names (trial_id will help select corresponding region files)
         ExpType -- type of experiments: 'RAN', 'RP'
         rec_lastFix -- whether (True)or not (False) include the last fixation of a trial and allow it to trigger regression, default = False
         lump_Fix -- whether (True) or not (False) lump short fixations, default = True
@@ -2271,72 +2191,118 @@ def read_write_SRRasc_b(direct, regfileNameList, ExpType, rec_lastFix=False, lum
     All these data frames are stored into csv files    
     """
     ascfileExist, ascfileDic = _crtASC_dic(1, direct, '')
-    regfileExist, regfileDic = _crtRegion_dic(direct, regfileNameList)    
-    if ascfileExist and regfileExist:            
+    if ascfileExist:            
         for subjID in ascfileDic:
-            SacDF, FixDF = read_SRRasc(direct, subjID, regfileNameList, ExpType, rec_lastFix, lump_Fix, ln, zn, mn)
-            write_Sac_Report(direct, subjID, SacDF)
-            write_Fix_Report(direct, subjID, FixDF)
+            SacDF, FixDF = read_SRRasc(direct, subjID, ExpType, rec_lastFix, lump_Fix, ln, zn, mn)
+            write_Sac_Report(direct, subjID, SacDF); write_Fix_Report(direct, subjID, FixDF)
 
 
-def cal_Stamp(direct, alignmethod, subjID, regfileNameList, ExpType, diff_ratio=0.6, frontrange_ratio=0.2, y_range=60, addCharSp=1):
+# user function for getting time-stamped data
+def read_TimeStamp(direct, subjID, ExpType):
     """
-    read csv time stamped data file of subj and extract crossline saccades and fixations and update line numbers of original saccades and fixations
+    read SRR ascii file and extract time stamped eye movements
     arguments:
-        direct -- directory for storing time stamped csv and output files
-        alignmethod -- 'FixRep': based on FixRepDF; 'Fix_Sac': based on SacDF, FixDF
+        direct -- directory for storing output files
         subjID -- subject ID
-        regionfileNameList -- a list of region file names (trial_id will help select corresponding region files)
         ExpType -- type of experiments: 'RAN', 'RP'
-        diff_ratio -- for calculating crossline saccades(fixations), the ratio of maximum distance between the center of the last word and the center of the first word in a line, default = 0.6
-        frontrange_ratio -- for calculating crossline saccades(fixations), the ratio to check backward crossline saccade or fixation: such saccade or fixation usually starts around the line beginning, default = 0.2
-        y_range -- for calculating crossline saccades(fixations), the biggest y difference indicating the eyes are crossing lines or moving away from that line (this must be similar to the distance between two lines), default = 60
-        addCharSp -- number of single character space added to EMF for catching overshoot fixations
     output:
-        newStampDF -- time stamped data in different trials with updated line numbers
-        crlStampDF -- crossline time stamped data in different trials
-        
-    """
-    # first, check whether the stamp and region files are there:
-    StampfileExist, StampfileDic = _crtCSV_dic(0, direct, subjID, '_Stamp')
-    regfileExist, regfileDic = _crtRegion_dic(direct, regfileNameList)
+        StampDF -- time stamped eye movement data in different trials
+    """    
+    # first, check whether ascii file is there:
+    ascfileExist, ascfileDic = _crtASC_dic(0, direct, subjID)
     
-    if alignmethod == 'FixRep':
-        FixRepExist, FixRepDic = _crtFixRepDic(0, direct, subjID)        
-    elif alignmethod == 'Fix_Sac':
-        SacfileExist, SacfileDic = _crtCSV_dic(0, direct, subjID, '_Sac')
-        FixfileExist, FixfileDic = _crtCSV_dic(0, direct, subjID, '_Fix')
-
     # second, process the files
-    if StampfileExist and regfileExist and ((alignmethod == 'FixRep' and FixRepExist) or (alignmethod == 'Fix_Sac' and SacfileExist and FixfileExist)):
-        StampDF = pd.read_csv(StampfileDic[subjID], sep=',')    
-        newStampDF = pd.DataFrame()     
-        print "Subj: ", subjID
-        
-        if alignmethod == 'FixRep':
-            FixRepDF = pd.read_csv(FixRepDic[subjID], sep='\t')
-            SacDF = np.nan; FixDF = np.nan;
-        elif alignmethod == 'Fix_Sac':
-            FixRepDF = np.nan
-            SacDF = pd.read_csv(SacfileDic[subjID], sep=',')
-            FixDF = pd.read_csv(FixfileDic[subjID], sep=',')     
-
-        for trialID in np.unique(map(int,StampDF.trial_id)):
-            trial_type = np.unique(StampDF.trial_type[StampDF.trial_id == trialID])
-            trialstart = np.unique(StampDF.trialstart[StampDF.trial_id == trialID])
-            RegDF = _getRegDF(regfileDic, trial_type)  # get region file
-            _modRegDF(RegDF, addCharSp) # modify mod_x1 and mod_x2 position of word regions
-            # get time stamped data and crossline time stamped data
-            print "Get crlStamp: Trial ", str(trialID), " Type ", np.unique(StampDF.trial_type[StampDF.trial_id == trialID])  
-            StampDFtemp = StampDF[StampDF.trial_id==trialID].reset_index()
-            _calStamp(alignmethod, trial_type, trialstart, RegDF, StampDFtemp, FixRepDF, SacDF, FixDF)
-
-            newStampDF = newStampDF.append(StampDFtemp, ignore_index=True)
-                        
-        return newStampDF
+    if ascfileExist:
+        f = open(ascfileDic[subjID], 'r'); print "Read ASC: ", f.name; lines = f.readlines(); f.close()   # read EMF file    
+        script, sessdate, srcfile = _getHeader(lines)    # get header lines    
+        T_idx, T_lines = _getTrialReg(lines) # get trial regions
+    
+        StampDF = pd.DataFrame(columns=('subj', 'trial_id', 'trial_type', 'sampfreq', 'script', 'sessdate', 'srcfile', 'trialstart', 'trialend', 'tdur', 'recstart', 'recend', 'blinks', 'eye', 'time', 'x_pos1', 'y_pos1', 'pup_size1', 'x_pos2', 'y_pos2', 'pup_size2', 'line_no', 'gaze_region_no', 'label', 'error_free', 'Fix_Sac'))        
+        for ind in range(len(T_lines)):
+            triallines = lines[T_lines[ind,0]+1:T_lines[ind,1]]; trialID = int(T_idx[ind,0].split(' ')[-1])
+            blinklines, stamplines, sampfreq, eyerec = _getBlink_Fix_Sac_SampFreq_EyeRec(triallines, 1)
+            trial_type, trialstart, trialend, tdur, recstart, recend = _gettdur(triallines)
+            # read time stamped eye-movement data
+            print "Read Stamped Eye Movements: Trial ", str(trialID), "; Type ", trial_type
+            StampDFtemp = _recTimeStamp(ExpType, trialID, blinklines, stamplines, sampfreq, eyerec, script, sessdate, srcfile, trial_type, trialstart, trialend, tdur, recstart, recend)        
+            StampDF = StampDF.append(StampDFtemp, ignore_index=True)
+                
+        return StampDF
 
 
-def cal_crlSacFix(direct, subjID, regfileNameList, ExpType, recStatus=True, diff_ratio=0.6, frontrange_ratio=0.2, y_range=60, fix_method='DIFF', addCharSp=1):
+def read_Stamp(direct, subjID, ExpType):
+    """
+    read SRR ascii file and extract time stamped eye movements
+    arguments:
+        direct -- directory for storing output files
+        subjID -- subject ID
+        ExpType -- type of experiments: 'RAN', 'RP'
+    output:
+        StampDF -- time stamped eye movement data in different trials
+    """    
+    # first, check whether ascii file is there:
+    ascfileExist, ascfileDic = _crtASC_dic(0, direct, subjID)
+    
+    ETRANfileExist = True
+    ETRANfileName = os.path.join(direct, 'ETRAN.csv')
+    if not os.path.isfile(ETRANfileName):
+        print ETRANfileName + ' does not exist!'; ETRANfileExist = False
+    else:
+        ETRANDF = pd.read_csv(ETRANfileName); ETRANDF.SubjectID = ETRANDF.SubjectID.str.lower()
+    
+    # second, process the files
+    if ascfileExist and ETRANfileExist:
+        f = open(ascfileDic[subjID], 'r'); print "Read ASC: ", f.name; lines = f.readlines(); f.close()   # read EMF file    
+        script, sessdate, srcfile = _getHeader(lines)    # get header lines    
+        T_idx, T_lines = _getTrialReg(lines) # get trial regions
+    
+        StampDF = pd.DataFrame(columns=('subj', 'trial_id', 'trial_type', 'sampfreq', 'script', 'sessdate', 'srcfile', 'trialstart', 'trialend', 'tdur', 'recstart', 'recend', 'blinks', 'eye', 'time', 'x_pos1', 'y_pos1', 'pup_size1', 'x_pos2', 'y_pos2', 'pup_size2', 'line_no', 'gaze_region_no', 'label', 'error_free', 'Fix_Sac'))        
+        for ind in range(len(T_lines)):
+            triallines = lines[T_lines[ind,0]+1:T_lines[ind,1]]; trialID = int(T_idx[ind,0].split(' ')[-1])
+            blinklines, stamplines, sampfreq, eyerec = _getBlink_Fix_Sac_SampFreq_EyeRec(triallines, 1)
+            trial_type, trialstart, trialend, tdur, recstart, recend = _gettdur(triallines)
+            error_free = _getErrorFree(ETRANDF, subjID, trial_type)
+            # read time stamped eye-movement data
+            print "Read Stamped Eye Movements: Trial ", str(trialID), "; Type ", trial_type
+            StampDFtemp = _recTimeStamp(ExpType, trialID, blinklines, stamplines, sampfreq, eyerec, script, sessdate, srcfile, trial_type, trialstart, trialend, tdur, recstart, recend, error_free)        
+            StampDF = StampDF.append(StampDFtemp, ignore_index=True)
+                
+        return StampDF
+
+
+def read_write_TimeStamp(direct, subjID, ExpType):
+    """
+    processing a subject's time stamped data, read them from ascii files and write them into csv files
+    arguments:
+        direct -- directory containing specific asc file, the output csv files are stored there
+        subjID -- subject ID
+        ExpType -- type of experiments: 'RAN', 'RP'
+    output:
+        StampDF -- time stamped data in different trials
+    The data frame is stored into a csv file    
+    """
+    StampDF = read_TimeStamp(direct, subjID, ExpType)
+    write_TimeStamp_Report(direct, subjID, StampDF)
+
+
+def read_write_TimeStamp_b(direct, ExpType):
+    """
+    processing all subjects' time stamped data, read them from ascii files and write them into csv files
+    arguments:
+        direct -- directory containing all asc files
+        ExpType -- type of experiments: 'RAN', 'RP'
+    output:
+        StampDF -- time stamped data in different trials
+    The data frames are stored into csv files    
+    """
+    ascfileExist, ascfileDic = _crtASC_dic(1, direct, '')    
+    if ascfileExist:
+        for subjID in ascfileDic.keys():
+            StampDF = read_TimeStamp(direct, subjID, ExpType)
+            write_TimeStamp_Report(direct, subjID, StampDF)
+
+
+def cal_crlSacFix(direct, subjID, regfileNameList, ExpType, classify_method='DIFF', recStatus=True, diff_ratio=0.6, frontrange_ratio=0.2, y_range=60, addCharSp=1):
     """
     read csv data file of subj and extract crossline saccades and fixations and update line numbers of original saccades and fixations
     arguments:
@@ -2344,12 +2310,12 @@ def cal_crlSacFix(direct, subjID, regfileNameList, ExpType, recStatus=True, diff
         subjID -- subject ID
         regionfileNameList -- a list of region file names (trial_id will help select corresponding region files)
         ExpType -- type of experiments: 'RAN', 'RP'
+        classify_method -- fixation method: 'DIFF': based on difference in x_axis; 'SAC': based on crosslineSac ('SAC' is preferred since saccade is kinda more accurate!), default = 'DIFF'
         recStatus -- whether (True) or not (False) record questionable saccades and fixations, default = True
         diff_ratio -- for calculating crossline saccades(fixations), the ratio of maximum distance between the center of the last word and the center of the first word in a line, default = 0.6
         frontrange_ratio -- for calculating crossline saccades(fixations), the ratio to check backward crossline saccade or fixation: such saccade or fixation usually starts around the line beginning, default = 0.2
         y_range -- for calculating crossline saccades(fixations), the biggest y difference indicating the eyes are crossing lines or moving away from that line (this must be similar to the distance between two lines), default = 60
-        fix_method -- fixation method: 'DIFF': based on difference in x_axis; 'SAC': based on crosslineSac ('SAC' is preferred since saccade is kinda more accurate!), default = 'DIFF'
-        addCharSp -- number of single character space added to EMF for catching overshoot fixations
+        addCharSp -- number of single character space added to EMF for catching overshoot fixations; default = 1
     output:
         newSacDF -- saccade data in different trials with updated line numbers
         crlSac -- crossline saccade data in different trials
@@ -2372,10 +2338,10 @@ def cal_crlSacFix(direct, subjID, regfileNameList, ExpType, recStatus=True, diff
         print "Subj: ", subjID
     
         for trialID in np.unique(map(int,SacDF.trial_id)):
-            RegDF = _getRegDF(regfileDic, np.unique(SacDF.trial_type[SacDF.trial_id == trialID]))  # get region file
+            RegDF = _getRegDF(regfileDic, np.unique(SacDF.trial_type[SacDF.trial_id == trialID])[0])  # get region file
             _modRegDF(RegDF, addCharSp) # modify mod_x1 and mod_x2 position of word regions
             # get saccade data and crossline saccade data
-            print "Get crlSac: Trial ", str(trialID), " Type ", np.unique(SacDF.trial_type[SacDF.trial_id == trialID])
+            print "Get crlSac: Trial ", str(trialID), " Type ", np.unique(SacDF.trial_type[SacDF.trial_id == trialID])[0]
             SacDFtemp = SacDF[SacDF.trial_id==trialID].reset_index(); crlSactemp, question = _getcrlSac(RegDF, SacDFtemp, diff_ratio, frontrange_ratio, y_range)
             newSacDF = newSacDF.append(SacDFtemp, ignore_index=True); crlSac = crlSac.append(crlSactemp, ignore_index=True)
             if recStatus and question:
@@ -2384,8 +2350,8 @@ def cal_crlSacFix(direct, subjID, regfileNameList, ExpType, recStatus=True, diff
                 logfile.close()        
             
             # get fixation data and crossline fixation data
-            print "Get Fix: Trial ", str(trialID), " Type ", np.unique(SacDF.trial_type[SacDF.trial_id == trialID])
-            FixDFtemp = FixDF[FixDF.trial_id==trialID].reset_index(); crlFixtemp, question = _getcrlFix(RegDF, crlSactemp, FixDFtemp, diff_ratio, frontrange_ratio, y_range, fix_method)
+            print "Get Fix: Trial ", str(trialID), " Type ", np.unique(SacDF.trial_type[SacDF.trial_id == trialID])[0]
+            FixDFtemp = FixDF[FixDF.trial_id==trialID].reset_index(); crlFixtemp, question = _getcrlFix(RegDF, crlSactemp, FixDFtemp, classify_method, diff_ratio, frontrange_ratio, y_range)
             
             # assign region_no in FixDFtemp
             for curFix in range(len(FixDFtemp)):
@@ -2433,52 +2399,7 @@ def write_Fix_crlFix(direct, subjID, FixDF, crlFix):
     crlFix.to_csv(os.path.join(direct, subjID, subjID + '_crlFix.csv'), index=False)
 
 
-def cal_write_Stamp(direct, alignmethod, subjID, regfileNameList, ExpType, diff_ratio=0.6, frontrange_ratio=0.2, y_range=60, addCharSp=1):
-    """
-    processing a subject's time stamped data, read them from csv files and store them into csv files
-    arguments:
-        direct -- directory containing all asc files
-        alignmethod -- 'FixRep': based on FixRepDF; 'Fix_Sac': based on SacDF, FixDF
-        subjID -- subject ID
-        regfileNameList -- a list of region file names (trial_id will help select corresponding region files)
-        ExpType -- type of experiments: 'RAN', 'RP'
-        diff_ratio -- for calculating crossline saccades(fixations), the ratio of maximum distance between the center of the last word and the center of the first word in a line, default = 0.6
-        frontrange_ratio -- for calculating crossline saccades(fixations), the ratio to check backward crossline saccade or fixation: such saccade or fixation usually starts around the line beginning, default = 0.2
-        y_range -- for calculating crossline saccades(fixations), the biggest y difference indicating the eyes are crossing lines or moving away from that line (this must be similar to the distance between two lines), default = 60
-        addCharSp -- number of single character space added to EMF for catching overshoot fixations; default is 1
-    output:
-        StampDF -- time stamped data in different trials with updated line numbers of different subjects
-    All these data frames are stored in csv files
-    """
-    StampDF = cal_Stamp(direct, alignmethod, subjID, regfileNameList, ExpType, diff_ratio, frontrange_ratio, y_range, addCharSp)
-    write_Stamp_Report(direct, subjID, StampDF)
-
-
-def cal_write_Stamp_b(direct, alignmethod, regfileNameList, ExpType, diff_ratio=0.6, frontrange_ratio=0.2, y_range=60, addCharSp=1):
-    """
-    processing all subjects' time stamped data, read them from csv files and store them into csv files
-    arguments:
-        direct -- directory containing all asc files
-        alignmethod -- 'FixRep': based on FixRepDF; 'Fix_Sac': based on SacDF, FixDF
-        regfileNameList -- a list of region file names (trial_id will help select corresponding region files)
-        ExpType -- type of experiments: 'RAN', 'RP'
-        diff_ratio -- for calculating crossline saccades(fixations), the ratio of maximum distance between the center of the last word and the center of the first word in a line, default = 0.6
-        frontrange_ratio -- for calculating crossline saccades(fixations), the ratio to check backward crossline saccade or fixation: such saccade or fixation usually starts around the line beginning, default = 0.2
-        y_range -- for calculating crossline saccades(fixations), the biggest y difference indicating the eyes are crossing lines or moving away from that line (this must be similar to the distance between two lines), default = 60
-        addCharSp -- number of single character space added to EMF for catching overshoot fixations; default is 1
-    output:
-        StampDF -- time stamped data in different trials with updated line numbers of different subjects
-        crlStampDF -- crossline time stamped data in different trials of different subjects
-    """
-    StampfileExist, StampfileDic = _crtCSV_dic(1, direct, '', '_Stamp')
-    regfileExist, regfileDic = _crtRegion_dic(direct, regfileNameList)
-    if StampfileExist and regfileExist:
-        for subjID in StampfileDic:
-            StampDF = cal_Stamp(direct, alignmethod, subjID, regfileNameList, ExpType, diff_ratio, frontrange_ratio, y_range, addCharSp)
-            write_Stamp_Report(direct, subjID, StampDF)
-
-
-def cal_write_SacFix_crlSacFix(direct, subjID, regfileNameList, ExpType, recStatus=True, diff_ratio=0.6, frontrange_ratio=0.2, y_range=60, fix_method='DIFF', addCharSp=1):
+def cal_write_SacFix_crlSacFix(direct, subjID, regfileNameList, ExpType, classify_method='DIFF', recStatus=True, diff_ratio=0.6, frontrange_ratio=0.2, y_range=60, addCharSp=1):
     """
     processing a subject's saccades and fixations, read them from csv files and store them into csv files
     arguments:
@@ -2486,12 +2407,12 @@ def cal_write_SacFix_crlSacFix(direct, subjID, regfileNameList, ExpType, recStat
         subjID -- subject ID
         regfileNameList -- a list of region file names (trial_id will help select corresponding region files)
         ExpType -- type of experiments: 'RAN', 'RP'
+        classify_method -- fixation method: 'DIFF': based on difference in x_axis; 'SAC': based on crosslineSac ('SAC' is preferred since saccade is kinda more accurate!), default = 'DIFF'
         recStatus -- whether (True) or not (False) record questionable saccades and fixations, default = True 
         diff_ratio -- for calculating crossline saccades(fixations), the ratio of maximum distance between the center of the last word and the center of the first word in a line, default = 0.6
         frontrange_ratio -- for calculating crossline saccades(fixations), the ratio to check backward crossline saccade or fixation: such saccade or fixation usually starts around the line beginning, default = 0.2
         y_range -- for calculating crossline saccades(fixations), the biggest y difference indicating the eyes are crossing lines or moving away from that line (this must be similar to the distance between two lines), default = 60
-        fix_method -- fixation method: 'DIFF': based on difference in x_axis; 'SAC': based on crosslineSac ('SAC' is preferred since saccade is kinda more accurate!), default = 'DIFF'
-        addCharSp -- number of single character space added to EMF for catching overshoot fixations; default is 1
+        addCharSp -- number of single character space added to EMF for catching overshoot fixations; default = 1
     output:
         SacDF -- saccade data in different trials with updated line numbers of different subjects
         crlSac -- crossline saccade data in different trials of different subjects
@@ -2499,24 +2420,23 @@ def cal_write_SacFix_crlSacFix(direct, subjID, regfileNameList, ExpType, recStat
         crlFix -- crossline fixation data in different trials of different subjects
     All these data frames are stored in csv files
     """
-    SacDF, crlSac, FixDF, crlFix = cal_crlSacFix(direct, subjID, regfileNameList, ExpType, recStatus, diff_ratio, frontrange_ratio, y_range, fix_method, addCharSp)
-    write_Sac_crlSac(direct, subjID, SacDF, crlSac)
-    write_Fix_crlFix(direct, subjID, FixDF, crlFix)
+    SacDF, crlSac, FixDF, crlFix = cal_crlSacFix(direct, subjID, regfileNameList, ExpType, classify_method, recStatus, diff_ratio, frontrange_ratio, y_range, addCharSp)
+    write_Sac_crlSac(direct, subjID, SacDF, crlSac); write_Fix_crlFix(direct, subjID, FixDF, crlFix)
 
 
-def cal_write_SacFix_crlSacFix_b(direct, regfileNameList, ExpType, recStatus=True, diff_ratio=0.6, frontrange_ratio=0.2, y_range=60, fix_method='DIFF', addCharSp=1):
+def cal_write_SacFix_crlSacFix_b(direct, regfileNameList, ExpType, classify_method='DIFF', recStatus=True, diff_ratio=0.6, frontrange_ratio=0.2, y_range=60, addCharSp=1):
     """
     processing all subjects' saccades and fixations, read them from csv files and store them into csv files
     arguments:
         direct -- directory containing all asc files
         regfileNameList -- a list of region file names (trial_id will help select corresponding region files)
         ExpType -- type of experiments: 'RAN', 'RP'
+        classify_method -- fixation method: 'DIFF': based on difference in x_axis; 'SAC': based on crosslineSac ('SAC' is preferred since saccade is kinda more accurate!), default = 'DIFF'
         recStatus -- whether (True) or not (False) record questionable saccades and fixations, default = True 
         diff_ratio -- for calculating crossline saccades(fixations), the ratio of maximum distance between the center of the last word and the center of the first word in a line, default = 0.6
         frontrange_ratio -- for calculating crossline saccades(fixations), the ratio to check backward crossline saccade or fixation: such saccade or fixation usually starts around the line beginning, default = 0.2
         y_range -- for calculating crossline saccades(fixations), the biggest y difference indicating the eyes are crossing lines or moving away from that line (this must be similar to the distance between two lines), default = 60
-        fix_method -- fixation method: 'DIFF': based on difference in x_axis; 'SAC': based on crosslineSac ('SAC' is preferred since saccade is kinda more accurate!), default = 'DIFF'
-        addCharSp -- number of single character space added to EMF for catching overshoot fixations; default is 1
+        addCharSp -- number of single character space added to EMF for catching overshoot fixations; default = 1
     output:
         SacDF -- saccade data in different trials with updated line numbers of different subjects
         crlSac -- crossline saccade data in different trials of different subjects
@@ -2527,80 +2447,11 @@ def cal_write_SacFix_crlSacFix_b(direct, regfileNameList, ExpType, recStatus=Tru
     FixfileExist, FixfileDic = _crtCSV_dic(1, direct, '', '_Fix')
     regfileExist, regfileDic = _crtRegion_dic(direct, regfileNameList)
     if SacfileExist and FixfileExist and regfileExist:
-        for subjID in SacfileExist.keys():
-            SacDF, crlSac, FixDF, crlFix = cal_crlSacFix(direct, subjID, regfileNameList, ExpType, recStatus, diff_ratio, frontrange_ratio, y_range, fix_method, addCharSp)
-            write_Sac_crlSac(direct, subjID, SacDF, crlSac)
-            write_Fix_crlFix(direct, subjID, FixDF, crlFix)
-        
-
-def read_cal_Stamp(direct, alignmethod, subjID, regfileNameList, ExpType, diff_ratio=0.6, frontrange_ratio=0.2, y_range=60, addCharSp=1):
-    """
-    read ASC file and extract the time stamped data and calculate crossline time stamped data
-    arguments:
-        direct -- directory for storing output files
-        alignmethod -- 'FixRep': using fixation report data; 'Fix_Sac': using fixation data extracted and aligned automatically
-        subjID -- subject ID
-        regionfileNameList -- a list of region file names (trial_id will help select corresponding region files)
-        ExpType -- type of experiments: 'RAN', 'RP'
-        diff_ratio -- for calculating crossline saccades(fixations), the ratio of maximum distance between the center of the last word and the center of the first word in a line, default = 0.6
-        frontrange_ratio -- for calculating crossline saccades(fixations), the ratio to check backward crossline saccade or fixation: such saccade or fixation usually starts around the line beginning, default = 0.2
-        y_range -- for calculating crossline saccades(fixations), the biggest y difference indicating the eyes are crossing lines or moving away from that line (this must be similar to the distance between two lines), default = 60
-        addCharSp -- number of single character space added to RegDF for catching overshoot fixations; default is 1
-    output:
-        StampDF -- time stamped data in different trials
-    """
-    # first, check whether the ascii and region files are there:
-    ascfileExist, ascfileDic = _crtASC_dic(0, direct, subjID)
-    regfileExist, regfileDic = _crtRegion_dic(direct, regfileNameList)
-    
-    ETRANfileExist = True
-    ETRANfileName = os.path.join(direct, 'ETRAN.csv')
-    if not os.path.isfile(ETRANfileName):
-        print ETRANfileName + ' does not exist!'; ETRANfileExist = False
-    else:
-        ETRANDF = pd.read_csv(ETRANfileName); ETRANDF.SubjectID = ETRANDF.SubjectID.str.lower()
-    
-    if alignmethod == 'FixRep':
-        FixRepExist, FixRepDic = _crtFixRepDic(0, direct, subjID)        
-    elif alignmethod == 'Fix_Sac':
-        SacfileExist, SacfileDic = _crtCSV_dic(0, direct, subjID, '_Sac')
-        FixfileExist, FixfileDic = _crtCSV_dic(0, direct, subjID, '_Fix')
-    
-    # second, process the files
-    if ascfileExist and regfileExist and ETRANfileExist and ((alignmethod == 'FixRep' and FixRepExist) or (alignmethod == 'Fix_Sac' and SacfileExist and FixfileExist)):
-        # read EMF file
-        f = open(ascfileDic[subjID], 'r'); print "Read ASC: ", f.name; lines = f.readlines(); f.close()   # read EMF file    
-        script, sessdate, srcfile = _getHeader(lines)    # get header lines    
-        T_idx, T_lines = _getTrialReg(lines) # get trial regions
-    
-        StampDF = pd.DataFrame(columns=('subj', 'trial_id', 'trial_type', 'sampfreq', 'script', 'sessdate', 'srcfile', 'trialstart', 'trialend', 'tdur', 'recstart', 'recend', 'blinks', 'eye', 'time', 'x_pos1', 'y_pos1', 'pup_size1', 'x_pos2', 'y_pos2', 'pup_size2', 'line_no', 'gaze_region_no', 'label', 'error_free', 'Fix_Sac'))
-        
-        if alignmethod == 'FixRep':
-            FixRepDF = pd.read_csv(FixRepDic[subjID], sep='\t')
-            SacDF = np.nan; FixDF = np.nan;
-        elif alignmethod == 'Fix_Sac':
-            FixRepDF = np.nan
-            SacDF = pd.read_csv(SacfileDic[subjID], sep=',')
-            FixDF = pd.read_csv(FixfileDic[subjID], sep=',')          
-            
-        for ind in range(len(T_lines)):
-            triallines = lines[T_lines[ind,0]+1:T_lines[ind,1]]; trialID = int(T_idx[ind,0].split(' ')[-1])
-            blinklines, stamplines, sampfreq, eyerec = _getBlink_Fix_Sac_SampFreq_EyeRec(triallines, 1)
-            trial_type, trialstart, trialend, tdur, recstart, recend = _gettdur(triallines)
-            error_free = _getErrorFree(ETRANDF, subjID, trial_type)            
-            RegDF = _getRegDF(regfileDic, trial_type)  # get region file
-            _modRegDF(RegDF, addCharSp) # modify mod_x1 and mod_x2 position of word regions
-            # read saccade data and get crossline saccade
-            print "Read Time Stamped Data: Trial ", str(trialID), " Type ", trial_type
-            StampDFtemp = _recStamp(RegDF, ExpType, trialID, blinklines, stamplines, sampfreq, eyerec, script, sessdate, srcfile, trial_type, trialstart, trialend, tdur, recstart, recend, error_free)        
-            _calStamp(alignmethod, trial_type, trialstart, RegDF, StampDFtemp, FixRepDF, SacDF, FixDF)
-            
-            StampDF = StampDF.append(StampDFtemp, ignore_index=True)
-
-        return StampDF
+        for subjID in SacfileDic.keys():
+            cal_write_SacFix_crlSacFix(direct, subjID, regfileNameList, ExpType, classify_method, recStatus, diff_ratio, frontrange_ratio, y_range, addCharSp)
     
     
-def read_cal_SRRasc(direct, subjID, regfileNameList, ExpType, rec_lastFix=False, lump_Fix=True, ln=50, zn=50, mn=50, recStatus=True, diff_ratio=0.6, frontrange_ratio=0.2, y_range=60, fix_method='DIFF', addCharSp=1):
+def read_cal_SRRasc(direct, subjID, regfileNameList, ExpType, classify_method='DIFF', recStatus=True, diff_ratio=0.6, frontrange_ratio=0.2, y_range=60, addCharSp=1, rec_lastFix=False, lump_Fix=True, ln=50, zn=50, mn=50):
     """
     read ASC file and extract the fixation and saccade data and calculate crossline saccades and fixations
     arguments:
@@ -2608,17 +2459,17 @@ def read_cal_SRRasc(direct, subjID, regfileNameList, ExpType, rec_lastFix=False,
         subjID -- subject ID
         regionfileNameList -- a list of region file names (trial_id will help select corresponding region files)
         ExpType -- type of experiments: 'RAN', 'RP'
+        classify_method -- fixation method: 'DIFF': based on difference in x_axis; 'SAC': based on crosslineSac ('SAC' is preferred since saccade is kinda more accurate!), default = 'DIFF'
+        recStatus -- whether (True) or not (False) record questionable saccades and fixations, default = True 
+        diff_ratio -- for calculating crossline saccades(fixations), the ratio of maximum distance between the center of the last word and the center of the first word in a line, default = 0.6
+        frontrange_ratio -- for calculating crossline saccades(fixations), the ratio to check backward crossline saccade or fixation: such saccade or fixation usually starts around the line beginning, default = 0.2
+        y_range -- for calculating crossline saccades(fixations), the biggest y difference indicating the eyes are crossing lines or moving away from that line (this must be similar to the distance between two lines), default = 60
+        addCharSp -- number of single character space added to RegDF for catching overshoot fixations; default = 1
         rec_lastFix -- whether (True)or not (False) include the last fixation of a trial and allow it to trigger regression, default = False
         lump_Fix -- whether (True) or not (False) lump short fixations, default = True
         ln -- for lumping fixations, maximum duration of a fixation to "lump", default = 50. Fixation <= this value is subject to lumping with adjacent and near enough (determined by zN) fixations
         zn -- for lumping fixations, maximum distance (in pixels) between two fixations for "lumping"; default = 50, roughly 1.5 character (12/8s)
         mn -- for lumping fixations, minimum legal fixation duration, default = 50 ms
-        recStatus -- whether (True) or not (False) record questionable saccades and fixations, default = True 
-        diff_ratio -- for calculating crossline saccades(fixations), the ratio of maximum distance between the center of the last word and the center of the first word in a line, default = 0.6
-        frontrange_ratio -- for calculating crossline saccades(fixations), the ratio to check backward crossline saccade or fixation: such saccade or fixation usually starts around the line beginning, default = 0.2
-        y_range -- for calculating crossline saccades(fixations), the biggest y difference indicating the eyes are crossing lines or moving away from that line (this must be similar to the distance between two lines), default = 60
-        fix_method -- fixation method: 'DIFF': based on difference in x_axis; 'SAC': based on crosslineSac ('SAC' is preferred since saccade is kinda more accurate!), default = 'DIFF'
-        addCharSp -- number of single character space added to RegDF for catching overshoot fixations; default is 1
     output:
         SacDF -- saccade data in different trials
         crlSacDF -- crossline saccade data in different trials
@@ -2649,7 +2500,7 @@ def read_cal_SRRasc(direct, subjID, regfileNameList, ExpType, rec_lastFix=False,
             _modRegDF(RegDF, addCharSp) # modify mod_x1 and mod_x2 position of word regions
             # read saccade data and get crossline saccade
             print "Read Sac and Get crlSac: Trial ", str(trialID), " Type ", trial_type
-            SacDFtemp = _recSac(RegDF, ExpType, trialID, blinklines, saclines, sampfreq, eyerec, script, sessdate, srcfile, trial_type, trialstart, trialend, tdur, recstart, recend)
+            SacDFtemp = _recSac(ExpType, trialID, blinklines, saclines, sampfreq, eyerec, script, sessdate, srcfile, trial_type, trialstart, trialend, tdur, recstart, recend)
             crlSactemp, question = _getcrlSac(RegDF, SacDFtemp, diff_ratio, frontrange_ratio, y_range)
             SacDF = SacDF.append(SacDFtemp, ignore_index=True); crlSac = crlSac.append(crlSactemp, ignore_index=True)
             if recStatus and question:
@@ -2659,8 +2510,8 @@ def read_cal_SRRasc(direct, subjID, regfileNameList, ExpType, rec_lastFix=False,
 
             # read fixation data and get crossline fixation
             print "Read Fix and Get crlFix: Trial ", str(trialID), " Type ", trial_type
-            FixDFtemp = _recFix(RegDF, ExpType, trialID, blinklines, fixlines, sampfreq, eyerec, script, sessdate, srcfile, trial_type, trialstart, trialend, tdur, recstart, recend, rec_lastFix, lump_Fix, ln, zn, mn)        
-            crlFixtemp, question = _getcrlFix(RegDF, crlSactemp, FixDFtemp, diff_ratio, frontrange_ratio, y_range, fix_method)
+            FixDFtemp = _recFix(ExpType, trialID, blinklines, fixlines, sampfreq, eyerec, script, sessdate, srcfile, trial_type, trialstart, trialend, tdur, recstart, recend, rec_lastFix, lump_Fix, ln, zn, mn)        
+            crlFixtemp, question = _getcrlFix(RegDF, crlSactemp, FixDFtemp, classify_method, diff_ratio, frontrange_ratio, y_range)
             
             # assign region_no in FixDFtemp
             for curFix in range(len(FixDFtemp)):
@@ -2682,53 +2533,7 @@ def read_cal_SRRasc(direct, subjID, regfileNameList, ExpType, rec_lastFix=False,
         return SacDF, crlSac, FixDF, crlFix
         
 
-def read_cal_write_Stamp(direct, alignmethod, subjID, regfileNameList, ExpType, diff_ratio=0.6, frontrange_ratio=0.2, y_range=60, addCharSp=1):
-    """
-    processing a subject's time stamped data
-    arguments:
-        direct -- directory containing all asc files
-        alignmethod -- 'FixRep': using fixation report data; 'Fix_Sac': using fixation data extracted and aligned automatically
-        subjID -- subject ID
-        regfileNameList -- a list of region file names (trial_id will help select corresponding region files)
-        ExpType -- type of experiments: 'RAN', 'RP'
-        diff_ratio -- for calculating crossline saccades(fixations), the ratio of maximum distance between the center of the last word and the center of the first word in a line, default = 0.6
-        frontrange_ratio -- for calculating crossline saccades(fixations), the ratio to check backward crossline saccade or fixation: such saccade or fixation usually starts around the line beginning, default = 0.2
-        y_range -- for calculating crossline saccades(fixations), the biggest y difference indicating the eyes are crossing lines or moving away from that line (this must be similar to the distance between two lines), default = 60
-        addCharSp -- number of single character space added to RegDF for catching overshoot fixations; default is 1
-    output:
-        StampDF -- time stamped data in different trials of different subjects
-    All these data frames are stored into csv files    
-    """
-    StampDF = read_cal_Stamp(direct, alignmethod, subjID, regfileNameList, ExpType, diff_ratio, frontrange_ratio, y_range, addCharSp)
-    write_Stamp_Report(direct, subjID, StampDF)
-
-
-def read_cal_write_Stamp_b(direct, alignmethod, regfileNameList, ExpType, diff_ratio=0.6, frontrange_ratio=0.2, y_range=60, addCharSp=1):
-    """
-    processing all subjects' time stamped data
-    arguments:
-        direct -- directory containing all asc files
-        alignmethod -- 'FixRep': using fixation report data; 'Fix_Sac': using fixation data extracted and aligned automatically
-        regfileNameList -- a list of region file names (trial_id will help select corresponding region files)
-        ExpType -- type of experiments: 'RAN', 'RP'
-        diff_ratio -- for calculating crossline saccades(fixations), the ratio of maximum distance between the center of the last word and the center of the first word in a line, default = 0.6
-        frontrange_ratio -- for calculating crossline saccades(fixations), the ratio to check backward crossline saccade or fixation: such saccade or fixation usually starts around the line beginning, default = 0.2
-        y_range -- for calculating crossline saccades(fixations), the biggest y difference indicating the eyes are crossing lines or moving away from that line (this must be similar to the distance between two lines), default = 60
-        addCharSp -- number of single character space added to RegDF for catching overshoot fixations; default is 1
-    output:
-        StampDF -- time stamped data in different trials of different subjects
-        crlStampDF -- crossline time stamped data in different trials of different subjects
-    All these data frames are stored into csv files    
-    """
-    ascfileExist, ascfileDic = _crtASC_dic(1, direct, '')  
-    regfileExist, regfileDic = _crtRegion_dic(direct, regfileNameList)
-    if ascfileExist and regfileExist:
-        for subjID in ascfileDic.keys():
-            StampDF = read_cal_Stamp(direct, alignmethod, subjID, regfileNameList, ExpType, diff_ratio, frontrange_ratio, y_range, addCharSp)
-            write_Stamp_Report(direct, subjID, StampDF)
-
-
-def read_cal_write_SRRasc(direct, subjID, regfileNameList, ExpType, rec_lastFix=False, lump_Fix=True, ln=50, zn=50, mn=50, recStatus=True, diff_ratio=0.6, frontrange_ratio=0.2, y_range=60, fix_method='DIFF', addCharSp=1):
+def read_cal_write_SRRasc(direct, subjID, regfileNameList, ExpType, classify_method='DIFF', recStatus=True, diff_ratio=0.6, frontrange_ratio=0.2, y_range=60, addCharSp=1, rec_lastFix=False, lump_Fix=True, ln=50, zn=50, mn=50):
     """
     processing a subject's fixation and saccade data
     arguments:
@@ -2736,17 +2541,17 @@ def read_cal_write_SRRasc(direct, subjID, regfileNameList, ExpType, rec_lastFix=
         subjID -- subject ID
         regfileNameList -- a list of region file names (trial_id will help select corresponding region files)
         ExpType -- type of experiments: 'RAN', 'RP'
+        classify_method -- fixation method: 'DIFF': based on difference in x_axis; 'SAC': based on crosslineSac ('SAC' is preferred since saccade is kinda more accurate!), default = 'DIFF'
+        recStatus -- whether (True) or not (False) record questionable saccades and fixations, default = True 
+        diff_ratio -- for calculating crossline saccades(fixations), the ratio of maximum distance between the center of the last word and the center of the first word in a line, default = 0.6
+        frontrange_ratio -- for calculating crossline saccades(fixations), the ratio to check backward crossline saccade or fixation: such saccade or fixation usually starts around the line beginning, default = 0.2
+        y_range -- for calculating crossline saccades(fixations), the biggest y difference indicating the eyes are crossing lines or moving away from that line (this must be similar to the distance between two lines), default = 60
+        addCharSp -- number of single character space added to RegDF for catching overshoot fixations; default = 1
         rec_lastFix -- whether (True)or not (False) include the last fixation of a trial and allow it to trigger regression, default = False
         lump_Fix -- whether (True) or not (False) lump short fixations, default = True
         ln -- for lumping fixations, maximum duration of a fixation to "lump", default = 50. Fixation <= this value is subject to lumping with adjacent and near enough (determined by zN) fixations
         zn -- for lumping fixations, maximum distance (in pixels) between two fixations for "lumping"; default = 50, roughly 1.5 character (12/8s)
         mn -- for lumping fixations, minimum legal fixation duration, default = 50 ms
-        recStatus -- whether (True) or not (False) record questionable saccades and fixations, default = True 
-        diff_ratio -- for calculating crossline saccades(fixations), the ratio of maximum distance between the center of the last word and the center of the first word in a line, default = 0.6
-        frontrange_ratio -- for calculating crossline saccades(fixations), the ratio to check backward crossline saccade or fixation: such saccade or fixation usually starts around the line beginning, default = 0.2
-        y_range -- for calculating crossline saccades(fixations), the biggest y difference indicating the eyes are crossing lines or moving away from that line (this must be similar to the distance between two lines), default = 60
-        fix_method -- fixation method: 'DIFF': based on difference in x_axis; 'SAC': based on crosslineSac ('SAC' is preferred since saccade is kinda more accurate!), default = 'DIFF'
-        addCharSp -- number of single character space added to RegDF for catching overshoot fixations; default is 1
     output:
         SacDF -- saccade data in different trials of different subjects
         crlSacDF -- crossline saccade data in different trials of different subjects
@@ -2754,18 +2559,19 @@ def read_cal_write_SRRasc(direct, subjID, regfileNameList, ExpType, rec_lastFix=
         crlFixDF -- crossline fixation data in different trials of different subjects
     All these data frames are stored into csv files    
     """
-    SacDF, crlSac, FixDF, crlFix = read_cal_SRRasc(direct, subjID, regfileNameList, ExpType, rec_lastFix, lump_Fix, ln, zn, mn, recStatus, diff_ratio, frontrange_ratio, y_range, fix_method, addCharSp)
+    SacDF, crlSac, FixDF, crlFix = read_cal_SRRasc(direct, subjID, regfileNameList, ExpType, classify_method, recStatus, diff_ratio, frontrange_ratio, y_range, addCharSp, rec_lastFix, lump_Fix, ln, zn, mn)
     write_Sac_crlSac(direct, subjID, SacDF, crlSac)
     write_Fix_crlFix(direct, subjID, FixDF, crlFix)
 
   
-def read_cal_write_SRRasc_b(direct, regfileNameList, ExpType, rec_lastFix=False, lump_Fix=True, ln=50, zn=50, mn=50, recStatus=True, diff_ratio=0.6, frontrange_ratio=0.2, y_range=60, fix_method='DIFF', addCharSp=1):
+def read_cal_write_SRRasc_b(direct, regfileNameList, ExpType, classify_method='DIFF', rec_lastFix=False, lump_Fix=True, ln=50, zn=50, mn=50, recStatus=True, diff_ratio=0.6, frontrange_ratio=0.2, y_range=60, addCharSp=1):
     """
     processing all subjects' fixation and saccade data
     arguments:
         direct -- directory containing all asc files
         regfileNameList -- a list of region file names (trial_id will help select corresponding region files)
         ExpType -- type of experiments: 'RAN', 'RP'
+        classify_method -- fixation method: 'DIFF': based on difference in x_axis; 'SAC': based on crosslineSac ('SAC' is preferred since saccade is kinda more accurate!), default = 'DIFF'
         rec_lastFix -- whether (True)or not (False) include the last fixation of a trial and allow it to trigger regression, default = False
         lump_Fix -- whether (True) or not (False) lump short fixations, default = True
         ln -- for lumping fixations, maximum duration of a fixation to "lump", default = 50. Fixation <= this value is subject to lumping with adjacent and near enough (determined by zN) fixations
@@ -2775,8 +2581,7 @@ def read_cal_write_SRRasc_b(direct, regfileNameList, ExpType, rec_lastFix=False,
         diff_ratio -- for calculating crossline saccades(fixations), the ratio of maximum distance between the center of the last word and the center of the first word in a line, default = 0.6
         frontrange_ratio -- for calculating crossline saccades(fixations), the ratio to check backward crossline saccade or fixation: such saccade or fixation usually starts around the line beginning, default = 0.2
         y_range -- for calculating crossline saccades(fixations), the biggest y difference indicating the eyes are crossing lines or moving away from that line (this must be similar to the distance between two lines), default = 60
-        fix_method -- fixation method: 'DIFF': based on difference in x_axis; 'SAC': based on crosslineSac ('SAC' is preferred since saccade is kinda more accurate!), default = 'DIFF'
-        addCharSp -- number of single character space added to RegDF for catching overshoot fixations; default is 1
+        addCharSp -- number of single character space added to RegDF for catching overshoot fixations; default = 1
     output:
         SacDF -- saccade data in different trials of different subjects
         crlSacDF -- crossline saccade data in different trials of different subjects
@@ -2787,10 +2592,204 @@ def read_cal_write_SRRasc_b(direct, regfileNameList, ExpType, rec_lastFix=False,
     ascfileExist, ascfileDic = _crtASC_dic(1, direct, '')
     regfileExist, regfileDic = _crtRegion_dic(direct, regfileNameList)
     if ascfileExist and regfileExist:
-        for subjID in ascfileDic:
-            SacDF, crlSac, FixDF, crlFix = read_cal_SRRasc(direct, subjID, regfileNameList, ExpType, rec_lastFix, lump_Fix, ln, zn, mn, recStatus, diff_ratio, frontrange_ratio, y_range, fix_method, addCharSp)
-            write_Sac_crlSac(direct, subjID, SacDF, crlSac)
-            write_Fix_crlFix(direct, subjID, FixDF, crlFix)
+        for subjID in ascfileDic.keys():
+            read_cal_write_SRRasc(direct, subjID, regfileNameList, ExpType, classify_method, recStatus, diff_ratio, frontrange_ratio, y_range, addCharSp, rec_lastFix, lump_Fix, ln, zn, mn)
+
+
+def cal_TimeStamp(direct, subjID, regfileNameList, ExpType, align_method, addCharSp=1):
+    """
+    read csv time stamped data file of subj and extract crossline saccades and fixations and update line numbers of original saccades and fixations
+    arguments:
+        direct -- directory for storing time stamped csv and output files
+        subjID -- subject ID
+        regionfileNameList -- a list of region file names (trial_id will help select corresponding region files)
+        ExpType -- type of experiments: 'RAN', 'RP'
+        align_method -- 'FixRep': based on FixRepDF; 'Fix_Sac': based on SacDF, FixDF
+        addCharSp -- number of single character space added to EMF for catching overshoot fixations; default = 1
+    output:
+        newStampDF -- time stamped data in different trials with updated line numbers
+        
+    """
+    # first, check whether the stamp and region files are there:
+    StampfileExist, StampfileDic = _crtCSV_dic(0, direct, subjID, '_Stamp')
+    regfileExist, regfileDic = _crtRegion_dic(direct, regfileNameList)
+    
+    if align_method == 'FixRep':
+        FixRepExist, FixRepDic = _crtFixRepDic(0, direct, subjID)        
+    elif align_method == 'Fix_Sac':
+        SacfileExist, SacfileDic = _crtCSV_dic(0, direct, subjID, '_Sac')
+        FixfileExist, FixfileDic = _crtCSV_dic(0, direct, subjID, '_Fix')
+
+    # second, process the files
+    if StampfileExist and regfileExist and ((align_method == 'FixRep' and FixRepExist) or (align_method == 'Fix_Sac' and SacfileExist and FixfileExist)):
+        StampDF = pd.read_csv(StampfileDic[subjID], sep=',')    
+        newStampDF = pd.DataFrame()     
+        print "Subj: ", subjID
+        
+        if align_method == 'FixRep':
+            FixRepDF = pd.read_csv(FixRepDic[subjID], sep='\t')
+            SacDF = np.nan; FixDF = np.nan;
+        elif align_method == 'Fix_Sac':
+            FixRepDF = np.nan
+            SacDF = pd.read_csv(SacfileDic[subjID], sep=',')
+            FixDF = pd.read_csv(FixfileDic[subjID], sep=',')     
+
+        for trialID in np.unique(map(int,StampDF.trial_id)):
+            trial_type = np.unique(StampDF.trial_type[StampDF.trial_id == trialID])[0]
+            trialstart = np.unique(StampDF.trialstart[StampDF.trial_id == trialID])[0]
+            RegDF = _getRegDF(regfileDic, trial_type)  # get region file
+            _modRegDF(RegDF, addCharSp) # modify mod_x1 and mod_x2 position of word regions
+            # get time stamped data and crossline time stamped data
+            print "Get crlStamp: Trial ", str(trialID), " Type ", np.unique(StampDF.trial_type[StampDF.trial_id == trialID])[0]  
+            StampDFtemp = StampDF[StampDF.trial_id==trialID].reset_index()
+            _calTimeStamp(align_method, trial_type, trialstart, RegDF, StampDFtemp, FixRepDF, SacDF, FixDF)
+
+            newStampDF = newStampDF.append(StampDFtemp, ignore_index=True)
+                        
+        return newStampDF
+
+
+def cal_write_TimeStamp(direct, subjID, regfileNameList, ExpType, align_method, addCharSp=1):
+    """
+    processing a subject's time stamped data, read them from csv files and store them into csv files
+    arguments:
+        direct -- directory containing all asc files
+        subjID -- subject ID
+        regfileNameList -- a list of region file names (trial_id will help select corresponding region files)
+        ExpType -- type of experiments: 'RAN', 'RP'
+        align_method -- 'FixRep': based on FixRepDF; 'Fix_Sac': based on SacDF, FixDF
+        addCharSp -- number of single character space added to EMF for catching overshoot fixations; default = 1
+    output:
+        StampDF -- time stamped data in different trials with updated line numbers of different subjects
+    All these data frames are stored in csv files
+    """
+    StampDF = cal_TimeStamp(direct, subjID, regfileNameList, ExpType, align_method, addCharSp)
+    write_TimeStamp_Report(direct, subjID, StampDF)
+
+
+def cal_write_TimeStamp_b(direct, regfileNameList, ExpType, align_method, addCharSp=1):
+    """
+    processing all subjects' time stamped data, read them from csv files and store them into csv files
+    arguments:
+        direct -- directory containing all asc files
+        regfileNameList -- a list of region file names (trial_id will help select corresponding region files)
+        ExpType -- type of experiments: 'RAN', 'RP'
+        align_method -- 'FixRep': based on FixRepDF; 'Fix_Sac': based on SacDF, FixDF
+        addCharSp -- number of single character space added to EMF for catching overshoot fixations; default = 1
+    output:
+        StampDF -- time stamped data in different trials with updated line numbers of different subjects
+        crlStampDF -- crossline time stamped data in different trials of different subjects
+    """
+    StampfileExist, StampfileDic = _crtCSV_dic(1, direct, '', '_Stamp')
+    regfileExist, regfileDic = _crtRegion_dic(direct, regfileNameList)
+    if StampfileExist and regfileExist:
+        for subjID in StampfileDic.keys():
+            StampDF = cal_TimeStamp(direct, subjID, regfileNameList, ExpType, align_method, addCharSp)
+            write_TimeStamp_Report(direct, subjID, StampDF)
+
+
+def read_cal_TimeStamp(direct, subjID, regfileNameList, ExpType, align_method, addCharSp=1):
+    """
+    read ASC file and extract the time stamped data and calculate crossline time stamped data
+    arguments:
+        direct -- directory for storing output files
+        subjID -- subject ID
+        regionfileNameList -- a list of region file names (trial_id will help select corresponding region files)
+        ExpType -- type of experiments: 'RAN', 'RP'
+        align_method -- 'FixRep': using fixation report data; 'Fix_Sac': using fixation data extracted and aligned automatically
+        addCharSp -- number of single character space added to RegDF for catching overshoot fixations; default = 1
+    output:
+        StampDF -- time stamped data in different trials
+    """
+    # first, check whether the ascii and region files are there:
+    ascfileExist, ascfileDic = _crtASC_dic(0, direct, subjID)
+    regfileExist, regfileDic = _crtRegion_dic(direct, regfileNameList)
+    
+    ETRANfileExist = True
+    #ETRANfileName = os.path.join(direct, 'ETRAN.csv')
+    #if not os.path.isfile(ETRANfileName):
+    #    print ETRANfileName + ' does not exist!'; ETRANfileExist = False
+    #else:
+    #    ETRANDF = pd.read_csv(ETRANfileName); ETRANDF.SubjectID = ETRANDF.SubjectID.str.lower()
+    
+    if align_method == 'FixRep':
+        FixRepExist, FixRepDic = _crtFixRepDic(0, direct, subjID)        
+    elif align_method == 'Fix_Sac':
+        SacfileExist, SacfileDic = _crtCSV_dic(0, direct, subjID, '_Sac')
+        FixfileExist, FixfileDic = _crtCSV_dic(0, direct, subjID, '_Fix')
+    
+    # second, process the files
+    if ascfileExist and regfileExist and ETRANfileExist and ((align_method == 'FixRep' and FixRepExist) or (align_method == 'Fix_Sac' and SacfileExist and FixfileExist)):
+        # read EMF file
+        f = open(ascfileDic[subjID], 'r'); print "Read ASC: ", f.name; lines = f.readlines(); f.close()   # read EMF file    
+        script, sessdate, srcfile = _getHeader(lines)    # get header lines    
+        T_idx, T_lines = _getTrialReg(lines) # get trial regions
+    
+        StampDF = pd.DataFrame(columns=('subj', 'trial_id', 'trial_type', 'sampfreq', 'script', 'sessdate', 'srcfile', 'trialstart', 'trialend', 'tdur', 'recstart', 'recend', 'blinks', 'eye', 'time', 'x_pos1', 'y_pos1', 'pup_size1', 'x_pos2', 'y_pos2', 'pup_size2', 'line_no', 'gaze_region_no', 'label', 'error_free', 'Fix_Sac'))
+        
+        if align_method == 'FixRep':
+            FixRepDF = pd.read_csv(FixRepDic[subjID], sep='\t')
+            SacDF = np.nan; FixDF = np.nan;
+        elif align_method == 'Fix_Sac':
+            FixRepDF = np.nan
+            SacDF = pd.read_csv(SacfileDic[subjID], sep=',')
+            FixDF = pd.read_csv(FixfileDic[subjID], sep=',')          
+            
+        for ind in range(len(T_lines)):
+            triallines = lines[T_lines[ind,0]+1:T_lines[ind,1]]; trialID = int(T_idx[ind,0].split(' ')[-1])
+            blinklines, stamplines, sampfreq, eyerec = _getBlink_Fix_Sac_SampFreq_EyeRec(triallines, 1)
+            trial_type, trialstart, trialend, tdur, recstart, recend = _gettdur(triallines)
+            error_free = 1
+     #      error_free = _getErrorFree(ETRANDF, subjID, trial_type)            
+            RegDF = _getRegDF(regfileDic, trial_type)  # get region file
+            _modRegDF(RegDF, addCharSp) # modify mod_x1 and mod_x2 position of word regions
+            # read saccade data and get crossline saccade
+            print "Read Time Stamped Data: Trial ", str(trialID), " Type ", trial_type
+            StampDFtemp = _recTimeStamp(ExpType, trialID, blinklines, stamplines, sampfreq, eyerec, script, sessdate, srcfile, trial_type, trialstart, trialend, tdur, recstart, recend, error_free)        
+            _calTimeStamp(align_method, trial_type, trialstart, RegDF, StampDFtemp, FixRepDF, SacDF, FixDF)
+            
+            StampDF = StampDF.append(StampDFtemp, ignore_index=True)
+
+        return StampDF
+
+
+def read_cal_write_TimeStamp(direct, subjID, regfileNameList, ExpType, align_method, addCharSp=1):
+    """
+    processing a subject's time stamped data
+    arguments:
+        direct -- directory containing all asc files
+        subjID -- subject ID
+        regfileNameList -- a list of region file names (trial_id will help select corresponding region files)
+        ExpType -- type of experiments: 'RAN', 'RP'
+        align_method -- 'FixRep': using fixation report data; 'Fix_Sac': using fixation data extracted and aligned automatically
+        addCharSp -- number of single character space added to RegDF for catching overshoot fixations; default = 1
+    output:
+        StampDF -- time stamped data in different trials of different subjects
+    All these data frames are stored into csv files    
+    """
+    StampDF = read_cal_TimeStamp(direct, subjID, regfileNameList, ExpType, align_method, addCharSp)
+    write_TimeStamp_Report(direct, subjID, StampDF)
+
+
+def read_cal_write_TimeStamp_b(direct, regfileNameList, ExpType, align_method, addCharSp=1):
+    """
+    processing all subjects' time stamped data
+    arguments:
+        direct -- directory containing all asc files
+        regfileNameList -- a list of region file names (trial_id will help select corresponding region files)
+        ExpType -- type of experiments: 'RAN', 'RP'
+        align_method -- 'FixRep': using fixation report data; 'Fix_Sac': using fixation data extracted and aligned automatically
+        addCharSp -- number of single character space added to RegDF for catching overshoot fixations; default = 1
+    output:
+        StampDF -- time stamped data in different trials of different subjects
+        crlStampDF -- crossline time stamped data in different trials of different subjects
+    All these data frames are stored into csv files    
+    """
+    ascfileExist, ascfileDic = _crtASC_dic(1, direct, '')  
+    regfileExist, regfileDic = _crtRegion_dic(direct, regfileNameList)
+    if ascfileExist and regfileExist:
+        for subjID in ascfileDic.keys():
+            read_cal_write_TimeStamp(direct, subjID, regfileNameList, ExpType, align_method, addCharSp)
 
     
 # -----------------------------------------------------------------------------
@@ -2803,12 +2802,12 @@ def _rgb2gray(rgb):
     return str(0.2989*rgb[0]/256.0 + 0.5870*rgb[1]/256.0 + 0.1140*rgb[2]/256.0)
 
 
-def _image_SacFix(direct, subj, bitmapNameList, Sac, crlSac, Fix, crlFix, RegDF, trialID, method, max_FixRadius, drawFinal, showNum, PNGmethod):
+def _image_SacFix(direct, subjID, bitmapNameList, Sac, crlSac, Fix, crlFix, RegDF, trialID, drawType, max_FixRadius, drawFinal, showFixDur, PNGopt):
     """
     draw saccade and fixation data of a trial
     arguments:
         direct -- directory to store drawn figures
-        subj -- subject ID
+        subjID -- subject ID
         bitmapNameList -- list of the bitmap files as backgrounds
         Sac -- saccade data of the trail
         crlSac -- cross line saccade data of the trial
@@ -2816,24 +2815,24 @@ def _image_SacFix(direct, subj, bitmapNameList, Sac, crlSac, Fix, crlFix, RegDF,
         crlFix -- cross line fixation data of the trial
         RegDF -- region file of the trail
         trialID -- trial ID
-        method -- drawing method:
+        drawType -- type of drawing:
             'ALL': draw all results (mixing saccade with fixation, and mixing crossline saccade with crossline fixation)
             'SAC': draw saccade results (saccades and crossline saccades)
             'FIX': draw fixation results (fixation and crossline fixations)
         max_FixRadius -- maximum radius of fixation circles for showing 
         drawFinal -- whether (True) or not (False) draw fixations and saccades after the ending of reading     
-        showNum -- whether (True) or not (False) show number for fixations 
-        PNGmethod -- whether use png file as background (0) or draw texts from region file (1)    
+        showFixDur -- whether (True) or not (False) show number for fixations 
+        PNGopt -- 0: use png file as background; 1: draw texts from region file    
     the results are saved in png file    
     """
     # prepare bitmaps for displaying saccades and fixations
     fd = FontDict(); fontpath = fd.fontGet('LiberationMono','Regular')
     xsz = 18; ttf = ImageFont.truetype(fontpath, xsz)
-    if PNGmethod == 0:
+    if PNGopt == 0:
         # open the bitmap of the paragraph
         img1 = Image.open(os.path.join(direct, bitmapNameList[trialID])); draw1 = ImageDraw.Draw(img1)
         img2 = Image.open(os.path.join(direct, bitmapNameList[trialID])); draw2 = ImageDraw.Draw(img2)
-    elif PNGmethod == 1:        
+    elif PNGopt == 1:        
         descents = _getStrikeDescents(fontpath, xsz); ascents = _getStrikeAscents(fontpath, xsz)   
         fg = (0,0,0); bg = (232,232,232); dim = (1280,1024)
         # initialize images
@@ -2884,7 +2883,7 @@ def _image_SacFix(direct, subj, bitmapNameList, Sac, crlSac, Fix, crlFix, RegDF,
     # set up colors for saccades and fixations
     col_leftSac = 'blue'; col_rightSac = 'red'; col_leftEyeFix = 'green'; col_rightEyeFix = 'red'; col_num = 'blue'
     
-    if method == 'ALL':            
+    if drawType == 'ALL':            
         radius_ratio = max_FixRadius/max(Fix.duration)
         # draw img1
         if SingleEye:
@@ -2892,137 +2891,109 @@ def _image_SacFix(direct, subj, bitmapNameList, Sac, crlSac, Fix, crlFix, RegDF,
             for ind in range(end_Fix):
                 if Fix.valid[ind] == 'yes':
                     r = Fix.duration[ind]*radius_ratio            
-                    if Fix.eye[ind] == 'L':
-                        draw1.ellipse((Fix.x_pos[ind]-r, Fix.y_pos[ind]-r, Fix.x_pos[ind]+r, Fix.y_pos[ind]+r), outline=col_leftEyeFix, fill=col_leftEyeFix)
-                    elif Fix.eye[ind] == 'R':
-                        draw1.ellipse((Fix.x_pos[ind]-r, Fix.y_pos[ind]-r, Fix.x_pos[ind]+r, Fix.y_pos[ind]+r), outline=col_rightEyeFix, fill=col_rightEyeFix)
-                    if showNum:
-                        draw1.text((Fix.x_pos[ind], Fix.y_pos[ind]), str(Fix.duration[ind]), font=ttf, fill=col_num)
+                    if Fix.eye[ind] == 'L': draw1.ellipse((Fix.x_pos[ind]-r, Fix.y_pos[ind]-r, Fix.x_pos[ind]+r, Fix.y_pos[ind]+r), outline=col_leftEyeFix, fill=col_leftEyeFix)
+                    elif Fix.eye[ind] == 'R': draw1.ellipse((Fix.x_pos[ind]-r, Fix.y_pos[ind]-r, Fix.x_pos[ind]+r, Fix.y_pos[ind]+r), outline=col_rightEyeFix, fill=col_rightEyeFix)
+                    if showFixDur: draw1.text((Fix.x_pos[ind], Fix.y_pos[ind]), str(Fix.duration[ind]), font=ttf, fill=col_num)
             # draw saccades
             for ind in range(len(Sac)):
                 if Sac.loc[ind,'end_time'] <= end_time:
-                    if Sac.x1_pos[ind] < Sac.x2_pos[ind]:
-                        draw1.line((Sac.x1_pos[ind], Sac.y1_pos[ind], Sac.x2_pos[ind], Sac.y2_pos[ind]), fill=col_rightSac, width=2)
-                    else:
-                        draw1.line((Sac.x1_pos[ind], Sac.y1_pos[ind], Sac.x2_pos[ind], Sac.y2_pos[ind]), fill=col_leftSac, width=2)
+                    if Sac.x1_pos[ind] < Sac.x2_pos[ind]: draw1.line((Sac.x1_pos[ind], Sac.y1_pos[ind], Sac.x2_pos[ind], Sac.y2_pos[ind]), fill=col_rightSac, width=2)
+                    else: draw1.line((Sac.x1_pos[ind], Sac.y1_pos[ind], Sac.x2_pos[ind], Sac.y2_pos[ind]), fill=col_leftSac, width=2)
         else:
             # draw left eye fixations
             for ind in range(end_Fix_L):
                 if Fix.eye[ind] == 'L' and Fix.valid[ind] == 'yes':
                     r = Fix.duration[ind]*radius_ratio            
                     draw1.ellipse((Fix.x_pos[ind]-r, Fix.y_pos[ind]-r, Fix.x_pos[ind]+r, Fix.y_pos[ind]+r), outline=col_leftEyeFix, fill=col_leftEyeFix)
-                    if showNum:
-                        draw1.text((Fix.x_pos[ind], Fix.y_pos[ind]), str(Fix.duration[ind]), font=ttf, fill=col_num)
+                    if showFixDur: draw1.text((Fix.x_pos[ind], Fix.y_pos[ind]), str(Fix.duration[ind]), font=ttf, fill=col_num)
             # draw right eye fixations
             for ind in range(len(Fix[Fix.eye=='L']), end_Fix_R):
                 if Fix.eye[ind] == 'R' and Fix.valid[ind] == 'yes':
                     r = Fix.duration[ind]*radius_ratio            
                     draw1.ellipse((Fix.x_pos[ind]-r, Fix.y_pos[ind]-r, Fix.x_pos[ind]+r, Fix.y_pos[ind]+r), outline=col_rightEyeFix, fill=col_rightEyeFix)
-                    if showNum:
-                        draw1.text((Fix.x_pos[ind], Fix.y_pos[ind]), str(Fix.duration[ind]), font=ttf, fill=col_num)
+                    if showFixDur: draw1.text((Fix.x_pos[ind], Fix.y_pos[ind]), str(Fix.duration[ind]), font=ttf, fill=col_num)
             # draw saccades            
             for ind in range(len(Sac)):
                 if (Sac.eye[ind] == 'L' and Sac.loc[ind,'end_time'] <= end_time_L) or (Sac.eye[ind] == 'R' and Sac.loc[ind,'end_time'] <= end_time_R):
-                    if Sac.x1_pos[ind] < Sac.x2_pos[ind]:
-                        draw1.line((Sac.x1_pos[ind], Sac.y1_pos[ind], Sac.x2_pos[ind], Sac.y2_pos[ind]), fill=col_rightSac, width=2)
-                    else:
-                        draw1.line((Sac.x1_pos[ind], Sac.y1_pos[ind], Sac.x2_pos[ind], Sac.y2_pos[ind]), fill=col_leftSac, width=2)
+                    if Sac.x1_pos[ind] < Sac.x2_pos[ind]: draw1.line((Sac.x1_pos[ind], Sac.y1_pos[ind], Sac.x2_pos[ind], Sac.y2_pos[ind]), fill=col_rightSac, width=2)
+                    else: draw1.line((Sac.x1_pos[ind], Sac.y1_pos[ind], Sac.x2_pos[ind], Sac.y2_pos[ind]), fill=col_leftSac, width=2)
                 
         # draw img2
         # draw crossline fixations on img2        
         for ind in range(len(crlFix)):
             r = crlFix.duration[ind]*radius_ratio
-            if crlFix.eye[ind] == 'L':
-                draw2.ellipse((crlFix.x_pos[ind]-r, crlFix.y_pos[ind]-r, crlFix.x_pos[ind]+r, crlFix.y_pos[ind]+r), outline=col_leftEyeFix, fill=col_leftEyeFix)
-            elif crlFix.eye[ind] == 'R':
-                draw2.ellipse((crlFix.x_pos[ind]-r, crlFix.y_pos[ind]-r, crlFix.x_pos[ind]+r, crlFix.y_pos[ind]+r), outline=col_rightEyeFix, fill=col_rightEyeFix)
-            if showNum:
-                draw2.text((crlFix.x_pos[ind], crlFix.y_pos[ind]), str(crlFix.duration[ind]), font=ttf, fill=col_num)
+            if crlFix.eye[ind] == 'L': draw2.ellipse((crlFix.x_pos[ind]-r, crlFix.y_pos[ind]-r, crlFix.x_pos[ind]+r, crlFix.y_pos[ind]+r), outline=col_leftEyeFix, fill=col_leftEyeFix)
+            elif crlFix.eye[ind] == 'R': draw2.ellipse((crlFix.x_pos[ind]-r, crlFix.y_pos[ind]-r, crlFix.x_pos[ind]+r, crlFix.y_pos[ind]+r), outline=col_rightEyeFix, fill=col_rightEyeFix)
+            if showFixDur: draw2.text((crlFix.x_pos[ind], crlFix.y_pos[ind]), str(crlFix.duration[ind]), font=ttf, fill=col_num)
         # draw crossline saccades on img2
         for ind in range(len(crlSac)):
-            if crlSac.x1_pos[ind] < crlSac.x2_pos[ind]:
-                draw2.line((crlSac.x1_pos[ind], crlSac.y1_pos[ind], crlSac.x2_pos[ind], crlSac.y2_pos[ind]), fill=col_rightSac, width=2)
-            else:
-                draw2.line((crlSac.x1_pos[ind], crlSac.y1_pos[ind], crlSac.x2_pos[ind], crlSac.y2_pos[ind]), fill=col_leftSac, width=2)
+            if crlSac.x1_pos[ind] < crlSac.x2_pos[ind]: draw2.line((crlSac.x1_pos[ind], crlSac.y1_pos[ind], crlSac.x2_pos[ind], crlSac.y2_pos[ind]), fill=col_rightSac, width=2)
+            else: draw2.line((crlSac.x1_pos[ind], crlSac.y1_pos[ind], crlSac.x2_pos[ind], crlSac.y2_pos[ind]), fill=col_leftSac, width=2)
 
         # save img1 and img2
-        img1.save(os.path.join(direct, subj + '_FixSac_trial' + str(trialID) + '.png'), 'PNG')
-        img2.save(os.path.join(direct, subj + '_crlFixSac_trial' + str(trialID) + '.png'), 'PNG')                
+        img1.save(os.path.join(direct, subjID, subjID + '_FixSac_trial' + str(trialID) + '.png'), 'PNG')
+        img2.save(os.path.join(direct, subjID, subjID + '_crlFixSac_trial' + str(trialID) + '.png'), 'PNG')                
     
-    elif method == 'SAC':
+    elif drawType == 'SAC':
         # draw saccades on img1
         if SingleEye:
             for ind in range(len(Sac)):
                 if Sac.loc[ind,'end_time'] <= end_time:
-                    if Sac.x1_pos[ind] < Sac.x2_pos[ind]:
-                        draw1.line((Sac.x1_pos[ind], Sac.y1_pos[ind], Sac.x2_pos[ind], Sac.y2_pos[ind]), fill=col_rightSac, width=2)
-                    else:
-                        draw1.line((Sac.x1_pos[ind], Sac.y1_pos[ind], Sac.x2_pos[ind], Sac.y2_pos[ind]), fill=col_leftSac, width=2)
+                    if Sac.x1_pos[ind] < Sac.x2_pos[ind]: draw1.line((Sac.x1_pos[ind], Sac.y1_pos[ind], Sac.x2_pos[ind], Sac.y2_pos[ind]), fill=col_rightSac, width=2)
+                    else: draw1.line((Sac.x1_pos[ind], Sac.y1_pos[ind], Sac.x2_pos[ind], Sac.y2_pos[ind]), fill=col_leftSac, width=2)
         else:                
             for ind in range(len(Sac)):
                 if (Sac.eye[ind] == 'L' and Sac.loc[ind,'end_time'] <= end_time_L) or (Sac.eye[ind] == 'R' and Sac.loc[ind,'end_time'] <= end_time_R):
-                    if Sac.x1_pos[ind] < Sac.x2_pos[ind]:
-                        draw1.line((Sac.x1_pos[ind], Sac.y1_pos[ind], Sac.x2_pos[ind], Sac.y2_pos[ind]), fill=col_rightSac, width=2)
-                    else:
-                        draw1.line((Sac.x1_pos[ind], Sac.y1_pos[ind], Sac.x2_pos[ind], Sac.y2_pos[ind]), fill=col_leftSac, width=2)    
+                    if Sac.x1_pos[ind] < Sac.x2_pos[ind]: draw1.line((Sac.x1_pos[ind], Sac.y1_pos[ind], Sac.x2_pos[ind], Sac.y2_pos[ind]), fill=col_rightSac, width=2)
+                    else: draw1.line((Sac.x1_pos[ind], Sac.y1_pos[ind], Sac.x2_pos[ind], Sac.y2_pos[ind]), fill=col_leftSac, width=2)    
         
         # draw crossline saccades on img2
         for ind in range(len(crlSac)):
-            if crlSac.x1_pos[ind] < crlSac.x2_pos[ind]:
-                draw2.line((crlSac.x1_pos[ind], crlSac.y1_pos[ind], crlSac.x2_pos[ind], crlSac.y2_pos[ind]), fill=col_rightSac, width=2)
-            else:
-                draw2.line((crlSac.x1_pos[ind], crlSac.y1_pos[ind], crlSac.x2_pos[ind], crlSac.y2_pos[ind]), fill=col_leftSac, width=2)
+            if crlSac.x1_pos[ind] < crlSac.x2_pos[ind]: draw2.line((crlSac.x1_pos[ind], crlSac.y1_pos[ind], crlSac.x2_pos[ind], crlSac.y2_pos[ind]), fill=col_rightSac, width=2)
+            else: draw2.line((crlSac.x1_pos[ind], crlSac.y1_pos[ind], crlSac.x2_pos[ind], crlSac.y2_pos[ind]), fill=col_leftSac, width=2)
 
         # save img1 and img2
-        img1.save(os.path.join(direct, subj + '_Sac_trial' + str(trialID) + '.png'), 'PNG')
-        img2.save(os.path.join(direct, subj + '_crlSac_trial' + str(trialID) + '.png'), 'PNG')        
+        img1.save(os.path.join(direct, subjID, subjID + '_Sac_trial' + str(trialID) + '.png'), 'PNG')
+        img2.save(os.path.join(direct, subjID, subjID + '_crlSac_trial' + str(trialID) + '.png'), 'PNG')        
         
-    elif method == 'FIX':
+    elif drawType == 'FIX':
         radius_ratio = max_FixRadius/max(Fix.duration)
         # draw fixations on img1        
         if SingleEye:
             for ind in range(end_Fix):
                 if Fix.valid[ind] == 'yes':
                     r = Fix.duration[ind]*radius_ratio            
-                    if Fix.eye[ind] == 'L':
-                        draw1.ellipse((Fix.x_pos[ind]-r, Fix.y_pos[ind]-r, Fix.x_pos[ind]+r, Fix.y_pos[ind]+r), outline=col_leftEyeFix, fill=col_leftEyeFix)
-                    elif Fix.eye[ind] == 'R':
-                        draw1.ellipse((Fix.x_pos[ind]-r, Fix.y_pos[ind]-r, Fix.x_pos[ind]+r, Fix.y_pos[ind]+r), outline=col_rightEyeFix, fill=col_rightEyeFix)
-                    if showNum:
-                        draw1.text((Fix.x_pos[ind], Fix.y_pos[ind]), str(Fix.duration[ind]), font=ttf, fill=col_num)
+                    if Fix.eye[ind] == 'L': draw1.ellipse((Fix.x_pos[ind]-r, Fix.y_pos[ind]-r, Fix.x_pos[ind]+r, Fix.y_pos[ind]+r), outline=col_leftEyeFix, fill=col_leftEyeFix)
+                    elif Fix.eye[ind] == 'R': draw1.ellipse((Fix.x_pos[ind]-r, Fix.y_pos[ind]-r, Fix.x_pos[ind]+r, Fix.y_pos[ind]+r), outline=col_rightEyeFix, fill=col_rightEyeFix)
+                    if showFixDur: draw1.text((Fix.x_pos[ind], Fix.y_pos[ind]), str(Fix.duration[ind]), font=ttf, fill=col_num)
         else:
             # draw left eye fixations
             for ind in range(end_Fix_L):
                 if Fix.eye[ind] == 'L' and Fix.valid[ind] == 'yes':
                     r = Fix.duration[ind]*radius_ratio            
                     draw1.ellipse((Fix.x_pos[ind]-r, Fix.y_pos[ind]-r, Fix.x_pos[ind]+r, Fix.y_pos[ind]+r), outline=col_leftEyeFix, fill=col_leftEyeFix)
-                    if showNum:
-                        draw1.text((Fix.x_pos[ind], Fix.y_pos[ind]), str(Fix.duration[ind]), font=ttf, fill=col_num)
+                    if showFixDur: draw1.text((Fix.x_pos[ind], Fix.y_pos[ind]), str(Fix.duration[ind]), font=ttf, fill=col_num)
             # draw right eye fixations
             for ind in range(len(Fix[Fix.eye=='L']), end_Fix_R):
                 if Fix.eye[ind] == 'R' and Fix.valid[ind] == 'yes':
                     r = Fix.duration[ind]*radius_ratio            
                     draw1.ellipse((Fix.x_pos[ind]-r, Fix.y_pos[ind]-r, Fix.x_pos[ind]+r, Fix.y_pos[ind]+r), outline=col_rightEyeFix, fill=col_rightEyeFix)
-                    if showNum:
-                        draw1.text((Fix.x_pos[ind], Fix.y_pos[ind]), str(Fix.duration[ind]), font=ttf, fill=col_num)
+                    if showFixDur: draw1.text((Fix.x_pos[ind], Fix.y_pos[ind]), str(Fix.duration[ind]), font=ttf, fill=col_num)
         
         # draw crossline fixations on img2        
         for ind in range(len(crlFix)):
             r = crlFix.duration[ind]*radius_ratio
-            if crlFix.eye[ind] == 'L':
-                draw2.ellipse((crlFix.x_pos[ind]-r, crlFix.y_pos[ind]-r, crlFix.x_pos[ind]+r, crlFix.y_pos[ind]+r), outline=col_leftEyeFix, fill=col_leftEyeFix)
-            elif crlFix.eye[ind] == 'R':
-                draw2.ellipse((crlFix.x_pos[ind]-r, crlFix.y_pos[ind]-r, crlFix.x_pos[ind]+r, crlFix.y_pos[ind]+r), outline=col_rightEyeFix, fill=col_rightEyeFix)
-            if showNum:
-                draw2.text((crlFix.x_pos[ind], crlFix.y_pos[ind]), str(crlFix.duration[ind]), font=ttf, fill=col_num)
+            if crlFix.eye[ind] == 'L': draw2.ellipse((crlFix.x_pos[ind]-r, crlFix.y_pos[ind]-r, crlFix.x_pos[ind]+r, crlFix.y_pos[ind]+r), outline=col_leftEyeFix, fill=col_leftEyeFix)
+            elif crlFix.eye[ind] == 'R': draw2.ellipse((crlFix.x_pos[ind]-r, crlFix.y_pos[ind]-r, crlFix.x_pos[ind]+r, crlFix.y_pos[ind]+r), outline=col_rightEyeFix, fill=col_rightEyeFix)
+            if showFixDur: draw2.text((crlFix.x_pos[ind], crlFix.y_pos[ind]), str(crlFix.duration[ind]), font=ttf, fill=col_num)
         
         # save img1 and img2
-        img1.save(os.path.join(direct, subj + '_Fix_trial' + str(trialID) + '.png'), 'PNG') 
-        img2.save(os.path.join(direct, subj + '_crlFix_trial' + str(trialID) + '.png'), 'PNG') 
+        img1.save(os.path.join(direct, subjID, subjID + '_Fix_trial' + str(trialID) + '.png'), 'PNG') 
+        img2.save(os.path.join(direct, subjID, subjID + '_crlFix_trial' + str(trialID) + '.png'), 'PNG') 
 
 
 # main functions for drawing saccades and fixations
-def draw_SacFix(direct, subjID, regfileNameList, bitmapNameList, method, max_FixRadius=30, drawFinal=False, showNum=False, PNGmethod=0):    
+def draw_SacFix(direct, subjID, regfileNameList, bitmapNameList, drawType, max_FixRadius=30, drawFinal=False, showFixDur=False, PNGopt=0):    
     """
     read and draw saccade and fixation data
     arguments:
@@ -3030,41 +3001,41 @@ def draw_SacFix(direct, subjID, regfileNameList, bitmapNameList, method, max_Fix
         subjID -- subject ID
         regfileNameList -- a list of region files (trial_id will help select corresponding region files)
         bitmapNameList -- a list of png bitmaps showing the paragraphs shown to the subject
-        method -- drawing method:
+        drawType -- type of drawing:
             'ALL': draw all results (mixing saccade with fixation, and mixing crossline saccade with crossline fixation)
             'SAC': draw saccade results (saccades and crossline saccades)
             'FIX': draw fixation results (fixation and crossline fixations)
         max_FixRadius -- maximum radius of fixation circles for showing, default = 30 
         drawFinal -- whether (True) or not (False) draw fixations and saccades after the ending of reading, default = False
-        showNum -- whether (True) or not (False) show number for fixations, default = False 
-        PNGmethod -- whether use png file as background (0) or draw texts from region file (1), default = 0 
+        showFixDur -- whether (True) or not (False) show number for fixations, default = False 
+        PNGopt -- 0: use png file as background; 1: draw texts from region file; default = 0 
     output:
-        when method == 'ALL'
+        when drawOpt == 'ALL'
             subj_FixSac_trial*.png -- showing the fixations and saccades of subj in different trials
             subj_crlFixSac_trial*.png -- showing the crossline fixations and saccades of subj in different trials
-        when method == 'SAC':
+        when drawType == 'SAC':
             subj_Sac_trial*.png
             subj_crlSac_trial*.png
-        when method == 'FIX':    
+        when drawType == 'FIX':    
             subj_Fix_trial*.png
             subj_crlFix_trial*.png        
     """
     # first, check whether the required files are there:
-    if method == 'ALL':
+    if drawType == 'ALL':
         SacfileExist, SacfileDic = _crtCSV_dic(0, direct, subjID, '_Sac')
         crlSacfileExist, crlSacfileDic = _crtCSV_dic(0, direct, subjID, '_crlSac')
         FixfileExist, FixfileDic = _crtCSV_dic(0, direct, subjID, '_Fix')        
         crlFixfileExist, crlFixfileDic = _crtCSV_dic(0, direct, subjID, '_crlFix')
-    if method == 'SAC':
+    if drawType == 'SAC':
         SacfileExist, SacfileDic = _crtCSV_dic(0, direct, subjID, '_Sac')
         crlSacfileExist, crlSacfileDic = _crtCSV_dic(0, direct, subjID, '_crlSac')
-    if method == 'FIX':
+    if drawType == 'FIX':
         FixfileExist, FixfileDic = _crtCSV_dic(0, direct, subjID, '_Fix')        
         crlFixfileExist, crlFixfileDic = _crtCSV_dic(0, direct, subjID, '_crlFix')
     
     regfileExist, regfileDic = _crtRegion_dic(direct, regfileNameList)
                 
-    if PNGmethod == 0:
+    if PNGopt == 0:
         bitmapExist = True
         if len(bitmapNameList) == 0:
             # automatically gather all region files in direct
@@ -3079,18 +3050,18 @@ def draw_SacFix(direct, subjID, regfileNameList, bitmapNameList, method, max_Fix
                     print bitmapfile + ' does not exist!'; bitmapExist = False 
                        
     # second, process the files
-    if SacfileExist and FixfileExist and crlSacfileExist and crlFixfileExist and regfileExist and ((PNGmethod == 0 and bitmapExist) or PNGmethod == 1):
+    if SacfileExist and FixfileExist and crlSacfileExist and crlFixfileExist and regfileExist and ((PNGopt == 0 and bitmapExist) or PNGopt == 1):
         # read files
         SacDF = pd.read_csv(SacfileDic[subjID], sep=','); crlSacDF = pd.read_csv(crlSacfileDic[subjID], sep=',')
         FixDF = pd.read_csv(FixfileDic[subjID], sep=','); crlFixDF = pd.read_csv(crlFixfileDic[subjID], sep=',')
     
         # draw fixation and saccade data on a picture
-        for trialID in range(len(regfileNameList)):
-            RegDF = _getRegDF(regfileDic, np.unique(SacDF.trial_type[SacDF.trial_id == trialID]))  # get region file
+        for trialID in range(len(regfileDic)):
+            RegDF = _getRegDF(regfileDic, np.unique(SacDF.trial_type[SacDF.trial_id == trialID])[0])  # get region file
             print "Draw Sac and Fix: Subj: " + subjID + ", Trial: " + str(np.unique(SacDF.trial_type[SacDF.trial_id == trialID]))
             Sac = SacDF[SacDF.trial_id == trialID].reset_index(); crlSac = crlSacDF[crlSacDF.trial_id == trialID].reset_index()
             Fix = FixDF[FixDF.trial_id == trialID].reset_index(); crlFix = crlFixDF[crlFixDF.trial_id == trialID].reset_index()    
-            _image_SacFix(direct, subjID, bitmapNameList, Sac, crlSac, Fix, crlFix, RegDF, trialID, method, max_FixRadius, drawFinal, showNum, PNGmethod)
+            _image_SacFix(direct, subjID, bitmapNameList, Sac, crlSac, Fix, crlFix, RegDF, trialID, drawType, max_FixRadius, drawFinal, showFixDur, PNGopt)
 
 
 def draw_SacFix_b(direct, regfileNameList, bitmapNameList, method, max_FixRadius=30, drawFinal=False, showNum=False, PNGmethod=0):
@@ -3121,12 +3092,13 @@ def draw_SacFix_b(direct, regfileNameList, bitmapNameList, method, max_FixRadius
             *_crlFix_trial*.png            
     """
     subjlist = []
-    for file in os.listdir(direct):
-        if fnmatch.fnmatch(file, '*_*.csv'):
-            subjlist.append(str(file).split('_')[0])
+    for root, dirs, files in os.walk(direct):
+        for name in files:
+            if name.endswith(".asc"):
+                subjlist.append(name.split('.')[0])
     subjlist = np.unique(subjlist)
     if len(subjlist) == 0:
-        print 'No csv files in the directory!'        
+        print 'No csv files in the directory!'      
 
     regfileExist, regfileDic = _crtRegion_dic(direct, regfileNameList)
 
@@ -3219,99 +3191,12 @@ def playWav(soundFile, cond):
         os.system("start " + soundFile)        
 
 
-def _animate_EM_Stamp(direct, subj, bitmapFile, soundFile, Stamp, trialID, max_FixRadius=3):
-    """
-    animation of eye-movement of a trial based on time stamped data
-    arguments:
-        direct -- directory to store bitmaps
-        subj -- subject ID
-        bitmapNameList -- list of the bitmap files as backgrounds
-        soundNameList -- list of the sound files to be played during animation
-        Stamp -- time stamped data of the trial
-        trialID -- trial ID
-        max_FixRadius -- maximum radius of the circle for fixation; default is 3
-    """
-    bitmapSize = Image.open(bitmapFile).size
-    # create screen and turtle
-    # create screen
-    screen = turtle.Screen()
-    screen.screensize(bitmapSize[0], bitmapSize[1]); screen.bgpic(bitmapFile)
-    if np.unique(Stamp.eye)[0] == 'L' or np.unique(Stamp.eye)[0] == 'R':
-        # single eye data
-        screen.title('Subject: ' +  subj + '; Trial: ' + str(trialID+1) + ' Eye: ' + np.unique(Stamp.eye)[0])
-        # create turtle        
-        stamp = turtle.Turtle(); 
-        if np.unique(Stamp.eye)[0] == 'L': stamp.color('green')
-        elif np.unique(Stamp.eye)[0] == 'R': stamp.color('red')
-        stamp.shape('circle'); stamp.speed(0); stamp.resizemode("user")
-        stamp.penup()
-    else:
-        # both eyes data: left eye green circle; right eye red circle
-        screen.title('Subject: ' +  subj + '; Trial: ' + str(trialID+1) + ' Left eye: Green; Right: Red')
-        # create player turtle as fixation
-        stamp_Left = turtle.Turtle(); stamp_Left.color('green'); stamp_Left.shape('circle'); stamp_Left.speed(0); stamp_Left.resizemode("user")
-        stamp_Left.penup()
-        stamp_Right = turtle.Turtle(); stamp_Right.color('red'); stamp_Right.shape('circle'); stamp_Right.speed(0); stamp_Right.resizemode("user")
-        stamp_Right.penup()
-    
-    # define binding functions
-    def startAni():
-        if np.unique(Stamp.eye)[0] == 'L' or np.unique(Stamp.eye)[0] == 'R':
-            # single eye data
-            # show regularly time stamped data
-            ind = 0; curTime = Stamp.loc[ind, 'recstart']; time_step = 1.0/Stamp.loc[ind, 'sampfreq']
-            while curTime > Stamp.loc[ind, 'time']: ind += 1
-            # start sound
-            playWav(soundFile, 1)
-            # start screen and turtle player
-            while ind < len(Stamp):
-                if not np.isnan(Stamp.loc[ind, 'x_pos1']):
-                    # draw eye fixation
-                    stamp.setpos(Stamp.loc[ind, 'x_pos1'] - bitmapSize[0]/2, -(Stamp.loc[ind, 'y_pos1'] - bitmapSize[1]/2))
-                    stamp.shapesize(max_FixRadius, max_FixRadius)
-                else:             
-                    ind += 1    # move to next fixation
-                time.sleep(time_step)   
-        
-        else:
-            # both eyes data
-            # find the first fixation that starts after trialstart
-            ind = 0; curTime = Stamp.loc[ind, 'recstart']; time_step = 1.0/Stamp.loc[ind, 'sampfreq']
-            while curTime > Stamp.loc[ind, 'time']: ind += 1
-            # start sound
-            playWav(soundFile, 1)
-            # start screen and turtle player            
-            while ind < len(Stamp):
-                if not np.isnan(Stamp.loc[ind, 'x_pos1']):
-                    # draw left eye fixation
-                    stamp_Left.setpos(Stamp.loc[ind, 'x_pos1'] - bitmapSize[0]/2, -(Stamp.loc[ind, 'y_pos1'] - bitmapSize[1]/2))
-                    stamp_Left.shapesize(max_FixRadius, max_FixRadius)
-                if not np.isnan(Stamp.loc[ind, 'x_pos2']):
-                    # draw right eye fixation
-                    stamp_Right.setpos(Stamp.loc[ind, 'x_pos2'] - bitmapSize[0]/2, -(Stamp.loc[ind, 'y_pos2'] - bitmapSize[1]/2))
-                    stamp_Right.shapesize(max_FixRadius, max_FixRadius)
-                ind += 1    # move to next fixation
-                time.sleep(time_step)   
-    
-    def endAni():
-        playWav(soundFile, 0)   # end sound            
-        turtle.exitonclick()    # end screen
-    
-    # set keyboard bindings
-    turtle.listen()
-    turtle.onkey(startAni, 's') # key 's' to start animation
-    turtle.onkey(endAni, 'e')  # key 'e' to end animation
-
-    playWav(soundFile, 0)   # end sound    
-    turtle.exitonclick() # click to quit
-
-
-def _animate_EM(direct, subj, bitmapFile, soundFile, Fix, trialID, max_FixRadius=3):
+def _animate_EM(direct, subjID, bitmapFile, soundFile, Fix, trialID, max_FixRadius=3):
     """
     animation of eye-movement of a trial
     arguments:
         direct -- directory to store bitmaps
-        subj -- subject ID
+        subjID -- subject ID
         bitmapNameList -- list of the bitmap files as backgrounds
         soundNameList -- list of the sound files to be played during animation
         Fix -- fixation data of the trial
@@ -3325,7 +3210,7 @@ def _animate_EM(direct, subj, bitmapFile, soundFile, Fix, trialID, max_FixRadius
     screen.screensize(bitmapSize[0], bitmapSize[1]); screen.bgpic(bitmapFile)
     if len(np.unique(Fix.eye)) == 1:
         # single eye data
-        screen.title('Subject: ' +  subj + '; Trial: ' + str(trialID+1) + ' Eye: ' + np.unique(Fix.eye)[0])
+        screen.title('Subject: ' +  subjID + '; Trial: ' + str(trialID+1) + ' Eye: ' + np.unique(Fix.eye)[0])
         # create turtle        
         fix = turtle.Turtle(); 
         if np.unique(Fix.eye)[0] == 'L': fix.color('green')
@@ -3334,7 +3219,7 @@ def _animate_EM(direct, subj, bitmapFile, soundFile, Fix, trialID, max_FixRadius
         fix.penup()
     elif len(np.unique(Fix.eye)) == 2:
         # both eyes data: left eye green circle; right eye red circle
-        screen.title('Subject: ' +  subj + '; Trial: ' + str(trialID+1) + ' Left eye: Green; Right: Red')
+        screen.title('Subject: ' +  subjID + '; Trial: ' + str(trialID+1) + ' Left eye: Green; Right: Red')
         # create player turtle as fixation
         fix_Left = turtle.Turtle(); fix_Left.color('green'); fix_Left.shape('circle'); fix_Left.speed(0); fix_Left.resizemode("user")
         fix_Left.penup()
@@ -3391,16 +3276,14 @@ def _animate_EM(direct, subj, bitmapFile, soundFile, Fix, trialID, max_FixRadius
                     indLeft += 1    # move to next fixation
                     if indLeft >= len(FixLeft) or np.isnan(FixLeft.loc[indLeft, 'line_no']):
                         LeftFinish = True
-                    else:
-                        timeLeft = FixLeft.loc[indLeft, 'start_time']   # move to next start_time
+                    else: timeLeft = FixLeft.loc[indLeft, 'start_time']   # move to next start_time
                     # draw right eye fixation
                     fix_Right.setpos(FixRight.loc[indRight, 'x_pos'] - bitmapSize[0]/2, -(FixLeft.loc[indLeft, 'y_pos'] - bitmapSize[1]/2))
                     fix_Right.shapesize(FixRight.loc[indRight, 'duration']/max(Fix.duration)*max_FixRadius, FixRight.loc[indRight, 'duration']/max(Fix.duration)*max_FixRadius)
                     indRight += 1   # move to next fixation
                     if indRight >= len(FixRight) or np.isnan(FixRight.loc[indRight, 'line_no']):
                         RightFinish = True
-                    else:
-                        timeRight = FixRight.loc[indRight, 'start_time']    # move to next start_time
+                    else: timeRight = FixRight.loc[indRight, 'start_time']    # move to next start_time
                 while (timeLeft < timeRight and not LeftFinish and not RightFinish) or (not LeftFinish and RightFinish):
                     time_diff = (FixLeft.loc[indLeft, 'start_time'] - curTime)/1000
                     curTime = FixLeft.loc[indLeft, 'start_time']    # update curTime
@@ -3413,8 +3296,7 @@ def _animate_EM(direct, subj, bitmapFile, soundFile, Fix, trialID, max_FixRadius
                     indLeft += 1    # move to next fixation
                     if indLeft >= len(FixLeft) or np.isnan(FixLeft.loc[indLeft, 'line_no']):
                         LeftFinish = True
-                    else:
-                        timeLeft = FixLeft.loc[indLeft, 'start_time']  # move to next start_time
+                    else: timeLeft = FixLeft.loc[indLeft, 'start_time']  # move to next start_time
                 while (timeLeft > timeRight and not LeftFinish and not RightFinish) or (LeftFinish and not RightFinish):
                     time_diff = (FixRight.loc[indRight, 'start_time'] - curTime)/1000
                     curTime = FixRight.loc[indRight, 'start_time']
@@ -3427,8 +3309,7 @@ def _animate_EM(direct, subj, bitmapFile, soundFile, Fix, trialID, max_FixRadius
                     indRight += 1   # move to next fixation
                     if indRight >= len(FixRight) or np.isnan(FixRight.loc[indRight, 'line_no']):
                         RightFinish = True
-                    else:
-                        timeRight = FixRight.loc[indRight, 'start_time']   # move to next start_time                
+                    else: timeRight = FixRight.loc[indRight, 'start_time']   # move to next start_time                
                 
     def endAni():
         playWav(soundFile, 0)   # end sound            
@@ -3443,124 +3324,195 @@ def _animate_EM(direct, subj, bitmapFile, soundFile, Fix, trialID, max_FixRadius
     turtle.exitonclick() # click to quit
 
 
-def animate_Stamp(direct, subj, trialID):
-    """
-    draw animation of a trial using time stamped data
-    arguments: 
-        direct -- directory storing bitmaps, sound files, and time stamped csv files
-        subj -- subject ID        
-        trialID -- trial ID
-    """
-    csvExist = False
-    csvlist = []
-    for file in os.listdir(direct):
-        if fnmatch.fnmatch(file, '*_Stamp.csv'):
-            csvlist.append(str(file))
-    if len(csvlist) == 0:
-        print 'No csv files in the directory!'        
-    for csvfile in csvlist:
-        if csvfile.split('_Stamp')[0] == subj:
-            csvfile_subj = csvfile; csvExist = True
-    if not csvExist:
-        print 'Data of ' + subj + ' is missing!'
-    
-    bitmapExist = False
-    bitmapNameList = []
-    for file in os.listdir(direct):
-        if fnmatch.fnmatch(file, '*.gif'):
-            bitmapNameList.append(str(file))
-    if len(bitmapNameList) == 0:
-        print 'GIF bitmap is missing!'        
-    if trialID < 0 or (len(bitmapNameList) > 1 and trialID >= len(bitmapNameList)):
-        print 'Invalid trial ID!'
-    else:
-        bitmapExist = True
-    
-    soundExist, trialExist = False, False    
-    soundNameList = []
-    for file in os.listdir(direct):
-        if fnmatch.fnmatch(file, '*.wav'):
-            soundNameList.append(str(file))
-    if len(soundNameList) == 0:
-        print 'Sound file is missing!'        
-    for soundfile in soundNameList:
-        if soundfile.split('-')[0] == subj:
-            soundExist = True
-            if soundfile.split('-')[1].split('.')[0] == str(trialID + 1):
-                soundfile_subj = soundfile; trialExist = True
-    if not soundExist or not trialExist:
-        print 'Sound data of ' + subj + ' is missing!'
-    
-    if csvExist and bitmapExist and soundExist and trialExist:
-        csvStamp = os.path.join(direct, csvfile_subj); StampDF = pd.read_csv(csvStamp, sep=',')
-        Stamp = StampDF[StampDF.trial_id == trialID].reset_index()
-        if len(bitmapNameList) == 1:
-            bitmapFile = os.path.join(direct, bitmapNameList[0])
-        else:
-            bitmapFile = os.path.join(direct, bitmapNameList[trialID])
-        soundFile = os.path.join(direct, soundfile_subj)    
-        
-        _animate_EM_Stamp(direct, subj, bitmapFile, soundFile, Stamp, trialID)
-    
-    
-def animate(direct, subj, trialID):
+def animate(direct, subjID, trialID):
     """
     draw animation of a trial
     arguments: 
         direct -- directory storing bitmaps, sound files, and fixation csv files
-        subj -- subject ID        
+        subjID -- subject ID        
         trialID -- trial ID
     """
     csvExist = False
     csvlist = []
-    for file in os.listdir(direct):
+    for file in os.listdir(os.path.join(direct, subjID)):
         if fnmatch.fnmatch(file, '*_Fix*.csv'):
             csvlist.append(str(file))
-    if len(csvlist) == 0:
-        print 'No csv files in the directory!'        
+    if len(csvlist) == 0: print 'No csv files in the directory!'        
     for csvfile in csvlist:
-        if csvfile.split('_Fix')[0] == subj:
+        if csvfile.split('_Fix')[0] == subjID:
             csvfile_subj = csvfile; csvExist = True
-    if not csvExist:
-        print 'Data of ' + subj + ' is missing!'
+    if not csvExist: print 'Data of ' + subjID + ' is missing!'
     
     bitmapExist = False
     bitmapNameList = []
     for file in os.listdir(direct):
         if fnmatch.fnmatch(file, '*.gif'):
             bitmapNameList.append(str(file))
-    if len(bitmapNameList) == 0:
-        print 'GIF bitmap is missing!'        
+    if len(bitmapNameList) == 0: print 'GIF bitmap is missing!'        
     if trialID < 0 or (len(bitmapNameList) > 1 and trialID >= len(bitmapNameList)):
         print 'Invalid trial ID!'
-    else:
-        bitmapExist = True
+    else: bitmapExist = True
     
     soundExist, trialExist = False, False    
     soundNameList = []
-    for file in os.listdir(direct):
+    for file in os.listdir(os.path.join(direct, subjID)):
         if fnmatch.fnmatch(file, '*.wav'):
             soundNameList.append(str(file))
-    if len(soundNameList) == 0:
-        print 'Sound file is missing!'        
+    if len(soundNameList) == 0: print 'Sound file is missing!'        
     for soundfile in soundNameList:
-        if soundfile.split('-')[0] == subj:
+        if soundfile.split('-')[0] == subjID:
             soundExist = True
             if soundfile.split('-')[1].split('.')[0] == str(trialID + 1):
                 soundfile_subj = soundfile; trialExist = True
-    if not soundExist or not trialExist:
-        print 'Sound data of ' + subj + ' is missing!'
+    if not soundExist or not trialExist: print 'Sound data of ' + subjID + ' is missing!'
     
     if csvExist and bitmapExist and soundExist and trialExist:
-        csvFix = os.path.join(direct, csvfile_subj); FixDF = pd.read_csv(csvFix, sep=',')
+        csvFix = os.path.join(direct, subjID, csvfile_subj); FixDF = pd.read_csv(csvFix, sep=',')
         Fix = FixDF[FixDF.trial_id == trialID].reset_index()
-        if len(bitmapNameList) == 1:
-            bitmapFile = os.path.join(direct, bitmapNameList[0])
-        else:
-            bitmapFile = os.path.join(direct, bitmapNameList[trialID])
-        soundFile = os.path.join(direct, soundfile_subj)    
+        if len(bitmapNameList) == 1: bitmapFile = os.path.join(direct, bitmapNameList[0])
+        else: bitmapFile = os.path.join(direct, bitmapNameList[trialID])
+        soundFile = os.path.join(direct, subjID, soundfile_subj)    
         
-        _animate_EM(direct, subj, bitmapFile, soundFile, Fix, trialID)
+        _animate_EM(direct, subjID, bitmapFile, soundFile, Fix, trialID)
+
+
+def _animate_EM_TimeStamp(direct, subjID, bitmapFile, soundFile, Stamp, trialID, max_FixRadius=3):
+    """
+    animation of eye-movement of a trial based on time stamped data
+    arguments:
+        direct -- directory to store bitmaps
+        subjID -- subject ID
+        bitmapNameList -- list of the bitmap files as backgrounds
+        soundNameList -- list of the sound files to be played during animation
+        Stamp -- time stamped data of the trial
+        trialID -- trial ID
+        max_FixRadius -- maximum radius of the circle for fixation; default is 3
+    """
+    bitmapSize = Image.open(bitmapFile).size
+    # create screen and turtle
+    # create screen
+    screen = turtle.Screen()
+    screen.screensize(bitmapSize[0], bitmapSize[1]); screen.bgpic(bitmapFile)
+    if np.unique(Stamp.eye)[0] == 'L' or np.unique(Stamp.eye)[0] == 'R':
+        # single eye data
+        screen.title('Subject: ' +  subjID + '; Trial: ' + str(trialID+1) + ' Eye: ' + np.unique(Stamp.eye)[0])
+        # create turtle        
+        stamp = turtle.Turtle(); 
+        if np.unique(Stamp.eye)[0] == 'L': stamp.color('green')
+        elif np.unique(Stamp.eye)[0] == 'R': stamp.color('red')
+        stamp.shape('circle'); stamp.speed(0); stamp.resizemode("user")
+        stamp.penup()
+    else:
+        # both eyes data: left eye green circle; right eye red circle
+        screen.title('Subject: ' +  subjID + '; Trial: ' + str(trialID+1) + ' Left eye: Green; Right: Red')
+        # create player turtle as fixation
+        stamp_Left = turtle.Turtle(); stamp_Left.color('green'); stamp_Left.shape('circle'); stamp_Left.speed(0); stamp_Left.resizemode("user")
+        stamp_Left.penup()
+        stamp_Right = turtle.Turtle(); stamp_Right.color('red'); stamp_Right.shape('circle'); stamp_Right.speed(0); stamp_Right.resizemode("user")
+        stamp_Right.penup()
+    
+    # define binding functions
+    def startAni():
+        if np.unique(Stamp.eye)[0] == 'L' or np.unique(Stamp.eye)[0] == 'R':
+            # single eye data
+            # show regularly time stamped data
+            ind = 0; curTime = Stamp.loc[ind, 'recstart']; time_step = 1.0/Stamp.loc[ind, 'sampfreq']
+            while curTime > Stamp.loc[ind, 'time']: ind += 1
+            # start sound
+            playWav(soundFile, 1)
+            # start screen and turtle player
+            while ind < len(Stamp):
+                if not np.isnan(Stamp.loc[ind, 'x_pos1']):
+                    # draw eye fixation
+                    stamp.setpos(Stamp.loc[ind, 'x_pos1'] - bitmapSize[0]/2, -(Stamp.loc[ind, 'y_pos1'] - bitmapSize[1]/2))
+                    stamp.shapesize(max_FixRadius, max_FixRadius)
+                    ind += 1
+                else: ind += 1    # move to next fixation
+                time.sleep(time_step)   
+        
+        else:
+            # both eyes data
+            # find the first fixation that starts after trialstart
+            ind = 0; curTime = Stamp.loc[ind, 'recstart']; time_step = 1.0/Stamp.loc[ind, 'sampfreq']
+            while curTime > Stamp.loc[ind, 'time']: ind += 1
+            # start sound
+            playWav(soundFile, 1)
+            # start screen and turtle player            
+            while ind < len(Stamp):
+                if not np.isnan(Stamp.loc[ind, 'x_pos1']):
+                    # draw left eye fixation
+                    stamp_Left.setpos(Stamp.loc[ind, 'x_pos1'] - bitmapSize[0]/2, -(Stamp.loc[ind, 'y_pos1'] - bitmapSize[1]/2))
+                    stamp_Left.shapesize(max_FixRadius, max_FixRadius)
+                if not np.isnan(Stamp.loc[ind, 'x_pos2']):
+                    # draw right eye fixation
+                    stamp_Right.setpos(Stamp.loc[ind, 'x_pos2'] - bitmapSize[0]/2, -(Stamp.loc[ind, 'y_pos2'] - bitmapSize[1]/2))
+                    stamp_Right.shapesize(max_FixRadius, max_FixRadius)
+                ind += 1    # move to next fixation
+                time.sleep(time_step)   
+    
+    def endAni():
+        playWav(soundFile, 0)   # end sound            
+        turtle.exitonclick()    # end screen
+    
+    # set keyboard bindings
+    turtle.listen()
+    turtle.onkey(startAni, 's') # key 's' to start animation
+    turtle.onkey(endAni, 'e')  # key 'e' to end animation
+
+    playWav(soundFile, 0)   # end sound    
+    turtle.exitonclick() # click to quit
+
+
+def animate_TimeStamp(direct, subjID, trialID):
+    """
+    draw animation of a trial using time stamped data
+    arguments: 
+        direct -- directory storing bitmaps, sound files, and time stamped csv files
+        subjID -- subject ID        
+        trialID -- trial ID
+    """
+    csvExist = False
+    csvlist = []
+    for file in os.listdir(os.path.join(direct, subjID)):
+        if fnmatch.fnmatch(file, '*_Stamp.csv'):
+            csvlist.append(str(file))
+    if len(csvlist) == 0: print 'No csv files in the directory!'        
+    for csvfile in csvlist:
+        if csvfile.split('_Stamp')[0] == subjID:
+            csvfile_subj = csvfile; csvExist = True
+    if not csvExist: print 'Data of ' + subjID + ' is missing!'
+    
+    bitmapExist = False
+    bitmapNameList = []
+    for file in os.listdir(direct):
+        if fnmatch.fnmatch(file, '*.gif'):
+            bitmapNameList.append(str(file))
+    if len(bitmapNameList) == 0: print 'GIF bitmap is missing!'        
+    if trialID < 0 or (len(bitmapNameList) > 1 and trialID >= len(bitmapNameList)):
+        print 'Invalid trial ID!'
+    else: bitmapExist = True
+    
+    soundExist, trialExist = False, False    
+    soundNameList = []
+    for file in os.listdir(os.path.join(direct, subjID)):
+        if fnmatch.fnmatch(file, '*.wav'):
+            soundNameList.append(str(file))
+    if len(soundNameList) == 0: print 'Sound file is missing!'        
+    for soundfile in soundNameList:
+        if soundfile.split('-')[0] == subjID:
+            soundExist = True
+            if soundfile.split('-')[1].split('.')[0] == str(trialID + 1):
+                soundfile_subj = soundfile; trialExist = True
+    if not soundExist or not trialExist: print 'Sound data of ' + subjID + ' is missing!'
+    
+    if csvExist and bitmapExist and soundExist and trialExist:
+        csvStamp = os.path.join(direct, subjID, csvfile_subj); StampDF = pd.read_csv(csvStamp, sep=',')
+        Stamp = StampDF[StampDF.trial_id == trialID].reset_index()
+        if len(bitmapNameList) == 1: bitmapFile = os.path.join(direct, bitmapNameList[0])
+        else: bitmapFile = os.path.join(direct, bitmapNameList[trialID])
+        soundFile = os.path.join(direct, subjID, soundfile_subj)    
+        
+        _animate_EM_TimeStamp(direct, subjID, bitmapFile, soundFile, Stamp, trialID)
         
 
 # -----------------------------------------------------------------------------
@@ -3616,11 +3568,13 @@ def _chk_fp_fix(FixDF, EMDF, curFix, curEM):
     EMDF.loc[curEM,'ffixurt'] += FixDF.loc[curFix,'duration']   # ffixurt: first first-pass fixation duration for each region.
     # locate the starting and ending indices of the first pass fixation in the current region                    
     stFix, endFix = curFix, curFix + 1
+    while endFix < len(FixDF)-1 and np.isnan(FixDF.loc[endFix,'line_no']): endFix += 1
     # keep searching until leaving that word and use that as the ending index 
-    while endFix < len(FixDF) and FixDF.loc[endFix,'valid'] == 'yes' and FixDF.loc[endFix,'line_no'] == EMDF.loc[curEM,'line_no'] and EMDF.loc[curEM,'mod_x1'] <= FixDF.loc[endFix,'x_pos'] and FixDF.loc[endFix,'x_pos'] <= EMDF.loc[curEM,'mod_x2']:
+    while endFix < len(FixDF)-1 and FixDF.loc[endFix,'valid'] == 'yes' and FixDF.loc[endFix,'line_no'] == EMDF.loc[curEM,'line_no'] and EMDF.loc[curEM,'mod_x1'] <= FixDF.loc[endFix,'x_pos'] and FixDF.loc[endFix,'x_pos'] <= EMDF.loc[curEM,'mod_x2']:
         EMDF.loc[curEM,'fpurt'] += FixDF.loc[endFix,'duration']  # add fpurt: first pass fixation time
         EMDF.loc[curEM,'fpcount'] += 1  # add fpcount: number of first pass fixation
         endFix += 1
+        while endFix < len(FixDF)-1 and np.isnan(FixDF.loc[endFix,'line_no']): endFix += 1
     if endFix < len(FixDF) and FixDF.loc[endFix,'valid'] == 'yes' and not np.isnan(FixDF.loc[endFix,'line_no']):
         EMDF.loc[curEM,'spilover'] += FixDF.loc[endFix,'duration']  # add spilover: Duration of the first fixation beyond a region/word.   
     return stFix, endFix
@@ -3650,10 +3604,8 @@ def _chk_fp_reg(FixDF, EMDF, stFix, endFix, curEM):
             for cur in range(len(EMDF)):
                 if FixDF.loc[endFix,'region_no'] == EMDF.loc[cur,'region']:
                     EMDF.loc[curEM,'fpregreg'] = EMDF.loc[cur,'region']
-                    if cur == 0:
-                        EMDF.loc[curEM,'fpregchr'] = np.ceil((FixDF.loc[endFix,'x_pos'] - EMDF.loc[cur,'mod_x1'])/np.float(EMDF.loc[cur,'mod_x2'] - EMDF.loc[cur,'mod_x1']) * EMDF.loc[cur,'reglen']) - 1
-                    else:    
-                        EMDF.loc[curEM,'fpregchr'] = sum(EMDF.reglen[0:cur-1]) + np.ceil((FixDF.loc[endFix,'x_pos'] - EMDF.loc[cur,'mod_x1'])/np.float(EMDF.loc[cur,'mod_x2'] - EMDF.loc[cur,'mod_x1']) * EMDF.loc[cur,'reglen']) - 1
+                    if cur == 0: EMDF.loc[curEM,'fpregchr'] = np.ceil((FixDF.loc[endFix,'x_pos'] - EMDF.loc[cur,'mod_x1'])/np.float(EMDF.loc[cur,'mod_x2'] - EMDF.loc[cur,'mod_x1']) * EMDF.loc[cur,'reglen']) - 1
+                    else: EMDF.loc[curEM,'fpregchr'] = sum(EMDF.reglen[0:cur-1]) + np.ceil((FixDF.loc[endFix,'x_pos'] - EMDF.loc[cur,'mod_x1'])/np.float(EMDF.loc[cur,'mod_x2'] - EMDF.loc[cur,'mod_x1']) * EMDF.loc[cur,'reglen']) - 1
                     break
         else:
             # a forward fixation
@@ -3667,10 +3619,8 @@ def _chk_fp_reg(FixDF, EMDF, stFix, endFix, curEM):
             for cur in range(len(EMDF)):
                 if FixDF.loc[endFix,'region_no'] == EMDF.loc[cur,'region']:
                     EMDF.loc[curEM,'fpregreg'] = EMDF.loc[cur,'region']
-                    if cur == 0:
-                        EMDF.loc[curEM,'fpregchr'] = np.ceil((FixDF.loc[endFix,'x_pos'] - EMDF.loc[cur,'mod_x1'])/np.float(EMDF.loc[cur,'mod_x2'] - EMDF.loc[cur,'mod_x1']) * EMDF.loc[cur,'reglen']) - 1
-                    else:    
-                        EMDF.loc[curEM,'fpregchr'] = sum(EMDF.reglen[0:cur-1]) + np.ceil((FixDF.loc[endFix,'x_pos'] - EMDF.loc[cur,'mod_x1'])/np.float(EMDF.loc[cur,'mod_x2'] - EMDF.loc[cur,'mod_x1']) * EMDF.loc[cur,'reglen']) - 1
+                    if cur == 0: EMDF.loc[curEM,'fpregchr'] = np.ceil((FixDF.loc[endFix,'x_pos'] - EMDF.loc[cur,'mod_x1'])/np.float(EMDF.loc[cur,'mod_x2'] - EMDF.loc[cur,'mod_x1']) * EMDF.loc[cur,'reglen']) - 1
+                    else: EMDF.loc[curEM,'fpregchr'] = sum(EMDF.reglen[0:cur-1]) + np.ceil((FixDF.loc[endFix,'x_pos'] - EMDF.loc[cur,'mod_x1'])/np.float(EMDF.loc[cur,'mod_x2'] - EMDF.loc[cur,'mod_x1']) * EMDF.loc[cur,'reglen']) - 1
                     break
         else:
             # a forward fixation
@@ -3686,14 +3636,11 @@ def _getReg(FixDF, curFix, EMDF):
         EMDF -- result data frame containing all region information
     return: index in EMF    
     """
-    if np.isnan(FixDF.line_no[curFix]) or np.isnan(FixDF.region_no[curFix]):
-        return 0
+    if np.isnan(FixDF.line_no[curFix]) or np.isnan(FixDF.region_no[curFix]): return 0
     else:
         indlist = EMDF[(EMDF['line_no']==FixDF.line_no[curFix]) & (EMDF['region']==FixDF.region_no[curFix])].index.tolist()
-        if len(indlist) == 1:
-            return indlist[0]
-        else:
-            return 0
+        if len(indlist) == 1: return indlist[0]
+        else: return 0
 
 
 def _chk_rp_reg(FixDF, EMDF, stFix, endFix, curEM):
@@ -3729,39 +3676,44 @@ def _chk_rp_reg(FixDF, EMDF, stFix, endFix, curEM):
             EMDF.loc[curEM,'rpurt'] = EMDF.loc[curEM,'fpurt'] + FixDF.loc[endFix,'duration']
             EMDF.loc[curEM,'rpcount'] += 1
             curFix = endFix + 1
-            leftmostReg = _getReg(FixDF, endFix, EMDF); leftmostCurFix = endFix            
+            leftmostRegInd = _getReg(FixDF, endFix, EMDF)
+            leftmostReg = EMDF.region[leftmostRegInd]
+            leftmostCurFix = endFix            
             while curFix < len(FixDF) and FixDF.loc[curFix,'valid'] == 'yes' and not np.isnan(FixDF.loc[curFix,'line_no']):
                 # in the regression path                
                 EMDF.loc[curEM,'rpurt'] += FixDF.loc[curFix,'duration']
                 EMDF.loc[curEM,'rpcount'] += 1
-                newleft = _getReg(FixDF, curFix, EMDF)
+                newleftInd = _getReg(FixDF, curFix, EMDF)
+                newleft = EMDF.region[newleftInd]
                 if leftmostReg > newleft:
-                    leftmostReg = newleft; leftmostCurFix = curFix                    
+                    leftmostRegInd = newleftInd
+                    leftmostReg = newleft
+                    leftmostCurFix = curFix                    
                 curFix += 1
             EMDF.loc[curEM,'rpregreg'] = leftmostReg
-            if leftmostReg == 0:
-                EMDF.loc[curEM,'rpregchr'] = np.ceil((FixDF.loc[leftmostCurFix,'x_pos'] - EMDF.loc[leftmostReg,'mod_x1'])/np.float(EMDF.loc[leftmostReg,'mod_x2'] - EMDF.loc[leftmostReg,'mod_x1']) * EMDF.loc[leftmostReg,'reglen']) - 1
-            else:    
-                EMDF.loc[curEM,'rpregchr'] = sum(EMDF.reglen[0:leftmostReg-1]) + np.ceil((FixDF.loc[leftmostCurFix,'x_pos'] - EMDF.loc[leftmostReg,'mod_x1'])/np.float(EMDF.loc[leftmostReg,'mod_x2'] - EMDF.loc[leftmostReg,'mod_x1']) * EMDF.loc[leftmostReg,'reglen']) - 1
+            if leftmostRegInd == 0: EMDF.loc[curEM,'rpregchr'] = np.ceil((FixDF.loc[leftmostCurFix,'x_pos'] - EMDF.loc[leftmostRegInd,'mod_x1'])/np.float(EMDF.loc[leftmostRegInd,'mod_x2'] - EMDF.loc[leftmostRegInd,'mod_x1']) * EMDF.loc[leftmostRegInd,'reglen']) - 1
+            else: EMDF.loc[curEM,'rpregchr'] = sum(EMDF.reglen[0:leftmostRegInd]) + np.ceil((FixDF.loc[leftmostCurFix,'x_pos'] - EMDF.loc[leftmostRegInd,'mod_x1'])/np.float(EMDF.loc[leftmostRegInd,'mod_x2'] - EMDF.loc[leftmostRegInd,'mod_x1']) * EMDF.loc[leftmostRegInd,'reglen']) - 1
         else:
             # the middle region (word)
-            EMDF.loc[curEM,'rpurt'] = EMDF.loc[curEM,'fpurt'] + FixDF.loc[endFix,'duration']
-            EMDF.loc[curEM,'rpcount'] += 1
-            leftmostReg = _getReg(FixDF, endFix, EMDF); leftmostCurFix = endFix
-            curFix = endFix + 1
-            while curFix < len(FixDF) and FixDF.loc[curFix,'valid'] == 'yes' and not np.isnan(FixDF.loc[curFix,'line_no']) and not (FixDF.loc[curFix,'line_no'] == EMDF.loc[curEM+1,'line_no'] and EMDF.loc[curEM+1,'mod_x1'] <= FixDF.loc[curFix,'x_pos'] and FixDF.loc[curFix,'x_pos'] <= EMDF.loc[curEM+1,'mod_x2']):
-                # in the regression path                
-                EMDF.loc[curEM,'rpurt'] += FixDF.loc[curFix,'duration']
-                EMDF.loc[curEM,'rpcount'] += 1
-                newleft = _getReg(FixDF, curFix, EMDF)
-                if leftmostReg > newleft:
-                    leftmostReg = newleft; leftmostCurFix = curFix                    
-                curFix += 1
+            EMDF.loc[curEM,'rpurt'] = EMDF.loc[curEM,'fpurt']
+            newendFix = endFix + 1
+            while newendFix < len(FixDF) and FixDF.loc[newendFix,'valid'] == 'yes' and not np.isnan(FixDF.loc[newendFix,'line_no']) and not np.isnan(FixDF.loc[newendFix,'region_no']) and FixDF.loc[newendFix,'region_no'] <= FixDF.loc[stFix,'region_no']: newendFix += 1           
+            leftmostRegInd = _getReg(FixDF, endFix, EMDF)
+            leftmostReg = EMDF.region[leftmostRegInd]
+            leftmostCurFix = endFix
+            for indFix in range(endFix, newendFix):
+                if not np.isnan(FixDF.loc[indFix,'region_no']):               
+                    EMDF.loc[curEM,'rpurt'] += FixDF.loc[indFix,'duration']
+                    EMDF.loc[curEM,'rpcount'] += 1
+                    newleftInd = _getReg(FixDF, indFix, EMDF)
+                    newleft = EMDF.region[newleftInd]
+                    if leftmostReg > newleft:
+                        leftmostRegInd = newleftInd
+                        leftmostReg = newleft
+                        leftmostCurFix = indFix 
             EMDF.loc[curEM,'rpregreg'] = leftmostReg
-            if leftmostReg == 0:
-                EMDF.loc[curEM,'rpregchr'] = np.ceil((FixDF.loc[leftmostCurFix,'x_pos'] - EMDF.loc[leftmostReg,'mod_x1'])/np.float(EMDF.loc[leftmostReg,'mod_x2'] - EMDF.loc[leftmostReg,'mod_x1']) * EMDF.loc[leftmostReg,'reglen']) - 1
-            else:
-                EMDF.loc[curEM,'rpregchr'] = sum(EMDF.reglen[0:leftmostReg-1]) + np.ceil((FixDF.loc[leftmostCurFix,'x_pos'] - EMDF.loc[leftmostReg,'mod_x1'])/np.float(EMDF.loc[leftmostReg,'mod_x2'] - EMDF.loc[leftmostReg,'mod_x1']) * EMDF.loc[leftmostReg,'reglen']) - 1
+            if leftmostRegInd == 0: EMDF.loc[curEM,'rpregchr'] = np.ceil((FixDF.loc[leftmostCurFix,'x_pos'] - EMDF.loc[leftmostRegInd,'mod_x1'])/np.float(EMDF.loc[leftmostRegInd,'mod_x2'] - EMDF.loc[leftmostRegInd,'mod_x1']) * EMDF.loc[leftmostRegInd,'reglen']) - 1
+            else: EMDF.loc[curEM,'rpregchr'] = sum(EMDF.reglen[0:leftmostRegInd]) + np.ceil((FixDF.loc[leftmostCurFix,'x_pos'] - EMDF.loc[leftmostRegInd,'mod_x1'])/np.float(EMDF.loc[leftmostRegInd,'mod_x2'] - EMDF.loc[leftmostRegInd,'mod_x1']) * EMDF.loc[leftmostRegInd,'reglen']) - 1
             
 
 def _chk_sp_fix(FixDF, EMDF, endFix, curEM):
@@ -3791,10 +3743,8 @@ def _chk_tffixos(EMDF):
     tffixos = 0
     for ind in range(len(EMDF)):
         if not np.isnan(EMDF.loc[ind,'ffos']):
-            if ind == 0:
-                tffixos += EMDF.loc[ind,'ffos']
-            else:
-                tffixos += sum(EMDF.reglen[0:ind-1]) + EMDF.loc[ind,'ffos']
+            if ind == 0: tffixos += EMDF.loc[ind,'ffos']
+            else: tffixos += sum(EMDF.reglen[0:ind-1]) + EMDF.loc[ind,'ffos']
     
     return tffixos           
 
@@ -3811,12 +3761,10 @@ def _chk_tregrcnt(SacDF):
         if len(crlinfo) == 1:
             if crlinfo != ['nan']:
                 # not crossline saccade
-                if SacDF.x1_pos[ind] > SacDF.x2_pos[ind]:
-                    totregr += 1
+                if SacDF.x1_pos[ind] > SacDF.x2_pos[ind]: totregr += 1
         else:
             # crossline saccade
-            if int(float(crlinfo[0])) > int(float(crlinfo[1])):
-                totregr += 1
+            if int(float(crlinfo[0])) > int(float(crlinfo[1])): totregr += 1
                 
     return totregr            
 
@@ -3941,17 +3889,15 @@ def cal_write_EM(direct, subjID, regfileNameList, addCharSp=1):
     if SacfileExist and FixfileExist and regfileExist:
         SacDF = pd.read_csv(SacfileDic[subjID], sep=',')   # read saccade data
         FixDF = pd.read_csv(FixfileDic[subjID], sep=',')   # read fixation data
-        for trialID in range(len(regfileNameList)):
-            RegDF = _getRegDF(regfileDic, np.unique(SacDF.trial_type[SacDF.trial_id == trialID])) # get region file 
+        for trialID in range(len(regfileDic)):
+            RegDF = _getRegDF(regfileDic, np.unique(SacDF.trial_type[SacDF.trial_id == trialID])[0]) # get region file 
             SacDFtemp = SacDF[SacDF.trial_id==trialID].reset_index()  # get saccade of the trial
             FixDFtemp = FixDF[FixDF.trial_id==trialID].reset_index()  # get fixation of the trial
             
             if len(np.unique(SacDFtemp.eye)) == 1:
                 # single eye data
-                if np.unique(SacDFtemp.eye)[0] == 'L':
-                    print 'Cal EM measures: Subj: ' + subjID + ', Trial: ' + str(trialID) + ' Left Eye'
-                elif np.unique(SacDFtemp.eye)[0] == 'R':
-                    print 'Cal EM measures: Subj: ' + subjID + ', Trial: ' + str(trialID) + ' Right Eye'
+                if np.unique(SacDFtemp.eye)[0] == 'L': print 'Cal EM measures: Subj: ' + subjID + ', Trial: ' + str(trialID) + ' Left Eye'
+                elif np.unique(SacDFtemp.eye)[0] == 'R': print 'Cal EM measures: Subj: ' + subjID + ', Trial: ' + str(trialID) + ' Right Eye'
                 # create result data frame
                 EMDF = pd.DataFrame(np.zeros((len(RegDF), 36)))
                 EMDF.columns = ['subj', 'trial_id', 'trial_type', 'trialstart', 'trialend', 'tdur', 'recstart', 'recend', 'blinks', 'eye', 'tffixos', 'tffixurt', 'tfixcnt', 'tregrcnt', 'region', 'reglen', 'word', 'line_no', 'x1_pos', 'x2_pos', 'mod_x1', 'mod_x2',
@@ -3966,9 +3912,9 @@ def cal_write_EM(direct, subjID, regfileNameList, addCharSp=1):
                 _cal_EM(RegDF, FixDFtemp, SacDFtemp, EMDF)
                 # store results
                 if np.unique(SacDFtemp.eye)[0] == 'L':
-                    nameEM = os.path.join(direct, subjID + '_EM_trial' + str(trialID) + '_L.csv'); EMDF.to_csv(nameEM, index=False)
+                    nameEM = os.path.join(direct, subjID, subjID + '_EM_trial' + str(trialID) + '_L.csv'); EMDF.to_csv(nameEM, index=False)
                 elif np.unique(SacDFtemp.eye)[0] == 'R':
-                    nameEM = os.path.join(direct, subjID + '_EM_trial' + str(trialID) + '_R.csv'); EMDF.to_csv(nameEM, index=False)   
+                    nameEM = os.path.join(direct, subjID, subjID + '_EM_trial' + str(trialID) + '_R.csv'); EMDF.to_csv(nameEM, index=False)   
             else:
                 # double eye data
                 SacDFtemp_L = SacDFtemp[SacDFtemp.eye=='L'].reset_index(); SacDFtemp_R = SacDFtemp[SacDFtemp.eye=='R'].reset_index()                 
@@ -3988,7 +3934,7 @@ def cal_write_EM(direct, subjID, regfileNameList, addCharSp=1):
                 _modEM(EMDF_L, addCharSp) # modify EMF's mod_x1 and mod_x2
                 _cal_EM(RegDF, FixDFtemp_L, SacDFtemp_L, EMDF_L)
                 # store results
-                nameEM_L = os.path.join(direct, subjID + '_EM_trial' + str(trialID) + '_L.csv'); EMDF_L.to_csv(nameEM_L, index=False)
+                nameEM_L = os.path.join(direct, subjID, subjID + '_EM_trial' + str(trialID) + '_L.csv'); EMDF_L.to_csv(nameEM_L, index=False)
             
                 print "Cal EM measures: Subj: " + subjID + ", Trial: " + str(trialID) + ' Right Eye'
                 # create result data frame
@@ -4004,7 +3950,7 @@ def cal_write_EM(direct, subjID, regfileNameList, addCharSp=1):
                 _modEM(EMDF_R, addCharSp) # modify EMF's mod_x1 and mod_x2
                 _cal_EM(RegDF, FixDFtemp_R, SacDFtemp_R, EMDF_R)
                 # store results
-                nameEM_R = os.path.join(direct, subjID + '_EM_trial' + str(trialID) + '_R.csv'); EMDF_R.to_csv(nameEM_R, index=False)
+                nameEM_R = os.path.join(direct, subjID, subjID + '_EM_trial' + str(trialID) + '_R.csv'); EMDF_R.to_csv(nameEM_R, index=False)
 
 
 def cal_write_EM_b(direct, regfileNameList, addCharSp=1):
@@ -4021,7 +3967,7 @@ def cal_write_EM_b(direct, regfileNameList, addCharSp=1):
     FixfileExist, FixfileDic = _crtCSV_dic(1, direct, '', '_Fix')    
     regfileExist, regfileDic = _crtRegion_dic(direct, regfileNameList)    
     if SacfileExist and FixfileExist and regfileExist:
-        for subjID in SacfileExist.keys():
+        for subjID in SacfileDic.keys():
             cal_write_EM(direct, subjID, regfileNameList)  
 
 
