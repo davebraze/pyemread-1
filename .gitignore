@@ -1,0 +1,12 @@
+#########################################
+## Editor temporary/working/backup files
+*~
+^#.+#$
+*.bak
+.*
+!/.gitignore
+
+## Python debris
+*.pyc
+
+## Documentation generated files
