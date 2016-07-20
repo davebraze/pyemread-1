@@ -1,6 +1,6 @@
 #########################################
 ## Editor temporary/working/backup files
-*~
+*~*
 ^#.+#$
 *.bak
 .*
@@ -10,3 +10,4 @@
 *.pyc
 
 ## Documentation generated files
+
