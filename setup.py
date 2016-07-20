@@ -18,5 +18,4 @@ setup(name='emf_rp',
       license='MIT',
       keywords="eye-tracking data processing gaze",
       packages=['emf_rp'],
-      zip_safe=False,
-)
+      zip_safe=False)
