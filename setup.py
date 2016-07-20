@@ -1,4 +1,4 @@
-from setuptools import setup
+from setuptools import setup find_packages
 
 # Utility function to read the README file.  Used for the
 # long_description.  It's easier to maintain README file than to put a
@@ -17,5 +17,5 @@ setup(name='emf_rp',
       author_email='davebraze@gmail.com',
       license='MIT',
       keywords="eye-tracking data processing gaze",
-      packages=['emf_rp'],
+      packages=find_packages(),
       zip_safe=False)
