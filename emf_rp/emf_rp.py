@@ -303,8 +303,8 @@ def Praster(direct, fontpath, stPos, langType, codeMethod='utf_8',
         regfile=True    : create word-wise regionfile by default
         lmargin=86      : left margin in pixels
         tmargin=86      : top margin in pixels  NOTE ORIGIN IS IN BOTTOM LEFT CORNER
-        linespace=43    : linespacing in pixels
-        fht=18          : font height in pixels (max vertical distance between highest and lowest painted pixel
+        linespace=43    : linespacing in pixels (baseline to baseline)
+        fht=18          : font height in pixels (vertical distance between highest and lowest painted pixel
                         : considering every character in the font). Makes more sense to specify _width_,
                         : but ImageFont.truetype() wants a ht). Not every font obeys; see, e.g., "BrowalliaUPC Regular"
         fwd=None        : towards character width in pixels. Takes precedence over fht. 
