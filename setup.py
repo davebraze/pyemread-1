@@ -8,13 +8,13 @@ from setuptools import setup find_packages
 def read(fname):
     return open(os.path.join(os.path.dirname(__file__), fname)).read()
 
-setup(name='emf_rp',
+setup(name='pyemread',
       version='0.1.0',
       description='Eye tracking tools.',
       long_description=read('README.md'),
-      url='https://github.com/gtojty/emf_rp',
+      url='https://github.com/gtojty/pyemread',
       author='Tao Gong; Dave Braze',
-      author_email='davebraze@gmail.com',
+      author_email='gtojty@gmail.com; davebraze@gmail.com',
       license='MIT',
       keywords="eye-tracking data processing gaze",
       packages=find_packages(),
