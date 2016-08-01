@@ -7,11 +7,11 @@ Summary EMF ASCII file recording eye-movement data
 """
 # imported packages
 import os, sys, fnmatch, re, csv, codecs, turtle, time
-import pandas as pd
-import numpy as np
+import pandas as _pd
+import numpy as _np
 from PIL import Image, ImageDraw, ImageFont
-import matplotlib.font_manager as font_manager
-import matplotlib.pyplot as plt
+import matplotlib.font_manager as _font_manager
+import matplotlib.pyplot as _plt
 
 # global variables for language types
 EngLangList = ['English', 'French', 'German', 'Dutch', 'Spanish', 'Italian', 'Greek']
@@ -69,14 +69,14 @@ def _writeCSV(regFile, resDict, codeMethod):
     """
     write resDict to csv file: Name, Language, WordID, Word, length, height, baseline, line_no, x1_pos, y1_pos, x2_pos, y2_pos, b_x1, b_y1, b_x2, b_y2
     """
-    DF = pd.DataFrame(np.zeros((len(resDict), 16)))
+    DF = _pd.DataFrame(_np.zeros((len(resDict), 16)))
     col = ['Name', 'Language', 'WordID', 'Word', 'length', 'height', 'baseline', 'line_no', 'x1_pos', 'y1_pos', 'x2_pos', 'y2_pos', 'b_x1', 'b_y1', 'b_x2', 'b_y2']
     cur = 0    
     for key in resDict.keys():
         DF.loc[cur,0] = resDict[key][0]; DF.loc[cur,1] = resDict[key][1]
         DF.loc[cur,2] = key        
         DF.loc[cur,3] = resDict[key][2].encode(codeMethod)
-        for i in np.arange(3,15):
+        for i in _np.arange(3,15):
             DF.loc[cur,i+1] = resDict[key][i]
         cur += 1
     DF.columns = col; DF.sort(columns='WordID')
@@ -98,10 +98,10 @@ class FontDict(dict):
         might contain u'c:\\windows\\fonts\\arial.ttf')
         Explore functionality in font_manager to see if this is really needed.
         Especially check into borrowing functionality from createFontList().
-        fl=font_manager.createFontList(font_manager.findSystemFonts())
+        fl=_font_manager.createFontList(_font_manager.findSystemFonts())
         """
         dict.__init__(self)
-        fontpathlist = font_manager.findSystemFonts(); fontpathlist.sort() # Get paths to all installed font files (any system?).
+        fontpathlist = _font_manager.findSystemFonts(); fontpathlist.sort() # Get paths to all installed font files (any system?).
         for fp in fontpathlist:
             fi = ImageFont.truetype(fp, 12)
             family = re.sub('[ -._]', '', fi.getname()[0])
@@ -585,7 +585,7 @@ def Gen_Bitmap_RegFile(direct, fontName, stPos, langType, textFileNameList, genm
         # for English, get fontpath from FontDict()
         fd = FontDict(); fontpath = fd.fontGet(fontName,'Regular')    
         # set up font related information
-        fontpathlist = font_manager.findSystemFonts() # Get paths to all installed font files (any system?).
+        fontpathlist = _font_manager.findSystemFonts() # Get paths to all installed font files (any system?).
         fontpathlist.sort()
     else:
         # for other languages, directly use .ttc or .tff font file name
@@ -670,7 +670,7 @@ def updReg(direct, regfileNameList, addspace):
         addspace -- added space for bigger boundary surrounding lines of texts
     """
     for trialID in range(len(regfileNameList)):
-        RegDF = pd.read_csv(os.path.join(direct, regfileNameList[trialID]), sep=',', header=None)
+        RegDF = _pd.read_csv(os.path.join(direct, regfileNameList[trialID]), sep=',', header=None)
         RegDF.columns = ['Name', 'Word', 'length', 'x1_pos', 'y1_pos', 'x2_pos', 'y2_pos']
         # add WordID
         RegDF['WordID'] = range(1,len(RegDF)+1)        
@@ -689,7 +689,7 @@ def updReg(direct, regfileNameList, addspace):
                 RegDF.loc[ind,'line_no'] = lineInd
         # add baseline
         RegDF['baseline'] = 0        
-        for lineNum in np.unique(RegDF.line_no):
+        for lineNum in _np.unique(RegDF.line_no):
             RegDF.loc[RegDF.line_no==lineNum,'baseline'] = min(RegDF.loc[RegDF.line_no==lineNum,'y2_pos'])
         # add height
         RegDF['height'] = 0
@@ -697,7 +697,7 @@ def updReg(direct, regfileNameList, addspace):
             RegDF.loc[line,'height'] = RegDF.loc[line,'y2_pos'] - RegDF.loc[line,'y1_pos']        
         # add b_x1, b_y1, b_x2, b_y2    
         RegDF['b_x1'] = RegDF.x1_pos; RegDF['b_y1'] = 0; RegDF['b_x2'] = RegDF.x2_pos; RegDF['b_y2'] = 0
-        for lineNum in np.unique(RegDF.line_no):
+        for lineNum in _np.unique(RegDF.line_no):
             RegDF.loc[RegDF.line_no==lineNum,'b_y1'] = max(RegDF.loc[RegDF.line_no==lineNum,'y1_pos']) - addspace
             RegDF.loc[RegDF.line_no==lineNum,'b_y2'] = min(RegDF.loc[RegDF.line_no==lineNum,'y2_pos']) + addspace
         RegDF = RegDF[['Name', 'WordID', 'Word', 'length', 'height', 'baseline', 'line_no', 'x1_pos', 'y1_pos', 'x2_pos', 'y2_pos', 'b_x1', 'b_y1', 'b_x2', 'b_y2']]     
@@ -779,7 +779,7 @@ def _getTrialReg(lines):
     if len(trial_start) != len(trial_end):
         raise ValueError("Trial starting and ending mismatch!")
 
-    T_idx = np.column_stack((trial_start, trial_end)); T_lines = np.column_stack((trial_start_lines, trial_end_lines))
+    T_idx = _np.column_stack((trial_start, trial_end)); T_lines = _np.column_stack((trial_start_lines, trial_end_lines))
     return T_idx, T_lines
     
     
@@ -825,7 +825,7 @@ def _gettdur(triallines):
         tdur -- estimated trial duration 
         
     """
-    trial_type, trialstart, trialend, tdur, recstart, recend = np.nan, 0, 0, 0, 0, 0
+    trial_type, trialstart, trialend, tdur, recstart, recend = _np.nan, 0, 0, 0, 0, 0
     for line in triallines:
         if re.search('!V TRIAL_VAR picture_name', line): trial_type = (line.split()[-1]).split('.')[0]
         if re.search('^START', line): trialstart = int(line.split()[1])
@@ -855,7 +855,7 @@ def _getRegDF(regfileDic, trial_type):
     regfileName = trial_type + '.region.csv'
     if not (regfileName in regfileDic.keys()):
         raise ValueError("invalid trial_type!")
-    RegDF = pd.read_csv(regfileDic[regfileName], sep=',')
+    RegDF = _pd.read_csv(regfileDic[regfileName], sep=',')
     return RegDF
 
     
@@ -1179,7 +1179,7 @@ def _getFixLine(RegDF, crlSac, FixDF, classify_method, diff_ratio, frontrange_ra
     CrossLineInfo = _getCrossLineInfo(RegDF)    # get cross line information
     question = False
     
-    if len(np.unique(FixDF.eye)) == 1 and (np.unique(FixDF.eye)[0] == 'L' or np.unique(FixDF.eye)[0] == 'R'):
+    if len(_np.unique(FixDF.eye)) == 1 and (_np.unique(FixDF.eye)[0] == 'L' or _np.unique(FixDF.eye)[0] == 'R'):
         # single eye data
         if classify_method == 'DIFF':
             # method 1: based on difference in x_axis
@@ -1331,7 +1331,7 @@ def _getcrlFix(RegDF, crlSac, FixDF, classify_method, diff_ratio, frontrange_rat
     # Second, get line information of each fixation
     lines, question = _getFixLine(RegDF, crlSac, FixDF, classify_method, diff_ratio, frontrange_ratio, y_range)
     
-    crlFix = pd.DataFrame(np.zeros((len(lines), 13)))
+    crlFix = _pd.DataFrame(_np.zeros((len(lines), 13)))
     crlFix.columns = ['subj', 'trial_id', 'eye', 'startline', 'endline', 'FixlineIndex', 'start_time', 'end_time', 'duration', 'x_pos', 'y_pos', 'pup_size', 'valid']
     crlFix.subj = FixDF.subj[0]; crlFix.trial_id = FixDF.trial_id[0]
     cur = 0    
@@ -1372,7 +1372,7 @@ def _recTimeStamp(ExpType, trialID, blinklines, stamplines, sampfreq, eyerec, sc
     """            
     blink_number, stamp_number = len(blinklines), len(stamplines)
         
-    StampDF = pd.DataFrame(np.zeros((stamp_number, 26)))
+    StampDF = _pd.DataFrame(_np.zeros((stamp_number, 26)))
     StampDF.columns = ['subj', 'trial_id', 'trial_type', 'sampfreq', 'script', 'sessdate', 'srcfile', 'trialstart', 'trialend', 'tdur', 'recstart', 'recend', 'blinks', 'eye', 'time', 'x_pos1', 'y_pos1', 'pup_size1', 'x_pos2', 'y_pos2', 'pup_size2', 'line_no', 'gaze_region_no', 'label', 'error_free', 'Fix_Sac']
     StampDF.subj = srcfile.split('.')[0]; StampDF.trial_id = int(trialID); StampDF.trial_type = trial_type
     StampDF.sampfreq = int(sampfreq); StampDF.script = script; StampDF.sessdate = sessdate; StampDF.srcfile = srcfile
@@ -1382,20 +1382,20 @@ def _recTimeStamp(ExpType, trialID, blinklines, stamplines, sampfreq, eyerec, sc
     StampDF.eye = eyerec
     StampDF.time = [int(line[0]) for line in stamplines]
     if eyerec == 'L' or eyerec == 'R':
-        StampDF.x_pos1 = [line[1] for line in stamplines]; StampDF.loc[StampDF.x_pos1 == '.', 'x_pos1'] = np.nan; StampDF.x_pos1 = StampDF.x_pos1.astype(float)
-        StampDF.y_pos1 = [line[2] for line in stamplines]; StampDF.loc[StampDF.y_pos1 == '.', 'y_pos1'] = np.nan; StampDF.y_pos1 = StampDF.y_pos1.astype(float)
-        StampDF.pup_size1 = [line[3] for line in stamplines]; StampDF.loc[StampDF.pup_size1 == '.', 'pup_size1'] = np.nan; StampDF.pup_size1 = StampDF.pup_size1.astype(float)
-        StampDF.x_pos2 = np.nan; StampDF.y_pos2 = np.nan 
-        StampDF.pup_size2 = np.nan
+        StampDF.x_pos1 = [line[1] for line in stamplines]; StampDF.loc[StampDF.x_pos1 == '.', 'x_pos1'] = _np.nan; StampDF.x_pos1 = StampDF.x_pos1.astype(float)
+        StampDF.y_pos1 = [line[2] for line in stamplines]; StampDF.loc[StampDF.y_pos1 == '.', 'y_pos1'] = _np.nan; StampDF.y_pos1 = StampDF.y_pos1.astype(float)
+        StampDF.pup_size1 = [line[3] for line in stamplines]; StampDF.loc[StampDF.pup_size1 == '.', 'pup_size1'] = _np.nan; StampDF.pup_size1 = StampDF.pup_size1.astype(float)
+        StampDF.x_pos2 = _np.nan; StampDF.y_pos2 = _np.nan 
+        StampDF.pup_size2 = _np.nan
     elif eyerec == 'LR':
-        StampDF.x_pos1 = [line[1] for line in stamplines]; StampDF.loc[StampDF.x_pos1 == '.', 'x_pos1'] = np.nan; StampDF.x_pos1 = StampDF.x_pos1.astype(float)
-        StampDF.y_pos1 = [line[2] for line in stamplines]; StampDF.loc[StampDF.y_pos1 == '.', 'y_pos1'] = np.nan; StampDF.y_pos1 = StampDF.y_pos1.astype(float)
-        StampDF.pup_size1 = [line[3] for line in stamplines]; StampDF.loc[StampDF.pup_size1 == '.', 'pup_size1'] = np.nan; StampDF.pup_size1 = StampDF.pup_size1.astype(float)
-        StampDF.x_pos2 = [line[4] for line in stamplines]; StampDF.loc[StampDF.x_pos2 == '.', 'x_pos2'] = np.nan; StampDF.x_pos2 = StampDF.x_pos2.astype(float)
-        StampDF.y_pos2 = [line[5] for line in stamplines]; StampDF.loc[StampDF.y_pos2 == '.', 'y_pos2'] = np.nan; StampDF.y_pos2 = StampDF.y_pos2.astype(float)
-        StampDF.pup_size2 = [line[6] for line in stamplines]; StampDF.loc[StampDF.pup_size2 == '.', 'pup_size2'] = np.nan; StampDF.pup_size2 = StampDF.pup_size2.astype(float)
+        StampDF.x_pos1 = [line[1] for line in stamplines]; StampDF.loc[StampDF.x_pos1 == '.', 'x_pos1'] = _np.nan; StampDF.x_pos1 = StampDF.x_pos1.astype(float)
+        StampDF.y_pos1 = [line[2] for line in stamplines]; StampDF.loc[StampDF.y_pos1 == '.', 'y_pos1'] = _np.nan; StampDF.y_pos1 = StampDF.y_pos1.astype(float)
+        StampDF.pup_size1 = [line[3] for line in stamplines]; StampDF.loc[StampDF.pup_size1 == '.', 'pup_size1'] = _np.nan; StampDF.pup_size1 = StampDF.pup_size1.astype(float)
+        StampDF.x_pos2 = [line[4] for line in stamplines]; StampDF.loc[StampDF.x_pos2 == '.', 'x_pos2'] = _np.nan; StampDF.x_pos2 = StampDF.x_pos2.astype(float)
+        StampDF.y_pos2 = [line[5] for line in stamplines]; StampDF.loc[StampDF.y_pos2 == '.', 'y_pos2'] = _np.nan; StampDF.y_pos2 = StampDF.y_pos2.astype(float)
+        StampDF.pup_size2 = [line[6] for line in stamplines]; StampDF.loc[StampDF.pup_size2 == '.', 'pup_size2'] = _np.nan; StampDF.pup_size2 = StampDF.pup_size2.astype(float)
        
-    StampDF.line_no = np.nan; StampDF.gaze_region_no = np.nan; StampDF.label = np.nan; StampDF.error_free = error_free; StampDF.Fix_Sac = np.nan
+    StampDF.line_no = _np.nan; StampDF.gaze_region_no = _np.nan; StampDF.label = _np.nan; StampDF.error_free = error_free; StampDF.Fix_Sac = _np.nan
     
     return StampDF
 
@@ -1433,7 +1433,7 @@ def _recFix(ExpType, trialID, blinklines, fixlines, sampfreq, eyerec, script, se
     # First, record and lump fixations 
     if eyerec == 'L' or eyerec == 'R':
         # only left or right eye data are recorded
-        FixDF = pd.DataFrame(np.zeros((fix_number, 23)))
+        FixDF = _pd.DataFrame(_np.zeros((fix_number, 23)))
         FixDF.columns = ['subj', 'trial_id', 'trial_type', 'sampfreq', 'script', 'sessdate', 'srcfile', 'trialstart', 'trialend', 'tdur', 'recstart', 'recend', 'blinks', 'eye', 'start_time', 'end_time', 'duration', 'x_pos', 'y_pos', 'pup_size', 'valid', 'line_no', 'region_no']
         FixDF.subj = srcfile.split('.')[0]; FixDF.trial_id = int(trialID); FixDF.trial_type = trial_type
         FixDF.sampfreq = int(sampfreq); FixDF.script = script; FixDF.sessdate = sessdate; FixDF.srcfile = srcfile
@@ -1482,7 +1482,7 @@ def _recFix(ExpType, trialID, blinklines, fixlines, sampfreq, eyerec, script, se
             lastLR = 'R'
         
         if numLeft != 0:
-            FixDF1 = pd.DataFrame(np.zeros((numLeft, 23)))
+            FixDF1 = _pd.DataFrame(_np.zeros((numLeft, 23)))
             FixDF1.columns = ['subj', 'trial_id', 'trial_type', 'sampfreq', 'script', 'sessdate', 'srcfile', 'trialstart', 'trialend', 'tdur', 'recstart', 'recend', 'blinks', 'eye', 'start_time', 'end_time', 'duration', 'x_pos', 'y_pos', 'pup_size', 'valid', 'line_no', 'region_no']
             FixDF1.subj = srcfile.split('.')[0]; FixDF1.trial_id = int(trialID)
             FixDF1.trial_type = trial_type
@@ -1519,7 +1519,7 @@ def _recFix(ExpType, trialID, blinklines, fixlines, sampfreq, eyerec, script, se
                 FixDF1 = _lumpFix(FixDF1, endindex1, short_index1, addtime, ln, zn)               
         
         if numRight != 0:
-            FixDF2 = pd.DataFrame(np.zeros((numRight, 23)))
+            FixDF2 = _pd.DataFrame(_np.zeros((numRight, 23)))
             FixDF2.columns = ['subj', 'trial_id', 'trial_type', 'sampfreq', 'script', 'sessdate', 'srcfile', 'trialstart', 'trialend', 'tdur', 'recstart', 'recend', 'blinks', 'eye', 'start_time', 'end_time', 'duration', 'x_pos', 'y_pos', 'pup_size', 'valid', 'line_no', 'region_no']
             FixDF2.subj = srcfile.split('.')[0]; FixDF2.trial_id = int(trialID)
             FixDF2.trial_type = trial_type
@@ -1556,7 +1556,7 @@ def _recFix(ExpType, trialID, blinklines, fixlines, sampfreq, eyerec, script, se
                 FixDF2 = _lumpFix(FixDF2, endindex2, short_index2, addtime, ln, zn) 
         
         # merge all data
-        FixDF = pd.DataFrame(columns=('subj', 'trial_id', 'trial_type', 'sampfreq', 'script', 'sessdate', 'srcfile', 'trialstart', 'trialend', 'tdur', 'recstart', 'recend', 'blinks', 'eye', 'start_time', 'end_time', 'duration', 'x_pos', 'y_pos', 'pup_size', 'valid', 'line_no', 'region_no'))
+        FixDF = _pd.DataFrame(columns=('subj', 'trial_id', 'trial_type', 'sampfreq', 'script', 'sessdate', 'srcfile', 'trialstart', 'trialend', 'tdur', 'recstart', 'recend', 'blinks', 'eye', 'start_time', 'end_time', 'duration', 'x_pos', 'y_pos', 'pup_size', 'valid', 'line_no', 'region_no'))
         if numLeft != 0:
             FixDF = FixDF.append(FixDF1, ignore_index=True)
         if numRight != 0:
@@ -1568,8 +1568,8 @@ def _recFix(ExpType, trialID, blinklines, fixlines, sampfreq, eyerec, script, se
             if FixDF.loc[ind,'duration'] < mn:
                 FixDF.loc[ind,'valid'] = 'no'
     
-    FixDF.line_no = np.nan
-    FixDF.region_no = np.nan
+    FixDF.line_no = _np.nan
+    FixDF.region_no = _np.nan
     
     return FixDF
 
@@ -1693,7 +1693,7 @@ def _getSacLine(RegDF, SacDF, diff_ratio, frontrange_ratio, y_range):
     CrossLineInfo = _getCrossLineInfo(RegDF)    # get cross line information
     question = False
    
-    if len(np.unique(SacDF.eye)) == 1 and (np.unique(SacDF.eye)[0] == 'L' or np.unique(SacDF.eye)[0] == 'R'):
+    if len(_np.unique(SacDF.eye)) == 1 and (_np.unique(SacDF.eye)[0] == 'L' or _np.unique(SacDF.eye)[0] == 'R'):
         # single eye data
         lines, curline, question = _getCrosslineSac(CrossLineInfo, 0, len(SacDF), SacDF, diff_ratio, frontrange_ratio)        
         endline = len(SacDF)        
@@ -1789,7 +1789,7 @@ def _getcrlSac(RegDF, SacDF, diff_ratio, frontrange_ratio, y_range):
     """            
     lines, question = _getSacLine(RegDF, SacDF, diff_ratio, frontrange_ratio, y_range)   # get line information of each saccade
     
-    crlSac = pd.DataFrame(np.zeros((len(lines), 15)))
+    crlSac = _pd.DataFrame(_np.zeros((len(lines), 15)))
     crlSac.columns = ['subj', 'trial_id', 'eye', 'startline', 'endline', 'SaclineIndex', 'start_time', 'end_time', 'duration', 'x1_pos', 'y1_pos', 'x2_pos', 'y2_pos', 'ampl', 'pk']
     crlSac.subj = SacDF.subj[0]; crlSac.trial_id = SacDF.trial_id[0]
     cur = 0    
@@ -1840,7 +1840,7 @@ def _recSac(ExpType, trialID, blinklines, saclines, sampfreq, eyerec, script, se
         if validData == False:
             saclines.remove(line); sac_number -= 1
     
-    SacDF = pd.DataFrame(np.zeros((sac_number, 24)))
+    SacDF = _pd.DataFrame(_np.zeros((sac_number, 24)))
     SacDF.columns = ['subj', 'trial_id', 'trial_type', 'sampfreq', 'script', 'sessdate', 'srcfile', 'trialstart', 'trialend', 'tdur', 'recstart', 'recend', 'blinks', 'eye', 'start_time', 'end_time', 'duration', 'x1_pos', 'y1_pos', 'x2_pos', 'y2_pos', 'ampl', 'pk', 'line_no']
     SacDF.subj = srcfile.split('.')[0]; SacDF.trial_id = int(trialID); SacDF.trial_type = trial_type
     SacDF.sampfreq = int(sampfreq); SacDF.script = script; SacDF.sessdate = sessdate; SacDF.srcfile = srcfile
@@ -1883,7 +1883,7 @@ def _recSac(ExpType, trialID, blinklines, saclines, sampfreq, eyerec, script, se
                 SacDF.loc[cur,'ampl'] = float(line[9]); SacDF.loc[cur,'pk'] = float(line[10])
                 cur += 1                   
     
-    SacDF.line_no = np.nan
+    SacDF.line_no = _np.nan
     
     return SacDF            
 
@@ -1897,7 +1897,7 @@ def _modRegDF(RegDF, addCharSp):
     RegDF, as a data frame, is mutable, so no return is needed    
     """
     RegDF['mod_x1'] = RegDF.x1_pos; RegDF['mod_x2'] = RegDF.x2_pos
-    addDist = addCharSp*(RegDF.loc[0,'x2_pos'] - RegDF.loc[0,'x1_pos'])/np.float(RegDF.loc[0,'length'])
+    addDist = addCharSp*(RegDF.loc[0,'x2_pos'] - RegDF.loc[0,'x1_pos'])/_np.float(RegDF.loc[0,'length'])
     for curEM in range(len(RegDF)):
         if curEM == 0:            
             RegDF.loc[curEM,'mod_x1'] -= addDist    # first word, add leftside!
@@ -2078,13 +2078,13 @@ def _calTimeStamp(align_method, trial_type, trialstart, RegDF, StampDFtemp, FixR
         
     # assign region_no in StampDFtemp
     for curStamp in range(len(StampDFtemp)):
-        if not np.isnan(StampDFtemp.loc[curStamp, 'x_pos1']) and StampDFtemp.loc[curStamp, 'Fix_Sac'] == 'Fix' and not np.isnan(StampDFtemp.loc[curStamp, 'line_no']):
+        if not _np.isnan(StampDFtemp.loc[curStamp, 'x_pos1']) and StampDFtemp.loc[curStamp, 'Fix_Sac'] == 'Fix' and not _np.isnan(StampDFtemp.loc[curStamp, 'line_no']):
             indlist = RegDF[(RegDF['line_no'] == StampDFtemp.loc[curStamp,'line_no']) & ((RegDF['mod_x1'] <= StampDFtemp.loc[curStamp,'x_pos1']) & (RegDF['mod_x2'] >= StampDFtemp.loc[curStamp,'x_pos1']))].index.tolist()
             if len(indlist) == 1:
                 StampDFtemp.loc[curStamp,'gaze_region_no'] = int(RegDF.WordID[indlist[0]])
                 StampDFtemp.loc[curStamp,'label'] = RegDF.Word[indlist[0]]
-            else: StampDFtemp.loc[curStamp,'gaze_region_no'] = np.nan
-        else: StampDFtemp.loc[curStamp,'gaze_region_no'] = np.nan
+            else: StampDFtemp.loc[curStamp,'gaze_region_no'] = _np.nan
+        else: StampDFtemp.loc[curStamp,'gaze_region_no'] = _np.nan
 
 
 def read_SRRasc(direct, subjID, ExpType, rec_lastFix=False, lump_Fix=True, ln=50, zn=50, mn=50):
@@ -2112,8 +2112,8 @@ def read_SRRasc(direct, subjID, ExpType, rec_lastFix=False, lump_Fix=True, ln=50
         script, sessdate, srcfile = _getHeader(lines)    # get header lines    
         T_idx, T_lines = _getTrialReg(lines) # get trial regions
     
-        SacDF = pd.DataFrame(columns=('subj', 'trial_id', 'trial_type', 'sampfreq', 'script', 'sessdate', 'srcfile', 'trialstart', 'trialend', 'tdur', 'recstart', 'recend', 'blinks', 'eye', 'start_time', 'end_time', 'duration', 'x1_pos', 'y1_pos', 'x2_pos', 'y2_pos', 'ampl', 'pk', 'line_no'))
-        FixDF = pd.DataFrame(columns=('subj', 'trial_id', 'trial_type', 'sampfreq', 'script', 'sessdate', 'srcfile', 'trialstart', 'trialend', 'tdur', 'recstart', 'recend', 'blinks', 'eye', 'start_time', 'end_time', 'duration', 'x_pos', 'y_pos', 'pup_size', 'valid', 'line_no', 'region_no'))        
+        SacDF = _pd.DataFrame(columns=('subj', 'trial_id', 'trial_type', 'sampfreq', 'script', 'sessdate', 'srcfile', 'trialstart', 'trialend', 'tdur', 'recstart', 'recend', 'blinks', 'eye', 'start_time', 'end_time', 'duration', 'x1_pos', 'y1_pos', 'x2_pos', 'y2_pos', 'ampl', 'pk', 'line_no'))
+        FixDF = _pd.DataFrame(columns=('subj', 'trial_id', 'trial_type', 'sampfreq', 'script', 'sessdate', 'srcfile', 'trialstart', 'trialend', 'tdur', 'recstart', 'recend', 'blinks', 'eye', 'start_time', 'end_time', 'duration', 'x_pos', 'y_pos', 'pup_size', 'valid', 'line_no', 'region_no'))        
     
         for ind in range(len(T_lines)):
             triallines = lines[T_lines[ind,0]+1:T_lines[ind,1]]; trialID = int(T_idx[ind,0].split(' ')[-1])
@@ -2217,7 +2217,7 @@ def read_TimeStamp(direct, subjID, ExpType):
         script, sessdate, srcfile = _getHeader(lines)    # get header lines    
         T_idx, T_lines = _getTrialReg(lines) # get trial regions
     
-        StampDF = pd.DataFrame(columns=('subj', 'trial_id', 'trial_type', 'sampfreq', 'script', 'sessdate', 'srcfile', 'trialstart', 'trialend', 'tdur', 'recstart', 'recend', 'blinks', 'eye', 'time', 'x_pos1', 'y_pos1', 'pup_size1', 'x_pos2', 'y_pos2', 'pup_size2', 'line_no', 'gaze_region_no', 'label', 'error_free', 'Fix_Sac'))        
+        StampDF = _pd.DataFrame(columns=('subj', 'trial_id', 'trial_type', 'sampfreq', 'script', 'sessdate', 'srcfile', 'trialstart', 'trialend', 'tdur', 'recstart', 'recend', 'blinks', 'eye', 'time', 'x_pos1', 'y_pos1', 'pup_size1', 'x_pos2', 'y_pos2', 'pup_size2', 'line_no', 'gaze_region_no', 'label', 'error_free', 'Fix_Sac'))        
         for ind in range(len(T_lines)):
             triallines = lines[T_lines[ind,0]+1:T_lines[ind,1]]; trialID = int(T_idx[ind,0].split(' ')[-1])
             blinklines, stamplines, sampfreq, eyerec = _getBlink_Fix_Sac_SampFreq_EyeRec(triallines, 1)
@@ -2248,7 +2248,7 @@ def read_Stamp(direct, subjID, ExpType):
     if not os.path.isfile(ETRANfileName):
         print ETRANfileName + ' does not exist!'; ETRANfileExist = False
     else:
-        ETRANDF = pd.read_csv(ETRANfileName); ETRANDF.SubjectID = ETRANDF.SubjectID.str.lower()
+        ETRANDF = _pd.read_csv(ETRANfileName); ETRANDF.SubjectID = ETRANDF.SubjectID.str.lower()
     
     # second, process the files
     if ascfileExist and ETRANfileExist:
@@ -2256,7 +2256,7 @@ def read_Stamp(direct, subjID, ExpType):
         script, sessdate, srcfile = _getHeader(lines)    # get header lines    
         T_idx, T_lines = _getTrialReg(lines) # get trial regions
     
-        StampDF = pd.DataFrame(columns=('subj', 'trial_id', 'trial_type', 'sampfreq', 'script', 'sessdate', 'srcfile', 'trialstart', 'trialend', 'tdur', 'recstart', 'recend', 'blinks', 'eye', 'time', 'x_pos1', 'y_pos1', 'pup_size1', 'x_pos2', 'y_pos2', 'pup_size2', 'line_no', 'gaze_region_no', 'label', 'error_free', 'Fix_Sac'))        
+        StampDF = _pd.DataFrame(columns=('subj', 'trial_id', 'trial_type', 'sampfreq', 'script', 'sessdate', 'srcfile', 'trialstart', 'trialend', 'tdur', 'recstart', 'recend', 'blinks', 'eye', 'time', 'x_pos1', 'y_pos1', 'pup_size1', 'x_pos2', 'y_pos2', 'pup_size2', 'line_no', 'gaze_region_no', 'label', 'error_free', 'Fix_Sac'))        
         for ind in range(len(T_lines)):
             triallines = lines[T_lines[ind,0]+1:T_lines[ind,1]]; trialID = int(T_idx[ind,0].split(' ')[-1])
             blinklines, stamplines, sampfreq, eyerec = _getBlink_Fix_Sac_SampFreq_EyeRec(triallines, 1)
@@ -2329,19 +2329,19 @@ def cal_crlSacFix(direct, subjID, regfileNameList, ExpType, classify_method='DIF
     
     # second, process the files
     if SacfileExist and FixfileExist and regfileExist:
-        SacDF = pd.read_csv(SacfileDic[subjID], sep=',')
-        FixDF = pd.read_csv(FixfileDic[subjID], sep=',')    
-        newSacDF = pd.DataFrame()
-        newFixDF = pd.DataFrame()     
-        crlSac = pd.DataFrame(columns=('subj', 'trial_id', 'eye', 'startline', 'endline', 'SaclineIndex', 'start_time', 'end_time', 'duration', 'x1_pos', 'y1_pos', 'x2_pos', 'y2_pos', 'ampl', 'pk'))
-        crlFix = pd.DataFrame(columns=('subj', 'trial_id', 'eye', 'startline', 'endline', 'FixlineIndex', 'start_time', 'end_time', 'duration', 'x_pos', 'y_pos', 'pup_size', 'valid'))
+        SacDF = _pd.read_csv(SacfileDic[subjID], sep=',')
+        FixDF = _pd.read_csv(FixfileDic[subjID], sep=',')    
+        newSacDF = _pd.DataFrame()
+        newFixDF = _pd.DataFrame()     
+        crlSac = _pd.DataFrame(columns=('subj', 'trial_id', 'eye', 'startline', 'endline', 'SaclineIndex', 'start_time', 'end_time', 'duration', 'x1_pos', 'y1_pos', 'x2_pos', 'y2_pos', 'ampl', 'pk'))
+        crlFix = _pd.DataFrame(columns=('subj', 'trial_id', 'eye', 'startline', 'endline', 'FixlineIndex', 'start_time', 'end_time', 'duration', 'x_pos', 'y_pos', 'pup_size', 'valid'))
         print "Subj: ", subjID
     
-        for trialID in np.unique(map(int,SacDF.trial_id)):
-            RegDF = _getRegDF(regfileDic, np.unique(SacDF.trial_type[SacDF.trial_id == trialID])[0])  # get region file
+        for trialID in _np.unique(map(int,SacDF.trial_id)):
+            RegDF = _getRegDF(regfileDic, _np.unique(SacDF.trial_type[SacDF.trial_id == trialID])[0])  # get region file
             _modRegDF(RegDF, addCharSp) # modify mod_x1 and mod_x2 position of word regions
             # get saccade data and crossline saccade data
-            print "Get crlSac: Trial ", str(trialID), " Type ", np.unique(SacDF.trial_type[SacDF.trial_id == trialID])[0]
+            print "Get crlSac: Trial ", str(trialID), " Type ", _np.unique(SacDF.trial_type[SacDF.trial_id == trialID])[0]
             SacDFtemp = SacDF[SacDF.trial_id==trialID].reset_index(); crlSactemp, question = _getcrlSac(RegDF, SacDFtemp, diff_ratio, frontrange_ratio, y_range)
             newSacDF = newSacDF.append(SacDFtemp, ignore_index=True); crlSac = crlSac.append(crlSactemp, ignore_index=True)
             if recStatus and question:
@@ -2350,19 +2350,19 @@ def cal_crlSacFix(direct, subjID, regfileNameList, ExpType, classify_method='DIF
                 logfile.close()        
             
             # get fixation data and crossline fixation data
-            print "Get Fix: Trial ", str(trialID), " Type ", np.unique(SacDF.trial_type[SacDF.trial_id == trialID])[0]
+            print "Get Fix: Trial ", str(trialID), " Type ", _np.unique(SacDF.trial_type[SacDF.trial_id == trialID])[0]
             FixDFtemp = FixDF[FixDF.trial_id==trialID].reset_index(); crlFixtemp, question = _getcrlFix(RegDF, crlSactemp, FixDFtemp, classify_method, diff_ratio, frontrange_ratio, y_range)
             
             # assign region_no in FixDFtemp
             for curFix in range(len(FixDFtemp)):
-                if not np.isnan(FixDFtemp.loc[curFix, 'line_no']):
+                if not _np.isnan(FixDFtemp.loc[curFix, 'line_no']):
                     indlist = RegDF[(RegDF['line_no'] == FixDFtemp.loc[curFix,'line_no']) & ((RegDF['mod_x1'] <= FixDFtemp.loc[curFix,'x_pos']) & (RegDF['mod_x2'] >= FixDFtemp.loc[curFix,'x_pos']))].index.tolist()
                     if len(indlist) == 1:
                         FixDFtemp.loc[curFix,'region_no'] = int(RegDF.WordID[indlist[0]])
                     else:
-                        FixDFtemp.loc[curFix,'region_no'] = np.nan
+                        FixDFtemp.loc[curFix,'region_no'] = _np.nan
                 else:
-                    FixDFtemp.loc[curFix,'region_no'] = np.nan
+                    FixDFtemp.loc[curFix,'region_no'] = _np.nan
             
             newFixDF = newFixDF.append(FixDFtemp, ignore_index=True); crlFix = crlFix.append(crlFixtemp, ignore_index=True)
             if recStatus and question:
@@ -2487,10 +2487,10 @@ def read_cal_SRRasc(direct, subjID, regfileNameList, ExpType, classify_method='D
         script, sessdate, srcfile = _getHeader(lines)    # get header lines    
         T_idx, T_lines = _getTrialReg(lines) # get trial regions
     
-        SacDF = pd.DataFrame(columns=('subj', 'trial_id', 'trial_type', 'sampfreq', 'script', 'sessdate', 'srcfile', 'trialstart', 'trialend', 'tdur', 'recstart', 'recend', 'blinks', 'eye', 'start_time', 'end_time', 'duration', 'x1_pos', 'y1_pos', 'x2_pos', 'y2_pos', 'ampl', 'pk', 'line_no'))
-        FixDF = pd.DataFrame(columns=('subj', 'trial_id', 'trial_type', 'sampfreq', 'script', 'sessdate', 'srcfile', 'trialstart', 'trialend', 'tdur', 'recstart', 'recend', 'blinks', 'eye', 'start_time', 'end_time', 'duration', 'x_pos', 'y_pos', 'pup_size', 'valid', 'line_no', 'region_no'))        
-        crlSac = pd.DataFrame(columns=('subj', 'trial_id', 'eye', 'startline', 'endline', 'SaclineIndex', 'start_time', 'end_time', 'duration', 'x1_pos', 'y1_pos', 'x2_pos', 'y2_pos', 'ampl', 'pk'))
-        crlFix = pd.DataFrame(columns=('subj', 'trial_id', 'eye', 'startline', 'endline', 'FixlineIndex', 'start_time', 'end_time', 'duration', 'x_pos', 'y_pos', 'pup_size', 'valid'))
+        SacDF = _pd.DataFrame(columns=('subj', 'trial_id', 'trial_type', 'sampfreq', 'script', 'sessdate', 'srcfile', 'trialstart', 'trialend', 'tdur', 'recstart', 'recend', 'blinks', 'eye', 'start_time', 'end_time', 'duration', 'x1_pos', 'y1_pos', 'x2_pos', 'y2_pos', 'ampl', 'pk', 'line_no'))
+        FixDF = _pd.DataFrame(columns=('subj', 'trial_id', 'trial_type', 'sampfreq', 'script', 'sessdate', 'srcfile', 'trialstart', 'trialend', 'tdur', 'recstart', 'recend', 'blinks', 'eye', 'start_time', 'end_time', 'duration', 'x_pos', 'y_pos', 'pup_size', 'valid', 'line_no', 'region_no'))        
+        crlSac = _pd.DataFrame(columns=('subj', 'trial_id', 'eye', 'startline', 'endline', 'SaclineIndex', 'start_time', 'end_time', 'duration', 'x1_pos', 'y1_pos', 'x2_pos', 'y2_pos', 'ampl', 'pk'))
+        crlFix = _pd.DataFrame(columns=('subj', 'trial_id', 'eye', 'startline', 'endline', 'FixlineIndex', 'start_time', 'end_time', 'duration', 'x_pos', 'y_pos', 'pup_size', 'valid'))
     
         for ind in range(len(T_lines)):
             triallines = lines[T_lines[ind,0]+1:T_lines[ind,1]]; trialID = int(T_idx[ind,0].split(' ')[-1])
@@ -2515,14 +2515,14 @@ def read_cal_SRRasc(direct, subjID, regfileNameList, ExpType, classify_method='D
             
             # assign region_no in FixDFtemp
             for curFix in range(len(FixDFtemp)):
-                if not np.isnan(FixDFtemp.loc[curFix, 'line_no']):
+                if not _np.isnan(FixDFtemp.loc[curFix, 'line_no']):
                     indlist = RegDF[(RegDF['line_no'] == FixDFtemp.loc[curFix,'line_no']) & ((RegDF['mod_x1'] <= FixDFtemp.loc[curFix,'x_pos']) & (RegDF['mod_x2'] >= FixDFtemp.loc[curFix,'x_pos']))].index.tolist()
                     if len(indlist) == 1:
                         FixDFtemp.loc[curFix,'region_no'] = int(RegDF.WordID[indlist[0]])
                     else:
-                        FixDFtemp.loc[curFix,'region_no'] = np.nan
+                        FixDFtemp.loc[curFix,'region_no'] = _np.nan
                 else:
-                    FixDFtemp.loc[curFix,'region_no'] = np.nan
+                    FixDFtemp.loc[curFix,'region_no'] = _np.nan
             
             FixDF = FixDF.append(FixDFtemp, ignore_index=True); crlFix = crlFix.append(crlFixtemp, ignore_index=True)
             if recStatus and question:
@@ -2622,25 +2622,25 @@ def cal_TimeStamp(direct, subjID, regfileNameList, ExpType, align_method, addCha
 
     # second, process the files
     if StampfileExist and regfileExist and ((align_method == 'FixRep' and FixRepExist) or (align_method == 'Fix_Sac' and SacfileExist and FixfileExist)):
-        StampDF = pd.read_csv(StampfileDic[subjID], sep=',')    
-        newStampDF = pd.DataFrame()     
+        StampDF = _pd.read_csv(StampfileDic[subjID], sep=',')    
+        newStampDF = _pd.DataFrame()     
         print "Subj: ", subjID
         
         if align_method == 'FixRep':
-            FixRepDF = pd.read_csv(FixRepDic[subjID], sep='\t')
-            SacDF = np.nan; FixDF = np.nan;
+            FixRepDF = _pd.read_csv(FixRepDic[subjID], sep='\t')
+            SacDF = _np.nan; FixDF = _np.nan;
         elif align_method == 'Fix_Sac':
-            FixRepDF = np.nan
-            SacDF = pd.read_csv(SacfileDic[subjID], sep=',')
-            FixDF = pd.read_csv(FixfileDic[subjID], sep=',')     
+            FixRepDF = _np.nan
+            SacDF = _pd.read_csv(SacfileDic[subjID], sep=',')
+            FixDF = _pd.read_csv(FixfileDic[subjID], sep=',')     
 
-        for trialID in np.unique(map(int,StampDF.trial_id)):
-            trial_type = np.unique(StampDF.trial_type[StampDF.trial_id == trialID])[0]
-            trialstart = np.unique(StampDF.trialstart[StampDF.trial_id == trialID])[0]
+        for trialID in _np.unique(map(int,StampDF.trial_id)):
+            trial_type = _np.unique(StampDF.trial_type[StampDF.trial_id == trialID])[0]
+            trialstart = _np.unique(StampDF.trialstart[StampDF.trial_id == trialID])[0]
             RegDF = _getRegDF(regfileDic, trial_type)  # get region file
             _modRegDF(RegDF, addCharSp) # modify mod_x1 and mod_x2 position of word regions
             # get time stamped data and crossline time stamped data
-            print "Get crlStamp: Trial ", str(trialID), " Type ", np.unique(StampDF.trial_type[StampDF.trial_id == trialID])[0]  
+            print "Get crlStamp: Trial ", str(trialID), " Type ", _np.unique(StampDF.trial_type[StampDF.trial_id == trialID])[0]  
             StampDFtemp = StampDF[StampDF.trial_id==trialID].reset_index()
             _calTimeStamp(align_method, trial_type, trialstart, RegDF, StampDFtemp, FixRepDF, SacDF, FixDF)
 
@@ -2710,7 +2710,7 @@ def read_cal_TimeStamp(direct, subjID, regfileNameList, ExpType, align_method, a
     #if not os.path.isfile(ETRANfileName):
     #    print ETRANfileName + ' does not exist!'; ETRANfileExist = False
     #else:
-    #    ETRANDF = pd.read_csv(ETRANfileName); ETRANDF.SubjectID = ETRANDF.SubjectID.str.lower()
+    #    ETRANDF = _pd.read_csv(ETRANfileName); ETRANDF.SubjectID = ETRANDF.SubjectID.str.lower()
     
     if align_method == 'FixRep':
         FixRepExist, FixRepDic = _crtFixRepDic(0, direct, subjID)        
@@ -2725,15 +2725,15 @@ def read_cal_TimeStamp(direct, subjID, regfileNameList, ExpType, align_method, a
         script, sessdate, srcfile = _getHeader(lines)    # get header lines    
         T_idx, T_lines = _getTrialReg(lines) # get trial regions
     
-        StampDF = pd.DataFrame(columns=('subj', 'trial_id', 'trial_type', 'sampfreq', 'script', 'sessdate', 'srcfile', 'trialstart', 'trialend', 'tdur', 'recstart', 'recend', 'blinks', 'eye', 'time', 'x_pos1', 'y_pos1', 'pup_size1', 'x_pos2', 'y_pos2', 'pup_size2', 'line_no', 'gaze_region_no', 'label', 'error_free', 'Fix_Sac'))
+        StampDF = _pd.DataFrame(columns=('subj', 'trial_id', 'trial_type', 'sampfreq', 'script', 'sessdate', 'srcfile', 'trialstart', 'trialend', 'tdur', 'recstart', 'recend', 'blinks', 'eye', 'time', 'x_pos1', 'y_pos1', 'pup_size1', 'x_pos2', 'y_pos2', 'pup_size2', 'line_no', 'gaze_region_no', 'label', 'error_free', 'Fix_Sac'))
         
         if align_method == 'FixRep':
-            FixRepDF = pd.read_csv(FixRepDic[subjID], sep='\t')
-            SacDF = np.nan; FixDF = np.nan;
+            FixRepDF = _pd.read_csv(FixRepDic[subjID], sep='\t')
+            SacDF = _np.nan; FixDF = _np.nan;
         elif align_method == 'Fix_Sac':
-            FixRepDF = np.nan
-            SacDF = pd.read_csv(SacfileDic[subjID], sep=',')
-            FixDF = pd.read_csv(FixfileDic[subjID], sep=',')          
+            FixRepDF = _np.nan
+            SacDF = _pd.read_csv(SacfileDic[subjID], sep=',')
+            FixDF = _pd.read_csv(FixfileDic[subjID], sep=',')          
             
         for ind in range(len(T_lines)):
             triallines = lines[T_lines[ind,0]+1:T_lines[ind,1]]; trialID = int(T_idx[ind,0].split(' ')[-1])
@@ -2839,7 +2839,7 @@ def _image_SacFix(direct, subjID, bitmapNameList, Sac, crlSac, Fix, crlFix, RegD
         img1 = Image.new('RGB', dim, bg); draw1 = ImageDraw.Draw(img1) # 'RGB' specifies 8-bit per channel (32 bit color)
         img2 = Image.new('RGB', dim, bg); draw2 = ImageDraw.Draw(img2) # 'RGB' specifies 8-bit per channel (32 bit color)
         # draw texts and rectangles
-        for curline in pd.unique(RegDF.line_no):
+        for curline in _pd.unique(RegDF.line_no):
             line = RegDF[RegDF.line_no==curline]; line.index = range(len(line))            
             # draw word one by one    
             for ind in range(len(line)):
@@ -2849,14 +2849,14 @@ def _image_SacFix(direct, subjID, bitmapNameList, Sac, crlSac, Fix, crlFix, RegD
                 draw1.text((line.x1_pos[ind], vpos_text), line.Word[ind], font=ttf, fill=fg) 
                 draw2.text((line.x1_pos[ind], vpos_text), line.Word[ind], font=ttf, fill=fg) 
 
-    if len(np.unique(Fix.eye)) == 1:
+    if len(_np.unique(Fix.eye)) == 1:
         # single eye data
         SingleEye = True
         end_Fix = len(Fix); end_time = Fix.loc[end_Fix-1,'end_time']
         if not drawFinal:
             # get ending Fixation and ending time of reading
             for ind in range(end_Fix):
-                if Fix.valid[ind] == 'yes' and np.isnan(Fix.line_no[ind]):
+                if Fix.valid[ind] == 'yes' and _np.isnan(Fix.line_no[ind]):
                     end_Fix = ind
                     break
             end_time = Fix.loc[end_Fix-1,'end_time']
@@ -2869,13 +2869,13 @@ def _image_SacFix(direct, subjID, bitmapNameList, Sac, crlSac, Fix, crlFix, RegD
             # get ending Fixation and ending time of reading
             # left eye
             for ind in range(end_Fix_L):
-                if Fix.eye[ind] == 'L' and Fix.valid[ind] == 'yes' and np.isnan(Fix.line_no[ind]):
+                if Fix.eye[ind] == 'L' and Fix.valid[ind] == 'yes' and _np.isnan(Fix.line_no[ind]):
                     end_Fix_L = ind
                     break
             end_time_L = Fix.loc[end_Fix_L-1,'end_time']
             # right eye
             for ind in range(len(Fix[Fix.eye=='L']), end_Fix_R):
-                if Fix.eye[ind] == 'R' and Fix.valid[ind] == 'yes' and np.isnan(Fix.line_no[ind]):
+                if Fix.eye[ind] == 'R' and Fix.valid[ind] == 'yes' and _np.isnan(Fix.line_no[ind]):
                     end_Fix_R = ind
                     break
             end_time_R = Fix.loc[end_Fix_R-1,'end_time']
@@ -3052,13 +3052,13 @@ def draw_SacFix(direct, subjID, regfileNameList, bitmapNameList, drawType, max_F
     # second, process the files
     if SacfileExist and FixfileExist and crlSacfileExist and crlFixfileExist and regfileExist and ((PNGopt == 0 and bitmapExist) or PNGopt == 1):
         # read files
-        SacDF = pd.read_csv(SacfileDic[subjID], sep=','); crlSacDF = pd.read_csv(crlSacfileDic[subjID], sep=',')
-        FixDF = pd.read_csv(FixfileDic[subjID], sep=','); crlFixDF = pd.read_csv(crlFixfileDic[subjID], sep=',')
+        SacDF = _pd.read_csv(SacfileDic[subjID], sep=','); crlSacDF = _pd.read_csv(crlSacfileDic[subjID], sep=',')
+        FixDF = _pd.read_csv(FixfileDic[subjID], sep=','); crlFixDF = _pd.read_csv(crlFixfileDic[subjID], sep=',')
     
         # draw fixation and saccade data on a picture
         for trialID in range(len(regfileDic)):
-            RegDF = _getRegDF(regfileDic, np.unique(SacDF.trial_type[SacDF.trial_id == trialID])[0])  # get region file
-            print "Draw Sac and Fix: Subj: " + subjID + ", Trial: " + str(np.unique(SacDF.trial_type[SacDF.trial_id == trialID]))
+            RegDF = _getRegDF(regfileDic, _np.unique(SacDF.trial_type[SacDF.trial_id == trialID])[0])  # get region file
+            print "Draw Sac and Fix: Subj: " + subjID + ", Trial: " + str(_np.unique(SacDF.trial_type[SacDF.trial_id == trialID]))
             Sac = SacDF[SacDF.trial_id == trialID].reset_index(); crlSac = crlSacDF[crlSacDF.trial_id == trialID].reset_index()
             Fix = FixDF[FixDF.trial_id == trialID].reset_index(); crlFix = crlFixDF[crlFixDF.trial_id == trialID].reset_index()    
             _image_SacFix(direct, subjID, bitmapNameList, Sac, crlSac, Fix, crlFix, RegDF, trialID, drawType, max_FixRadius, drawFinal, showFixDur, PNGopt)
@@ -3096,7 +3096,7 @@ def draw_SacFix_b(direct, regfileNameList, bitmapNameList, method, max_FixRadius
         for name in files:
             if name.endswith(".asc"):
                 subjlist.append(name.split('.')[0])
-    subjlist = np.unique(subjlist)
+    subjlist = _np.unique(subjlist)
     if len(subjlist) == 0:
         print 'No csv files in the directory!'      
 
@@ -3137,16 +3137,16 @@ def draw_blinks(direct, trialNum):
     for trialID in range(trialNum):
         blinksdata = []
         for subj in subjlist:
-            FixDF = pd.read_csv(os.path.join(direct, subj + '_Fix.csv'), sep=',')
+            FixDF = _pd.read_csv(os.path.join(direct, subj + '_Fix.csv'), sep=',')
             FixDFtemp = FixDF[FixDF.trial_id==trialID].reset_index(); blinksdata.append(FixDFtemp.blinks[0])
         # draw histogram    
-        fig = plt.figure()
+        fig = _plt.figure()
         ax = fig.add_subplot(111)
         ax.hist(blinksdata, bins=20, normed=True)
         ax.set_title('Histogram of Blinks (trial = ' + str(trialID) + '; n= ' + str(len(blinksdata)) + ')')
         ax.set_xlabel('No. Blinks'); ax.set_ylabel('Frequency')
-        plt.show()
-        plt.savefig(direct + '/Hist_blinks_trial' + str(trialID) + '.png')
+        _plt.show()
+        _plt.savefig(direct + '/Hist_blinks_trial' + str(trialID) + '.png')
     
 
 # -----------------------------------------------------------------------------
@@ -3208,16 +3208,16 @@ def _animate_EM(direct, subjID, bitmapFile, soundFile, Fix, trialID, max_FixRadi
     # create screen
     screen = turtle.Screen()
     screen.screensize(bitmapSize[0], bitmapSize[1]); screen.bgpic(bitmapFile)
-    if len(np.unique(Fix.eye)) == 1:
+    if len(_np.unique(Fix.eye)) == 1:
         # single eye data
-        screen.title('Subject: ' +  subjID + '; Trial: ' + str(trialID+1) + ' Eye: ' + np.unique(Fix.eye)[0])
+        screen.title('Subject: ' +  subjID + '; Trial: ' + str(trialID+1) + ' Eye: ' + _np.unique(Fix.eye)[0])
         # create turtle        
         fix = turtle.Turtle(); 
-        if np.unique(Fix.eye)[0] == 'L': fix.color('green')
-        elif np.unique(Fix.eye)[0] == 'R': fix.color('red')
+        if _np.unique(Fix.eye)[0] == 'L': fix.color('green')
+        elif _np.unique(Fix.eye)[0] == 'R': fix.color('red')
         fix.shape('circle'); fix.speed(0); fix.resizemode("user")
         fix.penup()
-    elif len(np.unique(Fix.eye)) == 2:
+    elif len(_np.unique(Fix.eye)) == 2:
         # both eyes data: left eye green circle; right eye red circle
         screen.title('Subject: ' +  subjID + '; Trial: ' + str(trialID+1) + ' Left eye: Green; Right: Red')
         # create player turtle as fixation
@@ -3228,7 +3228,7 @@ def _animate_EM(direct, subjID, bitmapFile, soundFile, Fix, trialID, max_FixRadi
     
     # define binding functions
     def startAni():
-        if len(np.unique(Fix.eye)) == 1:
+        if len(_np.unique(Fix.eye)) == 1:
             # single eye data
             # find the first fixation that starts after trialstart 
             ind = 0; curTime = Fix.loc[ind, 'recstart'] 
@@ -3237,7 +3237,7 @@ def _animate_EM(direct, subjID, bitmapFile, soundFile, Fix, trialID, max_FixRadi
             playWav(soundFile, 1)
             st_time = time.time()   # starting time
             # start screen and turtle player
-            while ind < len(Fix) and not np.isnan(Fix.loc[ind, 'line_no']):
+            while ind < len(Fix) and not _np.isnan(Fix.loc[ind, 'line_no']):
                 time_diff = (Fix.loc[ind, 'start_time'] - curTime)/1000
                 curTime = Fix.loc[ind, 'start_time']    # update curTime
                 now = time.time()
@@ -3249,7 +3249,7 @@ def _animate_EM(direct, subjID, bitmapFile, soundFile, Fix, trialID, max_FixRadi
                 fix.shapesize(Fix.loc[ind, 'duration']/max(Fix.duration)*max_FixRadius, Fix.loc[ind, 'duration']/max(Fix.duration)*max_FixRadius)
                 ind += 1    # move to next fixation
         
-        elif len(np.unique(Fix.eye)) == 2:
+        elif len(_np.unique(Fix.eye)) == 2:
             # both eyes data
             FixLeft, FixRight = Fix[Fix.eye == 'L'].reset_index(), Fix[Fix.eye == 'R'].reset_index()
             # find the first fixation that starts after trialstart
@@ -3274,14 +3274,14 @@ def _animate_EM(direct, subjID, bitmapFile, soundFile, Fix, trialID, max_FixRadi
                     fix_Left.setpos(FixLeft.loc[indLeft, 'x_pos'] - bitmapSize[0]/2, -(FixLeft.loc[indLeft, 'y_pos'] - bitmapSize[1]/2))
                     fix_Left.shapesize(FixLeft.loc[indLeft, 'duration']/max(Fix.duration)*max_FixRadius, FixLeft.loc[indLeft, 'duration']/max(Fix.duration)*max_FixRadius)
                     indLeft += 1    # move to next fixation
-                    if indLeft >= len(FixLeft) or np.isnan(FixLeft.loc[indLeft, 'line_no']):
+                    if indLeft >= len(FixLeft) or _np.isnan(FixLeft.loc[indLeft, 'line_no']):
                         LeftFinish = True
                     else: timeLeft = FixLeft.loc[indLeft, 'start_time']   # move to next start_time
                     # draw right eye fixation
                     fix_Right.setpos(FixRight.loc[indRight, 'x_pos'] - bitmapSize[0]/2, -(FixLeft.loc[indLeft, 'y_pos'] - bitmapSize[1]/2))
                     fix_Right.shapesize(FixRight.loc[indRight, 'duration']/max(Fix.duration)*max_FixRadius, FixRight.loc[indRight, 'duration']/max(Fix.duration)*max_FixRadius)
                     indRight += 1   # move to next fixation
-                    if indRight >= len(FixRight) or np.isnan(FixRight.loc[indRight, 'line_no']):
+                    if indRight >= len(FixRight) or _np.isnan(FixRight.loc[indRight, 'line_no']):
                         RightFinish = True
                     else: timeRight = FixRight.loc[indRight, 'start_time']    # move to next start_time
                 while (timeLeft < timeRight and not LeftFinish and not RightFinish) or (not LeftFinish and RightFinish):
@@ -3294,7 +3294,7 @@ def _animate_EM(direct, subjID, bitmapFile, soundFile, Fix, trialID, max_FixRadi
                     fix_Left.setpos(FixLeft.loc[indLeft, 'x_pos'] - bitmapSize[0]/2, -(FixLeft.loc[indLeft, 'y_pos'] - bitmapSize[1]/2))
                     fix_Left.shapesize(FixLeft.loc[indLeft, 'duration']/max(Fix.duration)*max_FixRadius, FixLeft.loc[indLeft, 'duration']/max(Fix.duration)*max_FixRadius)
                     indLeft += 1    # move to next fixation
-                    if indLeft >= len(FixLeft) or np.isnan(FixLeft.loc[indLeft, 'line_no']):
+                    if indLeft >= len(FixLeft) or _np.isnan(FixLeft.loc[indLeft, 'line_no']):
                         LeftFinish = True
                     else: timeLeft = FixLeft.loc[indLeft, 'start_time']  # move to next start_time
                 while (timeLeft > timeRight and not LeftFinish and not RightFinish) or (LeftFinish and not RightFinish):
@@ -3307,7 +3307,7 @@ def _animate_EM(direct, subjID, bitmapFile, soundFile, Fix, trialID, max_FixRadi
                     fix_Right.setpos(FixRight.loc[indRight, 'x_pos'] - bitmapSize[0]/2, -(FixLeft.loc[indLeft, 'y_pos'] - bitmapSize[1]/2))
                     fix_Right.shapesize(FixRight.loc[indRight, 'duration']/max(Fix.duration)*max_FixRadius, FixRight.loc[indRight, 'duration']/max(Fix.duration)*max_FixRadius)
                     indRight += 1   # move to next fixation
-                    if indRight >= len(FixRight) or np.isnan(FixRight.loc[indRight, 'line_no']):
+                    if indRight >= len(FixRight) or _np.isnan(FixRight.loc[indRight, 'line_no']):
                         RightFinish = True
                     else: timeRight = FixRight.loc[indRight, 'start_time']   # move to next start_time                
                 
@@ -3367,7 +3367,7 @@ def animate(direct, subjID, trialID):
     if not soundExist or not trialExist: print 'Sound data of ' + subjID + ' is missing!'
     
     if csvExist and bitmapExist and soundExist and trialExist:
-        csvFix = os.path.join(direct, subjID, csvfile_subj); FixDF = pd.read_csv(csvFix, sep=',')
+        csvFix = os.path.join(direct, subjID, csvfile_subj); FixDF = _pd.read_csv(csvFix, sep=',')
         Fix = FixDF[FixDF.trial_id == trialID].reset_index()
         if len(bitmapNameList) == 1: bitmapFile = os.path.join(direct, bitmapNameList[0])
         else: bitmapFile = os.path.join(direct, bitmapNameList[trialID])
@@ -3393,13 +3393,13 @@ def _animate_EM_TimeStamp(direct, subjID, bitmapFile, soundFile, Stamp, trialID,
     # create screen
     screen = turtle.Screen()
     screen.screensize(bitmapSize[0], bitmapSize[1]); screen.bgpic(bitmapFile)
-    if np.unique(Stamp.eye)[0] == 'L' or np.unique(Stamp.eye)[0] == 'R':
+    if _np.unique(Stamp.eye)[0] == 'L' or _np.unique(Stamp.eye)[0] == 'R':
         # single eye data
-        screen.title('Subject: ' +  subjID + '; Trial: ' + str(trialID+1) + ' Eye: ' + np.unique(Stamp.eye)[0])
+        screen.title('Subject: ' +  subjID + '; Trial: ' + str(trialID+1) + ' Eye: ' + _np.unique(Stamp.eye)[0])
         # create turtle        
         stamp = turtle.Turtle(); 
-        if np.unique(Stamp.eye)[0] == 'L': stamp.color('green')
-        elif np.unique(Stamp.eye)[0] == 'R': stamp.color('red')
+        if _np.unique(Stamp.eye)[0] == 'L': stamp.color('green')
+        elif _np.unique(Stamp.eye)[0] == 'R': stamp.color('red')
         stamp.shape('circle'); stamp.speed(0); stamp.resizemode("user")
         stamp.penup()
     else:
@@ -3413,7 +3413,7 @@ def _animate_EM_TimeStamp(direct, subjID, bitmapFile, soundFile, Stamp, trialID,
     
     # define binding functions
     def startAni():
-        if np.unique(Stamp.eye)[0] == 'L' or np.unique(Stamp.eye)[0] == 'R':
+        if _np.unique(Stamp.eye)[0] == 'L' or _np.unique(Stamp.eye)[0] == 'R':
             # single eye data
             # show regularly time stamped data
             ind = 0; curTime = Stamp.loc[ind, 'recstart']; time_step = 1.0/Stamp.loc[ind, 'sampfreq']
@@ -3422,7 +3422,7 @@ def _animate_EM_TimeStamp(direct, subjID, bitmapFile, soundFile, Stamp, trialID,
             playWav(soundFile, 1)
             # start screen and turtle player
             while ind < len(Stamp):
-                if not np.isnan(Stamp.loc[ind, 'x_pos1']):
+                if not _np.isnan(Stamp.loc[ind, 'x_pos1']):
                     # draw eye fixation
                     stamp.setpos(Stamp.loc[ind, 'x_pos1'] - bitmapSize[0]/2, -(Stamp.loc[ind, 'y_pos1'] - bitmapSize[1]/2))
                     stamp.shapesize(max_FixRadius, max_FixRadius)
@@ -3439,11 +3439,11 @@ def _animate_EM_TimeStamp(direct, subjID, bitmapFile, soundFile, Stamp, trialID,
             playWav(soundFile, 1)
             # start screen and turtle player            
             while ind < len(Stamp):
-                if not np.isnan(Stamp.loc[ind, 'x_pos1']):
+                if not _np.isnan(Stamp.loc[ind, 'x_pos1']):
                     # draw left eye fixation
                     stamp_Left.setpos(Stamp.loc[ind, 'x_pos1'] - bitmapSize[0]/2, -(Stamp.loc[ind, 'y_pos1'] - bitmapSize[1]/2))
                     stamp_Left.shapesize(max_FixRadius, max_FixRadius)
-                if not np.isnan(Stamp.loc[ind, 'x_pos2']):
+                if not _np.isnan(Stamp.loc[ind, 'x_pos2']):
                     # draw right eye fixation
                     stamp_Right.setpos(Stamp.loc[ind, 'x_pos2'] - bitmapSize[0]/2, -(Stamp.loc[ind, 'y_pos2'] - bitmapSize[1]/2))
                     stamp_Right.shapesize(max_FixRadius, max_FixRadius)
@@ -3506,7 +3506,7 @@ def animate_TimeStamp(direct, subjID, trialID):
     if not soundExist or not trialExist: print 'Sound data of ' + subjID + ' is missing!'
     
     if csvExist and bitmapExist and soundExist and trialExist:
-        csvStamp = os.path.join(direct, subjID, csvfile_subj); StampDF = pd.read_csv(csvStamp, sep=',')
+        csvStamp = os.path.join(direct, subjID, csvfile_subj); StampDF = _pd.read_csv(csvStamp, sep=',')
         Stamp = StampDF[StampDF.trial_id == trialID].reset_index()
         if len(bitmapNameList) == 1: bitmapFile = os.path.join(direct, bitmapNameList[0])
         else: bitmapFile = os.path.join(direct, bitmapNameList[trialID])
@@ -3527,7 +3527,7 @@ def _modEM(EMDF, addCharSp):
     EMDF, as a data frame, is mutable, no need to return    
     """
     EMDF.mod_x1 = EMDF.x1_pos; EMDF.mod_x2 = EMDF.x2_pos
-    addDist = addCharSp*(EMDF.loc[0,'x2_pos'] - EMDF.loc[0,'x1_pos'])/np.float(EMDF.loc[0,'reglen'])
+    addDist = addCharSp*(EMDF.loc[0,'x2_pos'] - EMDF.loc[0,'x1_pos'])/_np.float(EMDF.loc[0,'reglen'])
     for curEM in range(len(EMDF)):
         if curEM == 0:            
             EMDF.loc[curEM,'mod_x1'] -= addDist    # first word, add leftside!
@@ -3564,18 +3564,18 @@ def _chk_fp_fix(FixDF, EMDF, curFix, curEM):
     """
     EMDF.loc[curEM,'fpurt'] += FixDF.loc[curFix,'duration']  # fpurt: first pass fixation time
     EMDF.loc[curEM,'fpcount'] += 1 # fpcount: number of first pass fixation
-    EMDF.loc[curEM,'ffos'] = np.ceil((FixDF.loc[curFix,'x_pos'] - EMDF.loc[curEM,'mod_x1'])/np.float(EMDF.loc[curEM,'mod_x2'] - EMDF.loc[curEM,'mod_x1']) * EMDF.loc[curEM,'reglen']) - 1   # ffos: offset of the first first-pass fixation in a region from the first letter of the region, in characters (range of 0 to reglen-1)
+    EMDF.loc[curEM,'ffos'] = _np.ceil((FixDF.loc[curFix,'x_pos'] - EMDF.loc[curEM,'mod_x1'])/_np.float(EMDF.loc[curEM,'mod_x2'] - EMDF.loc[curEM,'mod_x1']) * EMDF.loc[curEM,'reglen']) - 1   # ffos: offset of the first first-pass fixation in a region from the first letter of the region, in characters (range of 0 to reglen-1)
     EMDF.loc[curEM,'ffixurt'] += FixDF.loc[curFix,'duration']   # ffixurt: first first-pass fixation duration for each region.
     # locate the starting and ending indices of the first pass fixation in the current region                    
     stFix, endFix = curFix, curFix + 1
-    while endFix < len(FixDF)-1 and np.isnan(FixDF.loc[endFix,'line_no']): endFix += 1
+    while endFix < len(FixDF)-1 and _np.isnan(FixDF.loc[endFix,'line_no']): endFix += 1
     # keep searching until leaving that word and use that as the ending index 
     while endFix < len(FixDF)-1 and FixDF.loc[endFix,'valid'] == 'yes' and FixDF.loc[endFix,'line_no'] == EMDF.loc[curEM,'line_no'] and EMDF.loc[curEM,'mod_x1'] <= FixDF.loc[endFix,'x_pos'] and FixDF.loc[endFix,'x_pos'] <= EMDF.loc[curEM,'mod_x2']:
         EMDF.loc[curEM,'fpurt'] += FixDF.loc[endFix,'duration']  # add fpurt: first pass fixation time
         EMDF.loc[curEM,'fpcount'] += 1  # add fpcount: number of first pass fixation
         endFix += 1
-        while endFix < len(FixDF)-1 and np.isnan(FixDF.loc[endFix,'line_no']): endFix += 1
-    if endFix < len(FixDF) and FixDF.loc[endFix,'valid'] == 'yes' and not np.isnan(FixDF.loc[endFix,'line_no']):
+        while endFix < len(FixDF)-1 and _np.isnan(FixDF.loc[endFix,'line_no']): endFix += 1
+    if endFix < len(FixDF) and FixDF.loc[endFix,'valid'] == 'yes' and not _np.isnan(FixDF.loc[endFix,'line_no']):
         EMDF.loc[curEM,'spilover'] += FixDF.loc[endFix,'duration']  # add spilover: Duration of the first fixation beyond a region/word.   
     return stFix, endFix
 
@@ -3604,8 +3604,8 @@ def _chk_fp_reg(FixDF, EMDF, stFix, endFix, curEM):
             for cur in range(len(EMDF)):
                 if FixDF.loc[endFix,'region_no'] == EMDF.loc[cur,'region']:
                     EMDF.loc[curEM,'fpregreg'] = EMDF.loc[cur,'region']
-                    if cur == 0: EMDF.loc[curEM,'fpregchr'] = np.ceil((FixDF.loc[endFix,'x_pos'] - EMDF.loc[cur,'mod_x1'])/np.float(EMDF.loc[cur,'mod_x2'] - EMDF.loc[cur,'mod_x1']) * EMDF.loc[cur,'reglen']) - 1
-                    else: EMDF.loc[curEM,'fpregchr'] = sum(EMDF.reglen[0:cur-1]) + np.ceil((FixDF.loc[endFix,'x_pos'] - EMDF.loc[cur,'mod_x1'])/np.float(EMDF.loc[cur,'mod_x2'] - EMDF.loc[cur,'mod_x1']) * EMDF.loc[cur,'reglen']) - 1
+                    if cur == 0: EMDF.loc[curEM,'fpregchr'] = _np.ceil((FixDF.loc[endFix,'x_pos'] - EMDF.loc[cur,'mod_x1'])/_np.float(EMDF.loc[cur,'mod_x2'] - EMDF.loc[cur,'mod_x1']) * EMDF.loc[cur,'reglen']) - 1
+                    else: EMDF.loc[curEM,'fpregchr'] = sum(EMDF.reglen[0:cur-1]) + _np.ceil((FixDF.loc[endFix,'x_pos'] - EMDF.loc[cur,'mod_x1'])/_np.float(EMDF.loc[cur,'mod_x2'] - EMDF.loc[cur,'mod_x1']) * EMDF.loc[cur,'reglen']) - 1
                     break
         else:
             # a forward fixation
@@ -3619,8 +3619,8 @@ def _chk_fp_reg(FixDF, EMDF, stFix, endFix, curEM):
             for cur in range(len(EMDF)):
                 if FixDF.loc[endFix,'region_no'] == EMDF.loc[cur,'region']:
                     EMDF.loc[curEM,'fpregreg'] = EMDF.loc[cur,'region']
-                    if cur == 0: EMDF.loc[curEM,'fpregchr'] = np.ceil((FixDF.loc[endFix,'x_pos'] - EMDF.loc[cur,'mod_x1'])/np.float(EMDF.loc[cur,'mod_x2'] - EMDF.loc[cur,'mod_x1']) * EMDF.loc[cur,'reglen']) - 1
-                    else: EMDF.loc[curEM,'fpregchr'] = sum(EMDF.reglen[0:cur-1]) + np.ceil((FixDF.loc[endFix,'x_pos'] - EMDF.loc[cur,'mod_x1'])/np.float(EMDF.loc[cur,'mod_x2'] - EMDF.loc[cur,'mod_x1']) * EMDF.loc[cur,'reglen']) - 1
+                    if cur == 0: EMDF.loc[curEM,'fpregchr'] = _np.ceil((FixDF.loc[endFix,'x_pos'] - EMDF.loc[cur,'mod_x1'])/_np.float(EMDF.loc[cur,'mod_x2'] - EMDF.loc[cur,'mod_x1']) * EMDF.loc[cur,'reglen']) - 1
+                    else: EMDF.loc[curEM,'fpregchr'] = sum(EMDF.reglen[0:cur-1]) + _np.ceil((FixDF.loc[endFix,'x_pos'] - EMDF.loc[cur,'mod_x1'])/_np.float(EMDF.loc[cur,'mod_x2'] - EMDF.loc[cur,'mod_x1']) * EMDF.loc[cur,'reglen']) - 1
                     break
         else:
             # a forward fixation
@@ -3636,7 +3636,7 @@ def _getReg(FixDF, curFix, EMDF):
         EMDF -- result data frame containing all region information
     return: index in EMF    
     """
-    if np.isnan(FixDF.line_no[curFix]) or np.isnan(FixDF.region_no[curFix]): return 0
+    if _np.isnan(FixDF.line_no[curFix]) or _np.isnan(FixDF.region_no[curFix]): return 0
     else:
         indlist = EMDF[(EMDF['line_no']==FixDF.line_no[curFix]) & (EMDF['region']==FixDF.region_no[curFix])].index.tolist()
         if len(indlist) == 1: return indlist[0]
@@ -3679,7 +3679,7 @@ def _chk_rp_reg(FixDF, EMDF, stFix, endFix, curEM):
             leftmostRegInd = _getReg(FixDF, endFix, EMDF)
             leftmostReg = EMDF.region[leftmostRegInd]
             leftmostCurFix = endFix            
-            while curFix < len(FixDF) and FixDF.loc[curFix,'valid'] == 'yes' and not np.isnan(FixDF.loc[curFix,'line_no']):
+            while curFix < len(FixDF) and FixDF.loc[curFix,'valid'] == 'yes' and not _np.isnan(FixDF.loc[curFix,'line_no']):
                 # in the regression path                
                 EMDF.loc[curEM,'rpurt'] += FixDF.loc[curFix,'duration']
                 EMDF.loc[curEM,'rpcount'] += 1
@@ -3691,18 +3691,18 @@ def _chk_rp_reg(FixDF, EMDF, stFix, endFix, curEM):
                     leftmostCurFix = curFix                    
                 curFix += 1
             EMDF.loc[curEM,'rpregreg'] = leftmostReg
-            if leftmostRegInd == 0: EMDF.loc[curEM,'rpregchr'] = np.ceil((FixDF.loc[leftmostCurFix,'x_pos'] - EMDF.loc[leftmostRegInd,'mod_x1'])/np.float(EMDF.loc[leftmostRegInd,'mod_x2'] - EMDF.loc[leftmostRegInd,'mod_x1']) * EMDF.loc[leftmostRegInd,'reglen']) - 1
-            else: EMDF.loc[curEM,'rpregchr'] = sum(EMDF.reglen[0:leftmostRegInd]) + np.ceil((FixDF.loc[leftmostCurFix,'x_pos'] - EMDF.loc[leftmostRegInd,'mod_x1'])/np.float(EMDF.loc[leftmostRegInd,'mod_x2'] - EMDF.loc[leftmostRegInd,'mod_x1']) * EMDF.loc[leftmostRegInd,'reglen']) - 1
+            if leftmostRegInd == 0: EMDF.loc[curEM,'rpregchr'] = _np.ceil((FixDF.loc[leftmostCurFix,'x_pos'] - EMDF.loc[leftmostRegInd,'mod_x1'])/_np.float(EMDF.loc[leftmostRegInd,'mod_x2'] - EMDF.loc[leftmostRegInd,'mod_x1']) * EMDF.loc[leftmostRegInd,'reglen']) - 1
+            else: EMDF.loc[curEM,'rpregchr'] = sum(EMDF.reglen[0:leftmostRegInd]) + _np.ceil((FixDF.loc[leftmostCurFix,'x_pos'] - EMDF.loc[leftmostRegInd,'mod_x1'])/_np.float(EMDF.loc[leftmostRegInd,'mod_x2'] - EMDF.loc[leftmostRegInd,'mod_x1']) * EMDF.loc[leftmostRegInd,'reglen']) - 1
         else:
             # the middle region (word)
             EMDF.loc[curEM,'rpurt'] = EMDF.loc[curEM,'fpurt']
             newendFix = endFix + 1
-            while newendFix < len(FixDF) and FixDF.loc[newendFix,'valid'] == 'yes' and not np.isnan(FixDF.loc[newendFix,'line_no']) and not np.isnan(FixDF.loc[newendFix,'region_no']) and FixDF.loc[newendFix,'region_no'] <= FixDF.loc[stFix,'region_no']: newendFix += 1           
+            while newendFix < len(FixDF) and FixDF.loc[newendFix,'valid'] == 'yes' and not _np.isnan(FixDF.loc[newendFix,'line_no']) and not _np.isnan(FixDF.loc[newendFix,'region_no']) and FixDF.loc[newendFix,'region_no'] <= FixDF.loc[stFix,'region_no']: newendFix += 1           
             leftmostRegInd = _getReg(FixDF, endFix, EMDF)
             leftmostReg = EMDF.region[leftmostRegInd]
             leftmostCurFix = endFix
             for indFix in range(endFix, newendFix):
-                if not np.isnan(FixDF.loc[indFix,'region_no']):               
+                if not _np.isnan(FixDF.loc[indFix,'region_no']):               
                     EMDF.loc[curEM,'rpurt'] += FixDF.loc[indFix,'duration']
                     EMDF.loc[curEM,'rpcount'] += 1
                     newleftInd = _getReg(FixDF, indFix, EMDF)
@@ -3712,8 +3712,8 @@ def _chk_rp_reg(FixDF, EMDF, stFix, endFix, curEM):
                         leftmostReg = newleft
                         leftmostCurFix = indFix 
             EMDF.loc[curEM,'rpregreg'] = leftmostReg
-            if leftmostRegInd == 0: EMDF.loc[curEM,'rpregchr'] = np.ceil((FixDF.loc[leftmostCurFix,'x_pos'] - EMDF.loc[leftmostRegInd,'mod_x1'])/np.float(EMDF.loc[leftmostRegInd,'mod_x2'] - EMDF.loc[leftmostRegInd,'mod_x1']) * EMDF.loc[leftmostRegInd,'reglen']) - 1
-            else: EMDF.loc[curEM,'rpregchr'] = sum(EMDF.reglen[0:leftmostRegInd]) + np.ceil((FixDF.loc[leftmostCurFix,'x_pos'] - EMDF.loc[leftmostRegInd,'mod_x1'])/np.float(EMDF.loc[leftmostRegInd,'mod_x2'] - EMDF.loc[leftmostRegInd,'mod_x1']) * EMDF.loc[leftmostRegInd,'reglen']) - 1
+            if leftmostRegInd == 0: EMDF.loc[curEM,'rpregchr'] = _np.ceil((FixDF.loc[leftmostCurFix,'x_pos'] - EMDF.loc[leftmostRegInd,'mod_x1'])/_np.float(EMDF.loc[leftmostRegInd,'mod_x2'] - EMDF.loc[leftmostRegInd,'mod_x1']) * EMDF.loc[leftmostRegInd,'reglen']) - 1
+            else: EMDF.loc[curEM,'rpregchr'] = sum(EMDF.reglen[0:leftmostRegInd]) + _np.ceil((FixDF.loc[leftmostCurFix,'x_pos'] - EMDF.loc[leftmostRegInd,'mod_x1'])/_np.float(EMDF.loc[leftmostRegInd,'mod_x2'] - EMDF.loc[leftmostRegInd,'mod_x1']) * EMDF.loc[leftmostRegInd,'reglen']) - 1
             
 
 def _chk_sp_fix(FixDF, EMDF, endFix, curEM):
@@ -3742,7 +3742,7 @@ def _chk_tffixos(EMDF):
     """
     tffixos = 0
     for ind in range(len(EMDF)):
-        if not np.isnan(EMDF.loc[ind,'ffos']):
+        if not _np.isnan(EMDF.loc[ind,'ffos']):
             if ind == 0: tffixos += EMDF.loc[ind,'ffos']
             else: tffixos += sum(EMDF.reglen[0:ind-1]) + EMDF.loc[ind,'ffos']
     
@@ -3817,9 +3817,9 @@ def _cal_EM(RegDF, FixDF, SacDF, EMDF):
         spcount -- number of second-pass fixations. If there is no second-pass fixation, 'spcount' is 'NA' (second-pass fixation measure).
     """
     # default values
-    EMDF.ffos = np.nan  # for first pass fixation measures
-    EMDF.fpregres = np.nan; EMDF.fpregreg = np.nan; EMDF.fpregchr = np.nan   # for first regression measures
-    EMDF.rpregres = np.nan; EMDF.rpregreg = np.nan; EMDF.rpregchr = np.nan   # for regression path measures
+    EMDF.ffos = _np.nan  # for first pass fixation measures
+    EMDF.fpregres = _np.nan; EMDF.fpregreg = _np.nan; EMDF.fpregchr = _np.nan   # for first regression measures
+    EMDF.rpregres = _np.nan; EMDF.rpregreg = _np.nan; EMDF.rpregchr = _np.nan   # for regression path measures
     
     # region (each word) measures
     for curEM in range(len(EMDF)):
@@ -3834,37 +3834,37 @@ def _cal_EM(RegDF, FixDF, SacDF, EMDF):
                 break
                 
     # change fpurt == 0, fpcount == 0, ffixurt == 0, spilover == 0 with NA
-    EMDF.loc[EMDF[EMDF.fpurt==0].index,'fpurt'] = np.nan
-    EMDF.loc[EMDF[EMDF.fpcount==0].index,'fpcount'] = np.nan
-    EMDF.loc[EMDF[EMDF.ffixurt==0].index,'ffixurt'] = np.nan
-    EMDF.loc[EMDF[EMDF.spilover==0].index,'spilover'] = np.nan
-    EMDF.loc[EMDF[EMDF.spurt==0].index,'spurt'] = np.nan
-    EMDF.loc[EMDF[EMDF.spcount==0].index,'spcount'] = np.nan
-    EMDF.loc[EMDF[np.isnan(EMDF.fpurt)].index,'rpurt'] = np.nan
-    EMDF.loc[EMDF[np.isnan(EMDF.fpurt)].index,'rpcount'] = np.nan          
-    EMDF.loc[EMDF[np.isnan(EMDF.fpurt)].index,'rpregreg'] = np.nan
+    EMDF.loc[EMDF[EMDF.fpurt==0].index,'fpurt'] = _np.nan
+    EMDF.loc[EMDF[EMDF.fpcount==0].index,'fpcount'] = _np.nan
+    EMDF.loc[EMDF[EMDF.ffixurt==0].index,'ffixurt'] = _np.nan
+    EMDF.loc[EMDF[EMDF.spilover==0].index,'spilover'] = _np.nan
+    EMDF.loc[EMDF[EMDF.spurt==0].index,'spurt'] = _np.nan
+    EMDF.loc[EMDF[EMDF.spcount==0].index,'spcount'] = _np.nan
+    EMDF.loc[EMDF[_np.isnan(EMDF.fpurt)].index,'rpurt'] = _np.nan
+    EMDF.loc[EMDF[_np.isnan(EMDF.fpurt)].index,'rpcount'] = _np.nan          
+    EMDF.loc[EMDF[_np.isnan(EMDF.fpurt)].index,'rpregreg'] = _np.nan
     """    
     for curEM in range(len(EMDF)):
         if EMDF.loc[curEM,'fpurt'] == 0:
-            EMDF.loc[curEM,'fpurt'] = np.nan
+            EMDF.loc[curEM,'fpurt'] = _np.nan
         if EMDF.loc[curEM,'fpcount'] == 0:
-            EMDF.loc[curEM,'fpcount'] = np.nan
+            EMDF.loc[curEM,'fpcount'] = _np.nan
         if EMDF.loc[curEM,'ffixurt'] == 0:
-            EMDF.loc[curEM,'ffixurt'] = np.nan
+            EMDF.loc[curEM,'ffixurt'] = _np.nan
         if EMDF.loc[curEM,'spilover'] == 0:
-            EMDF.loc[curEM,'spilover'] = np.nan
+            EMDF.loc[curEM,'spilover'] = _np.nan
         if EMDF.loc[curEM,'spurt'] == 0:
-            EMDF.loc[curEM,'spurt'] = np.nan
+            EMDF.loc[curEM,'spurt'] = _np.nan
         if EMDF.loc[curEM,'spcount'] == 0:
-            EMDF.loc[curEM,'spcount'] = np.nan
-        if np.isnan(EMDF.loc[curEM,'fpurt']):
-            EMDF.loc[curEM,'rpurt'] = np.nan
-            EMDF.loc[curEM,'rpcount'] = np.nan
-            EMDF.loc[curEM,'rpregreg'] = np.nan            
+            EMDF.loc[curEM,'spcount'] = _np.nan
+        if _np.isnan(EMDF.loc[curEM,'fpurt']):
+            EMDF.loc[curEM,'rpurt'] = _np.nan
+            EMDF.loc[curEM,'rpcount'] = _np.nan
+            EMDF.loc[curEM,'rpregreg'] = _np.nan            
     """
     # whole trial measures
     EMDF.tffixos = _chk_tffixos(EMDF)  # tffixos: offset of the first fixation in trial in letters from the beginning of the sentence       
-    EMDF.ttfixurt = sum(x for x in EMDF.fpurt if not np.isnan(x))     # tffixurt: duration of the first fixation in trial
+    EMDF.ttfixurt = sum(x for x in EMDF.fpurt if not _np.isnan(x))     # tffixurt: duration of the first fixation in trial
     EMDF.tfixcnt = len(FixDF[FixDF.valid=='yes'])    # tfixcnt: total number of valid fixations in trial
     EMDF.tregrcnt = _chk_tregrcnt(SacDF)  # tregrcnt: total number of regressive saccades in trial
 
@@ -3887,19 +3887,19 @@ def cal_write_EM(direct, subjID, regfileNameList, addCharSp=1):
     
     # second, process the files
     if SacfileExist and FixfileExist and regfileExist:
-        SacDF = pd.read_csv(SacfileDic[subjID], sep=',')   # read saccade data
-        FixDF = pd.read_csv(FixfileDic[subjID], sep=',')   # read fixation data
+        SacDF = _pd.read_csv(SacfileDic[subjID], sep=',')   # read saccade data
+        FixDF = _pd.read_csv(FixfileDic[subjID], sep=',')   # read fixation data
         for trialID in range(len(regfileDic)):
-            RegDF = _getRegDF(regfileDic, np.unique(SacDF.trial_type[SacDF.trial_id == trialID])[0]) # get region file 
+            RegDF = _getRegDF(regfileDic, _np.unique(SacDF.trial_type[SacDF.trial_id == trialID])[0]) # get region file 
             SacDFtemp = SacDF[SacDF.trial_id==trialID].reset_index()  # get saccade of the trial
             FixDFtemp = FixDF[FixDF.trial_id==trialID].reset_index()  # get fixation of the trial
             
-            if len(np.unique(SacDFtemp.eye)) == 1:
+            if len(_np.unique(SacDFtemp.eye)) == 1:
                 # single eye data
-                if np.unique(SacDFtemp.eye)[0] == 'L': print 'Cal EM measures: Subj: ' + subjID + ', Trial: ' + str(trialID) + ' Left Eye'
-                elif np.unique(SacDFtemp.eye)[0] == 'R': print 'Cal EM measures: Subj: ' + subjID + ', Trial: ' + str(trialID) + ' Right Eye'
+                if _np.unique(SacDFtemp.eye)[0] == 'L': print 'Cal EM measures: Subj: ' + subjID + ', Trial: ' + str(trialID) + ' Left Eye'
+                elif _np.unique(SacDFtemp.eye)[0] == 'R': print 'Cal EM measures: Subj: ' + subjID + ', Trial: ' + str(trialID) + ' Right Eye'
                 # create result data frame
-                EMDF = pd.DataFrame(np.zeros((len(RegDF), 36)))
+                EMDF = _pd.DataFrame(_np.zeros((len(RegDF), 36)))
                 EMDF.columns = ['subj', 'trial_id', 'trial_type', 'trialstart', 'trialend', 'tdur', 'recstart', 'recend', 'blinks', 'eye', 'tffixos', 'tffixurt', 'tfixcnt', 'tregrcnt', 'region', 'reglen', 'word', 'line_no', 'x1_pos', 'x2_pos', 'mod_x1', 'mod_x2',
                                 'fpurt', 'fpcount', 'fpregres', 'fpregreg', 'fpregchr', 'ffos', 'ffixurt', 'spilover', 'rpurt', 'rpcount', 'rpregreg', 'rpregchr', 'spurt', 'spcount']
                 # copy values from FixDF about the whole trial               
@@ -3911,9 +3911,9 @@ def cal_write_EM(direct, subjID, regfileNameList, addCharSp=1):
                 _modEM(EMDF, addCharSp) # modify EMF's mod_x1 and mod_x2
                 _cal_EM(RegDF, FixDFtemp, SacDFtemp, EMDF)
                 # store results
-                if np.unique(SacDFtemp.eye)[0] == 'L':
+                if _np.unique(SacDFtemp.eye)[0] == 'L':
                     nameEM = os.path.join(direct, subjID, subjID + '_EM_trial' + str(trialID) + '_L.csv'); EMDF.to_csv(nameEM, index=False)
-                elif np.unique(SacDFtemp.eye)[0] == 'R':
+                elif _np.unique(SacDFtemp.eye)[0] == 'R':
                     nameEM = os.path.join(direct, subjID, subjID + '_EM_trial' + str(trialID) + '_R.csv'); EMDF.to_csv(nameEM, index=False)   
             else:
                 # double eye data
@@ -3922,7 +3922,7 @@ def cal_write_EM(direct, subjID, regfileNameList, addCharSp=1):
                 
                 print "Cal EM measures: Subj: " + subjID + ", Trial: " + str(trialID) + ' Left Eye'
                 # create result data frame
-                EMDF_L = pd.DataFrame(np.zeros((len(RegDF), 36)))
+                EMDF_L = _pd.DataFrame(_np.zeros((len(RegDF), 36)))
                 EMDF_L.columns = ['subj', 'trial_id', 'trial_type', 'trialstart', 'trialend', 'tdur', 'recstart', 'recend', 'blinks', 'eye', 'tffixos', 'tffixurt', 'tfixcnt', 'tregrcnt', 'region', 'reglen', 'word', 'line_no', 'x1_pos', 'x2_pos', 'mod_x1', 'mod_x2',
                                   'fpurt', 'fpcount', 'fpregres', 'fpregreg', 'fpregchr', 'ffos', 'ffixurt', 'spilover', 'rpurt', 'rpcount', 'rpregreg', 'rpregchr', 'spurt', 'spcount']
                 # copy values from FixDF about the whole trial               
@@ -3938,7 +3938,7 @@ def cal_write_EM(direct, subjID, regfileNameList, addCharSp=1):
             
                 print "Cal EM measures: Subj: " + subjID + ", Trial: " + str(trialID) + ' Right Eye'
                 # create result data frame
-                EMDF_R = pd.DataFrame(np.zeros((len(RegDF), 36)))
+                EMDF_R = _pd.DataFrame(_np.zeros((len(RegDF), 36)))
                 EMDF_R.columns = ['subj', 'trial_id', 'trial_type', 'trialstart', 'trialend', 'tdur', 'recstart', 'recend', 'blinks', 'eye', 'tffixos', 'tffixurt', 'tfixcnt', 'tregrcnt', 'region', 'reglen', 'word', 'line_no', 'x1_pos', 'x2_pos', 'mod_x1', 'mod_x2',
                                   'fpurt', 'fpcount', 'fpregres', 'fpregreg', 'fpregchr', 'ffos', 'ffixurt', 'spilover', 'rpurt', 'rpcount', 'rpregreg', 'rpregchr', 'spurt', 'spcount']
                 # copy values from FixDF about the whole trial               
@@ -3985,26 +3985,26 @@ def mergeCSV(direct, regfileNameList, subjID):
     regfileExist, regfileDic = _crtRegion_dic(direct, regfileNameList)
     if StampfileExist and regfileExist:
         print 'SubjID ', subjID
-        mergeDF = pd.DataFrame()
+        mergeDF = _pd.DataFrame()
         
-        EMDF = pd.read_csv(StampfileDic[subjID], sep=',')
+        EMDF = _pd.read_csv(StampfileDic[subjID], sep=',')
         EMDF['gaze_time'] = EMDF.time - EMDF.recstart; 
-        EMDF['audio_time'] = np.nan; EMDF['audio_label'] = np.nan; EMDF['audio_region_no'] = np.nan
+        EMDF['audio_time'] = _np.nan; EMDF['audio_label'] = _np.nan; EMDF['audio_region_no'] = _np.nan
 
-        trialList = list(np.unique(EMDF.trial_type))
+        trialList = list(_np.unique(EMDF.trial_type))
         for trial in trialList:
             print 'Processing Trial ', trial
             # get region file
-            RegDF = pd.read_csv(regfileDic[trial+'.region.csv'])
+            RegDF = _pd.read_csv(regfileDic[trial+'.region.csv'])
             # get ETime file    
             aufile = os.path.join(direct, subjID, subjID + '-' + trial + '_ETime.csv')
             if not os.path.isfile(aufile):
                 print aufile + ' does not exist!' 
             else:            
-                AUDF = pd.read_csv(aufile, sep = ',', header=None)
+                AUDF = _pd.read_csv(aufile, sep = ',', header=None)
                 AUDF.columns = ['audio_label', 'audio_time']
                 AUDF.audio_label = AUDF.audio_label.str.lower()
-                AUDF.loc[AUDF.audio_label == 'sp', 'audio_label'] = np.nan
+                AUDF.loc[AUDF.audio_label == 'sp', 'audio_label'] = _np.nan
                 AUDF.audio_time = AUDF.audio_time.astype(float)*1000
                 # find merge point!
                 EMDFtemp = EMDF[EMDF.trial_type == trial].reset_index()            
