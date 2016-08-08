@@ -314,6 +314,9 @@ def Praster(direct, fontpath, stPos, langType, codeMethod='utf_8',
         addspace        : the extra pixels you want to add above the top and below the bottom of each line of texts
         log             : log for recording intermediate result
     """
+    if not isinstance(text, (list, tuple)):
+        raise ValueError("text argument must be a list of text string(s), not a bare string!")
+    
     if fwd: # Reset fht if fwd is specified. This isn't working quite like I'd like. See full set of font species for details.
         ttf = ImageFont.truetype(fontpath, fht) # init the specified font resource
         std_char = u'n' # u'n' is used as a standard character for calculating font size 
@@ -361,7 +364,8 @@ def Praster(direct, fontpath, stPos, langType, codeMethod='utf_8',
             logfileH = codecs.open(os.path.join(direct, 'Praster.log'), 'wb', encoding=codeMethod)
             logfileH.write('ascents\n'); json.dump(ascents, logfileH); logfileH.write('\n')
             logfileH.write('descents\n'); json.dump(descents, logfileH); logfileH.write('\n')
-
+            logfileH.close()  # close log file
+        
         # show English text
         curline = 1
         for line in text:
@@ -548,7 +552,6 @@ def Praster(direct, fontpath, stPos, langType, codeMethod='utf_8',
     # Wrap up
     if regfile: _writeCSV(os.path.join(direct, ID + '.region.csv'), resDict, codeMethod)
         
-    if log: logfileH.close()  # close log file
     img.save(os.path.join(direct, ID + '.png'), 'PNG') # write bitmap file
 
 
