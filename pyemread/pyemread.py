@@ -6,7 +6,14 @@ Summary EMF ASCII file recording eye-movement data
 @author: tg422
 """
 # imported packages
-import os, sys, fnmatch, re, csv, codecs, turtle, time
+import os as _os
+import sys as _sys
+import fnmatch as _fnmatch
+import re as _re
+import csv as _csv
+import codecs as _codecs
+import turtle as _turtle
+import time as _time
 import pandas as _pd
 import numpy as _np
 from PIL import Image, ImageDraw, ImageFont
@@ -21,7 +28,7 @@ puncList = [u'，', u'。', u'、', u'：', u'？', u'！']
 
 # functions starting with "_" are helper functions, ending with "_b" are batch user functions
 # make the system default codeing as "utf-8"
-reload(sys); sys.setdefaultencoding("utf-8")
+reload(_sys); _sys.setdefaultencoding("utf-8")
 
 # -----------------------------------------------------------------------------
 # -----------------------------------------------------------------------------
@@ -37,7 +44,7 @@ class Dictlist(dict):
         
 def saveDict(fn,dict_rap):
     f = open(fn,'wb')
-    w = csv.writer(f)
+    w = _csv.writer(f)
     for key, val in dict_rap.items():
         w.writerow([key,eval(val)])
     f.close()
@@ -46,7 +53,7 @@ def saveDict(fn,dict_rap):
 def readDict(fn):
     f = open(fn,'rb')
     dict_rap = Dictlist()
-    for key, val in csv.reader(f):
+    for key, val in _csv.reader(f):
         dict_rap[key] = eval(val)
     f.close()
     return(dict_rap)
@@ -77,7 +84,7 @@ def _writeCSV(regFile, resDict, codeMethod):
         DF.loc[cur,2] = key        
         DF.loc[cur,3] = resDict[key][2].encode(codeMethod)
         for i in _np.arange(3,15):
-            DF.loc[cur,i+1] = resDict[key][i]
+            DF.loc[cur,i+1] = int(resDict[key][i])
         cur += 1
     DF.columns = col; DF.sort(columns='WordID')
     DF.to_csv(regFile, index=False)
@@ -104,7 +111,7 @@ class FontDict(dict):
         fontpathlist = _font_manager.findSystemFonts(); fontpathlist.sort() # Get paths to all installed font files (any system?).
         for fp in fontpathlist:
             fi = ImageFont.truetype(fp, 12)
-            family = re.sub('[ -._]', '', fi.getname()[0])
+            family = _re.sub('[ -._]', '', fi.getname()[0])
             try:    # will fail if font family does not already exist in self
                 exec(family + '[fi.getname()[1]]=fp')
             except NameError:   # Make a new font family entry
@@ -331,7 +338,7 @@ def Praster(direct, fontpath, stPos, langType, codeMethod='utf_8',
     img = Image.new('RGB', dim, bg) # 'RGB' specifies 8-bit per channel (32 bit color)
     draw = ImageDraw.Draw(img)
     
-    ### open the region file: use codecs.open() to properly support writing unicode strings
+    ### open the region file: use _codecs.open() to properly support writing unicode strings
     if regfile: 
         resDict = Dictlist(); curKey = 1
 
@@ -361,7 +368,7 @@ def Praster(direct, fontpath, stPos, langType, codeMethod='utf_8',
 
         if log: 
             import json
-            logfileH = codecs.open(os.path.join(direct, 'Praster.log'), 'wb', encoding=codeMethod)
+            logfileH = _codecs.open(_os.path.join(direct, 'Praster.log'), 'wb', encoding=codeMethod)
             logfileH.write('ascents\n'); json.dump(ascents, logfileH); logfileH.write('\n')
             logfileH.write('descents\n'); json.dump(descents, logfileH); logfileH.write('\n')
             logfileH.close()  # close log file
@@ -372,7 +379,7 @@ def Praster(direct, fontpath, stPos, langType, codeMethod='utf_8',
             # break line into list of words and do some cleanup
             words = line.split(' ')
             if words.count(''): words.remove('')           # remove empty strings.
-            words = [re.sub('^', ' ', w) for w in words]   # add a space to beginning of each word.
+            words = [_re.sub('^', ' ', w) for w in words]   # add a space to beginning of each word.
             if len(words) > 0: words[0] = words[0].strip() # remove space from beginning of first word in each line, guarding against empty wordlists.
 
             # paint the line into the image, one word at a time 
@@ -399,8 +406,8 @@ def Praster(direct, fontpath, stPos, langType, codeMethod='utf_8',
                 vpos1 = vpos - ht - mdes; vpos2 = vpos1 + ht
 
                 # draw current word
-                if sys.platform.startswith('win'): vpos1_text = vpos - _getStrikeCenters(fontpath, fht) # Windows system   
-                elif sys.platform.startswith('linux') > -1: vpos1_text = vpos - _getStrikeCenters(fontpath, fht) - fht/4.5 - 1 # # Linux system: add some offset (fht/4.5 - 1)
+                if _sys.platform.startswith('win'): vpos1_text = vpos - _getStrikeCenters(fontpath, fht) # Windows system   
+                elif _sys.platform.startswith('linux') > -1: vpos1_text = vpos - _getStrikeCenters(fontpath, fht) - fht/4.5 - 1 # # Linux system: add some offset (fht/4.5 - 1)
                 draw.text((xpos1, vpos1_text), w, font=ttf, fill=fg) 
                 
                 # outline word region
@@ -478,12 +485,12 @@ def Praster(direct, fontpath, stPos, langType, codeMethod='utf_8',
             # break line into list of words and do some cleanup
             words = line.split(' ')
             if words.count(''): words.remove('')           # remove empty strings.
-            words = [re.sub('^', ' ', w) for w in words]   # add a space to beginning of each word.
+            words = [_re.sub('^', ' ', w) for w in words]   # add a space to beginning of each word.
             if len(words) > 0: words[0] = words[0].strip() # remove space from beginning of first word in each line, guarding against empty wordlists.
             # if the previous word ending with a punctuation, remove added space of the next word
             for ind_w in range(1, len(words)):
                 if words[ind_w-1][-1] in puncList:
-                    words[ind_w] = re.sub('^ ', '', words[ind_w])          
+                    words[ind_w] = _re.sub('^ ', '', words[ind_w])          
             
             # paint the line into the image, one word at a time 
             xpos1 = lmargin # let edge of current word
@@ -496,11 +503,11 @@ def Praster(direct, fontpath, stPos, langType, codeMethod='utf_8',
                 vpos1 = vpos - ht; vpos2 = vpos1 + ht            
                 
                 # draw current word
-                if sys.platform.startswith('win'):
+                if _sys.platform.startswith('win'):
                     # Windows system
                     if langType == 'Korean': vpos1_text = vpos - ht
                     elif langType == 'Japanese': vpos1_text = vpos
-                elif sys.platform.startswith('linux') > -1: vpos1_text = vpos - fht*13/15.0 # Linux system: add some offset (fht/4.5 - 1)
+                elif _sys.platform.startswith('linux') > -1: vpos1_text = vpos - fht*13/15.0 # Linux system: add some offset (fht/4.5 - 1)
                 #vpos1_text = vpos1  # top edge of current word
                 draw.text((xpos1, vpos1_text), w, font=ttf, fill=fg) 
             
@@ -550,9 +557,9 @@ def Praster(direct, fontpath, stPos, langType, codeMethod='utf_8',
     # ### See PIL.ExifTags.TAGS   
     
     # Wrap up
-    if regfile: _writeCSV(os.path.join(direct, ID + '.region.csv'), resDict, codeMethod)
+    if regfile: _writeCSV(_os.path.join(direct, ID + '.region.csv'), resDict, codeMethod)
         
-    img.save(os.path.join(direct, ID + '.png'), 'PNG') # write bitmap file
+    img.save(_os.path.join(direct, ID + '.png'), 'PNG') # write bitmap file
 
 
 def Gen_Bitmap_RegFile(direct, fontName, stPos, langType, textFileNameList, genmethod=2, codeMethod='utf_8', dim=(1280,1024), fg=(0,0,0), bg=(232,232,232), 
@@ -611,24 +618,24 @@ def Gen_Bitmap_RegFile(direct, fontName, stPos, langType, textFileNameList, genm
     
     elif genmethod == 1:
         # first, check whether the text file exists
-        txtfile = textFileNameList[0]; realtxtfile = os.path.join(direct, txtfile)
-        if not os.path.isfile(realtxtfile):
+        txtfile = textFileNameList[0]; realtxtfile = _os.path.join(direct, txtfile)
+        if not _os.path.isfile(realtxtfile):
             print txtfile + ' does not exist!'
         else:
             # read from a single text file (containing many stories)
-            infileH = codecs.open(realtxtfile, mode="rb", encoding=codeMethod)
+            infileH = _codecs.open(realtxtfile, mode="rb", encoding=codeMethod)
             print "Read text file: ", infileH.name; lines = infileH.readlines(); infileH.close()
-            lines[0] = re.sub(u"\ufeff", u"", lines[0]) # remove file starter '\ufeff'     
+            lines[0] = _re.sub(u"\ufeff", u"", lines[0]) # remove file starter '\ufeff'     
             
-            tmp0 = [ii for ii in lines if not re.match("^#", ii)] # Squeeze out comments: lines that start with '#'
+            tmp0 = [ii for ii in lines if not _re.match("^#", ii)] # Squeeze out comments: lines that start with '#'
             tmp1 = ''.join(tmp0)    # join list of strings into one long string
              
-            tmp2 = re.split(u"\r\n\r\n", tmp1)  
+            tmp2 = _re.split(u"\r\n\r\n", tmp1)  
                    # Split string to lists by delimiter "\r\n\r\n", which corresponds to blank line in original text file (infileH).
                    # At this point, each list item corresponds to 1, possibly multi-line, string.
                    # Each list item is to be rendered as a single bitmap.
-            tmp2[len(tmp2)-1] = re.sub(u"\r\n$", u"", tmp2[len(tmp2)-1])    # remove "\r\n" at the ending of the last line
-            tmp3 = [re.split("\r\n", ii) for ii in tmp2]    # split each item into multiple lines, one string per line.
+            tmp2[len(tmp2)-1] = _re.sub(u"\r\n$", u"", tmp2[len(tmp2)-1])    # remove "\r\n" at the ending of the last line
+            tmp3 = [_re.split("\r\n", ii) for ii in tmp2]    # split each item into multiple lines, one string per line.
 
             for i, P in enumerate(tmp3): 
                 s = "storyID = %02.d line = %d" % (i+1, len(P)); print(s)
@@ -639,26 +646,26 @@ def Gen_Bitmap_RegFile(direct, fontName, stPos, langType, textFileNameList, genm
         # read from multiple text files
         if len(textFileNameList) == 0:
             # automatically read all text files in direct
-            for file in os.listdir(direct):
-                if fnmatch.fnmatch(file, '*.txt'):
+            for file in _os.listdir(direct):
+                if _fnmatch.fnmatch(file, '*.txt'):
                     textFileNameList.append(str(file))
         else:
             # read specific text files in direct; check whether the file exists!
             for txtfile in textFileNameList:
-                ID = txtfile.split('.')[0]; realtxtfile = os.path.join(direct, txtfile)
-                if not os.path.isfile(realtxtfile):
+                ID = txtfile.split('.')[0]; realtxtfile = _os.path.join(direct, txtfile)
+                if not _os.path.isfile(realtxtfile):
                     print ID + ' does not exist!'
                     textFileNameList.remove(txtfile)
         # read available text files and generate bitmaps and region files    
         for txtfile in textFileNameList:
             # read from the text file   
-            ID = txtfile.split('.')[0]; realtxtfile = os.path.join(direct, txtfile)
-            infileH = codecs.open(realtxtfile, mode="rb", encoding=codeMethod)
+            ID = txtfile.split('.')[0]; realtxtfile = _os.path.join(direct, txtfile)
+            infileH = _codecs.open(realtxtfile, mode="rb", encoding=codeMethod)
             print "Read text file: ", infileH.name; lines = infileH.readlines(); infileH.close()
-            lines[0] = re.sub(u"\ufeff", u"", lines[0]) # remove file starter '\ufeff'     
+            lines[0] = _re.sub(u"\ufeff", u"", lines[0]) # remove file starter '\ufeff'     
             
-            tmp0 = [ii for ii in lines if not re.match("^#", ii)] # Squeeze out comments: lines that start with '#'
-            tmp1 = [re.sub(u"\r\n$", u"", ii) for ii in tmp0]    # remove "\r\n" at the ending of each line
+            tmp0 = [ii for ii in lines if not _re.match("^#", ii)] # Squeeze out comments: lines that start with '#'
+            tmp1 = [_re.sub(u"\r\n$", u"", ii) for ii in tmp0]    # remove "\r\n" at the ending of each line
             
             Praster(direct, fontpath, stPos, langType, codeMethod=codeMethod, text=tmp1, dim=dim, fg=fg, bg=bg, lmargin=lmargin, tmargin=tmargin, linespace=linespace, 
                     fht=fht, fwd=fwd, bbox=bbox, bbox_big=bbox_big, ID=ID, addspace=addspace, log=log)
@@ -673,7 +680,7 @@ def updReg(direct, regfileNameList, addspace):
         addspace -- added space for bigger boundary surrounding lines of texts
     """
     for trialID in range(len(regfileNameList)):
-        RegDF = _pd.read_csv(os.path.join(direct, regfileNameList[trialID]), sep=',', header=None)
+        RegDF = _pd.read_csv(_os.path.join(direct, regfileNameList[trialID]), sep=',', header=None)
         RegDF.columns = ['Name', 'Word', 'length', 'x1_pos', 'y1_pos', 'x2_pos', 'y2_pos']
         # add WordID
         RegDF['WordID'] = range(1,len(RegDF)+1)        
@@ -704,7 +711,7 @@ def updReg(direct, regfileNameList, addspace):
             RegDF.loc[RegDF.line_no==lineNum,'b_y1'] = max(RegDF.loc[RegDF.line_no==lineNum,'y1_pos']) - addspace
             RegDF.loc[RegDF.line_no==lineNum,'b_y2'] = min(RegDF.loc[RegDF.line_no==lineNum,'y2_pos']) + addspace
         RegDF = RegDF[['Name', 'WordID', 'Word', 'length', 'height', 'baseline', 'line_no', 'x1_pos', 'y1_pos', 'x2_pos', 'y2_pos', 'b_x1', 'b_y1', 'b_x2', 'b_y2']]     
-        RegDF.to_csv(os.path.join(direct, regfileNameList[trialID]), index=False)            
+        RegDF.to_csv(_os.path.join(direct, regfileNameList[trialID]), index=False)            
 
     
 # -----------------------------------------------------------------------------
@@ -723,19 +730,19 @@ def _getHeader(lines):
     header = [] 
     for line in lines:
         line = line.rstrip()
-        if re.search('^[*][*] ', line):
+        if _re.search('^[*][*] ', line):
             header.append(line)
        
     # get basic information from header lines       
     for line in header:
-        if re.search('RECORDED BY', line):
+        if _re.search('RECORDED BY', line):
             script = line.split(' ')[3]
-        if re.search('DATE:', line):
+        if _re.search('DATE:', line):
             sessdate = line.split(': ')[1]
-        if re.search('CONVERTED FROM', line):
-            m = re.search(' FROM (.+?) using', line)
+        if _re.search('CONVERTED FROM', line):
+            m = _re.search(' FROM (.+?) using', line)
             if m:
-                #srcfile = os.path.basename(m.group(1))
+                #srcfile = _os.path.basename(m.group(1))
                 srcfile = m.group(1).split('\\')[-1]
     
     return script, sessdate, srcfile            
@@ -773,9 +780,9 @@ def _getTrialReg(lines):
     trial_end = []; trial_end_lines = []
     cur = 0
     for line in lines:
-        if re.search('TRIALID', line):
+        if _re.search('TRIALID', line):
             trial_start.append(line); trial_start_lines.append(cur)
-        if re.search('TRIAL_RESULT', line):
+        if _re.search('TRIAL_RESULT', line):
             trial_end.append(line); trial_end_lines.append(cur)
         cur += 1
     
@@ -803,15 +810,15 @@ def _getBlink_Fix_Sac_SampFreq_EyeRec(triallines, datatype):
         stamplines = []
     for line in triallines:
         if datatype == 0:
-            if re.search('^EBLINK', line): blinklines.append(line.split())
-            if re.search('^EFIX', line): fixlines.append(line.split())
-            if re.search('^ESACC', line): saclines.append(line.split())
-            if re.search('!MODE RECORD', line):
+            if _re.search('^EBLINK', line): blinklines.append(line.split())
+            if _re.search('^EFIX', line): fixlines.append(line.split())
+            if _re.search('^ESACC', line): saclines.append(line.split())
+            if _re.search('!MODE RECORD', line):
                 sampfreq = int(line.split()[5]); eyerec = line.split()[-1]
         elif datatype == 1:
-            if re.search('^EBLINK', line): blinklines.append(line.split())
-            if re.search('^[0-9]', line): stamplines.append(line.split())
-            if re.search('!MODE RECORD', line):
+            if _re.search('^EBLINK', line): blinklines.append(line.split())
+            if _re.search('^[0-9]', line): stamplines.append(line.split())
+            if _re.search('!MODE RECORD', line):
                 sampfreq = int(line.split()[5]); eyerec = line.split()[-1]
     if datatype == 0: return blinklines, fixlines, saclines, sampfreq, eyerec
     elif datatype == 1: return blinklines, stamplines, sampfreq, eyerec        
@@ -830,11 +837,11 @@ def _gettdur(triallines):
     """
     trial_type, trialstart, trialend, tdur, recstart, recend = _np.nan, 0, 0, 0, 0, 0
     for line in triallines:
-        if re.search('!V TRIAL_VAR picture_name', line): trial_type = (line.split()[-1]).split('.')[0]
-        if re.search('^START', line): trialstart = int(line.split()[1])
-        if re.search('^END', line): trialend = int(line.split()[1])
-        if re.search('ARECSTART', line): recstart = int(line.split()[1]) - int(line.split()[2])
-        if re.search('ARECSTOP', line): recend = int(line.split()[1]) - int(line.split()[2])
+        if _re.search('!V TRIAL_VAR picture_name', line): trial_type = (line.split()[-1]).split('.')[0]
+        if _re.search('^START', line): trialstart = int(line.split()[1])
+        if _re.search('^END', line): trialend = int(line.split()[1])
+        if _re.search('ARECSTART', line): recstart = int(line.split()[1]) - int(line.split()[2])
+        if _re.search('ARECSTOP', line): recend = int(line.split()[1]) - int(line.split()[2])
     tdur = trialend - trialstart        
     return trial_type, trialstart, trialend, tdur, recstart, recend        
 
@@ -1929,18 +1936,18 @@ def _crtASC_dic(sit, direct, subjID):
     ascfileDic = {}
     
     if sit == 0:
-        fileName = os.path.join(direct, subjID, subjID + '.asc')
-        if os.path.isfile(fileName):
-            ascfileDic[subjID] = os.path.join(direct, subjID, subjID + '.asc')
+        fileName = _os.path.join(direct, subjID, subjID + '.asc')
+        if _os.path.isfile(fileName):
+            ascfileDic[subjID] = _os.path.join(direct, subjID, subjID + '.asc')
         else:            
             print subjID + '.asc' + ' does not exist!'
             ascfileExist = False            
     elif sit == 1:
         # search all subfolders for ascii file        
-        for root, dirs, files in os.walk(direct):
+        for root, dirs, files in _os.walk(direct):
             for name in files:
                 if name.endswith(".asc"):
-                    ascfileDic[name.split('.')[0]] = os.path.join(direct, name.split('.')[0], name)
+                    ascfileDic[name.split('.')[0]] = _os.path.join(direct, name.split('.')[0], name)
         if len(ascfileDic) == 0:
             print 'No ascii files in subfolders!'
             ascfileExist = False                
@@ -1965,18 +1972,18 @@ def _crtCSV_dic(sit, direct, subjID, csvfiletype):
     
     targetfileEND = csvfiletype + '.csv'
     if sit == 0:
-        fileName = os.path.join(direct, subjID, subjID + targetfileEND)
-        if os.path.isfile(fileName):
-            csvfileDic[subjID] = os.path.join(direct, subjID, subjID + targetfileEND)
+        fileName = _os.path.join(direct, subjID, subjID + targetfileEND)
+        if _os.path.isfile(fileName):
+            csvfileDic[subjID] = _os.path.join(direct, subjID, subjID + targetfileEND)
         else:            
             print subjID + csvfiletype + '.csv' + ' does not exist!'
             csvfileExist = False            
     elif sit == 1:
         # search all subfolders for ascii file
-        for root, dirs, files in os.walk(direct):
+        for root, dirs, files in _os.walk(direct):
             for name in files:
                 if name.endswith(targetfileEND):
-                    csvfileDic[name.split(targetfileEND)[0]] = os.path.join(direct, name.split(targetfileEND)[0], name)
+                    csvfileDic[name.split(targetfileEND)[0]] = _os.path.join(direct, name.split(targetfileEND)[0], name)
         if len(csvfileDic) == 0:
             print 'No ascii files in subfolders!'
             csvfileExist = False                
@@ -2000,17 +2007,17 @@ def _crtRegion_dic(direct, regfileNameList):
     targetfileEND = '.region.csv'
     if len(regfileNameList) == 0:
         # automatically gather all region files in direct
-        for file in os.listdir(direct):
-            if fnmatch.fnmatch(file, '*' + targetfileEND):
-                regfileDic[str(file)] = os.path.join(direct, str(file))
+        for file in _os.listdir(direct):
+            if _fnmatch.fnmatch(file, '*' + targetfileEND):
+                regfileDic[str(file)] = _os.path.join(direct, str(file))
         if len(regfileDic) == 0:
             print 'No region file exists in ' + direct + '!'
             regfileExist = False
     else:
         # check whether particular region file exists!            
         for regfile in regfileNameList:
-            regfileName = os.path.join(direct, regfile)
-            if os.path.isfile(regfileName):
+            regfileName = _os.path.join(direct, regfile)
+            if _os.path.isfile(regfileName):
                 regfileDic[regfile] = regfileName
             else:
                 print regfile + ' does not exist!'; regfileExist = False
@@ -2034,18 +2041,18 @@ def _crtFixRepDic(sit, direct, subjID):
     
     FixRepNameEND = '-FixReportLines.txt'
     if sit == 0:
-        fileName = os.path.join(direct, subjID, subjID + FixRepNameEND)
-        if os.path.isfile(fileName):
-            FixRepDic[subjID] = os.path.join(direct, subjID, subjID + FixRepNameEND)
+        fileName = _os.path.join(direct, subjID, subjID + FixRepNameEND)
+        if _os.path.isfile(fileName):
+            FixRepDic[subjID] = _os.path.join(direct, subjID, subjID + FixRepNameEND)
         else:            
             print subjID + FixRepNameEND + ' does not exist!'
             FixRepExist = False            
     elif sit == 1:
         # search all subfolders for txt file
-        for root, dirs, files in os.walk(direct):
+        for root, dirs, files in _os.walk(direct):
             for name in files:
                 if name.endswith(FixRepNameEND):
-                    FixRepDic[name.split(FixRepNameEND)[0]] = os.path.join(direct, name.split(FixRepNameEND)[0], name)
+                    FixRepDic[name.split(FixRepNameEND)[0]] = _os.path.join(direct, name.split(FixRepNameEND)[0], name)
         if len(FixRepDic) == 0:
             print 'No fixation report txt files in subfolders!'
             FixRepExist = False    
@@ -2138,21 +2145,21 @@ def write_Sac_Report(direct, subjID, SacDF):
     """
     write SacDF to csv file
     """
-    SacDF.to_csv(os.path.join(direct, subjID, subjID + '_Sac.csv'), index=False)
+    SacDF.to_csv(_os.path.join(direct, subjID, subjID + '_Sac.csv'), index=False)
 
 
 def write_Fix_Report(direct, subjID, FixDF):
     """
     write FixDF to csv file
     """
-    FixDF.to_csv(os.path.join(direct, subjID, subjID + '_Fix.csv'), index=False)
+    FixDF.to_csv(_os.path.join(direct, subjID, subjID + '_Fix.csv'), index=False)
 
 
 def write_TimeStamp_Report(direct, subjID, StampDF):
     """
     write StampDF to csv file
     """    
-    StampDF.to_csv(os.path.join(direct, subjID, subjID + '_Stamp.csv'), index=False)
+    StampDF.to_csv(_os.path.join(direct, subjID, subjID + '_Stamp.csv'), index=False)
 
 
 def read_write_SRRasc(direct, subjID, ExpType, rec_lastFix=False, lump_Fix=True, ln=50, zn=50, mn=50):
@@ -2247,8 +2254,8 @@ def read_Stamp(direct, subjID, ExpType):
     ascfileExist, ascfileDic = _crtASC_dic(0, direct, subjID)
     
     ETRANfileExist = True
-    ETRANfileName = os.path.join(direct, 'ETRAN.csv')
-    if not os.path.isfile(ETRANfileName):
+    ETRANfileName = _os.path.join(direct, 'ETRAN.csv')
+    if not _os.path.isfile(ETRANfileName):
         print ETRANfileName + ' does not exist!'; ETRANfileExist = False
     else:
         ETRANDF = _pd.read_csv(ETRANfileName); ETRANDF.SubjectID = ETRANDF.SubjectID.str.lower()
@@ -2348,7 +2355,7 @@ def cal_crlSacFix(direct, subjID, regfileNameList, ExpType, classify_method='DIF
             SacDFtemp = SacDF[SacDF.trial_id==trialID].reset_index(); crlSactemp, question = _getcrlSac(RegDF, SacDFtemp, diff_ratio, frontrange_ratio, y_range)
             newSacDF = newSacDF.append(SacDFtemp, ignore_index=True); crlSac = crlSac.append(crlSactemp, ignore_index=True)
             if recStatus and question:
-                logfile = open(os.path.join(direct, 'log.txt'), 'a+')
+                logfile = open(_os.path.join(direct, 'log.txt'), 'a+')
                 logfile.write('Subj: ' + subjID + ' Trial ' + str(trialID) + ' crlSac start/end need check!\n')
                 logfile.close()        
             
@@ -2369,7 +2376,7 @@ def cal_crlSacFix(direct, subjID, regfileNameList, ExpType, classify_method='DIF
             
             newFixDF = newFixDF.append(FixDFtemp, ignore_index=True); crlFix = crlFix.append(crlFixtemp, ignore_index=True)
             if recStatus and question:
-                logfile = open(os.path.join(direct, 'log.txt'), 'a+')
+                logfile = open(_os.path.join(direct, 'log.txt'), 'a+')
                 logfile.write('Subj: ' + subjID + ' Trial ' + str(trialID) + ' crlFix start/end need check!\n')  
                 logfile.close()
             
@@ -2385,8 +2392,8 @@ def write_Sac_crlSac(direct, subjID, SacDF, crlSac):
         SacDF -- saccade data in different trials with updated line numbers
         crlSac -- crossline saccade data in different trials
     """            
-    SacDF.to_csv(os.path.join(direct, subjID, subjID + '_Sac.csv'), index=False)
-    crlSac.to_csv(os.path.join(direct, subjID, subjID + '_crlSac.csv'), index=False)
+    SacDF.to_csv(_os.path.join(direct, subjID, subjID + '_Sac.csv'), index=False)
+    crlSac.to_csv(_os.path.join(direct, subjID, subjID + '_crlSac.csv'), index=False)
 
 
 def write_Fix_crlFix(direct, subjID, FixDF, crlFix):
@@ -2398,8 +2405,8 @@ def write_Fix_crlFix(direct, subjID, FixDF, crlFix):
         FixDF -- fixation data in different trials with updated line numbers
         crlFix -- crossline fixation data in different trials
     """            
-    FixDF.to_csv(os.path.join(direct, subjID, subjID + '_Fix.csv'), index=False)
-    crlFix.to_csv(os.path.join(direct, subjID, subjID + '_crlFix.csv'), index=False)
+    FixDF.to_csv(_os.path.join(direct, subjID, subjID + '_Fix.csv'), index=False)
+    crlFix.to_csv(_os.path.join(direct, subjID, subjID + '_crlFix.csv'), index=False)
 
 
 def cal_write_SacFix_crlSacFix(direct, subjID, regfileNameList, ExpType, classify_method='DIFF', recStatus=True, diff_ratio=0.6, frontrange_ratio=0.2, y_range=60, addCharSp=1):
@@ -2507,7 +2514,7 @@ def read_cal_SRRasc(direct, subjID, regfileNameList, ExpType, classify_method='D
             crlSactemp, question = _getcrlSac(RegDF, SacDFtemp, diff_ratio, frontrange_ratio, y_range)
             SacDF = SacDF.append(SacDFtemp, ignore_index=True); crlSac = crlSac.append(crlSactemp, ignore_index=True)
             if recStatus and question:
-                logfile = open(os.path.join(direct, 'log.txt'), 'a+')
+                logfile = open(_os.path.join(direct, 'log.txt'), 'a+')
                 logfile.write('Subj: ' + SacDFtemp.subj[0] + ' Trial ' + str(trialID) + ' crlSac start/end need check!\n')
                 logfile.close()
 
@@ -2529,7 +2536,7 @@ def read_cal_SRRasc(direct, subjID, regfileNameList, ExpType, classify_method='D
             
             FixDF = FixDF.append(FixDFtemp, ignore_index=True); crlFix = crlFix.append(crlFixtemp, ignore_index=True)
             if recStatus and question:
-                logfile = open(os.path.join(direct, 'log.txt'), 'a+')
+                logfile = open(_os.path.join(direct, 'log.txt'), 'a+')
                 logfile.write('Subj: ' + FixDFtemp.subj[0] + ' Trial ' + str(trialID) + ' crlFix start/end need check!\n')
                 logfile.close()
     
@@ -2709,8 +2716,8 @@ def read_cal_TimeStamp(direct, subjID, regfileNameList, ExpType, align_method, a
     regfileExist, regfileDic = _crtRegion_dic(direct, regfileNameList)
     
     ETRANfileExist = True
-    #ETRANfileName = os.path.join(direct, 'ETRAN.csv')
-    #if not os.path.isfile(ETRANfileName):
+    #ETRANfileName = _os.path.join(direct, 'ETRAN.csv')
+    #if not _os.path.isfile(ETRANfileName):
     #    print ETRANfileName + ' does not exist!'; ETRANfileExist = False
     #else:
     #    ETRANDF = _pd.read_csv(ETRANfileName); ETRANDF.SubjectID = ETRANDF.SubjectID.str.lower()
@@ -2833,8 +2840,8 @@ def _image_SacFix(direct, subjID, bitmapNameList, Sac, crlSac, Fix, crlFix, RegD
     xsz = 18; ttf = ImageFont.truetype(fontpath, xsz)
     if PNGopt == 0:
         # open the bitmap of the paragraph
-        img1 = Image.open(os.path.join(direct, bitmapNameList[trialID])); draw1 = ImageDraw.Draw(img1)
-        img2 = Image.open(os.path.join(direct, bitmapNameList[trialID])); draw2 = ImageDraw.Draw(img2)
+        img1 = Image.open(_os.path.join(direct, bitmapNameList[trialID])); draw1 = ImageDraw.Draw(img1)
+        img2 = Image.open(_os.path.join(direct, bitmapNameList[trialID])); draw2 = ImageDraw.Draw(img2)
     elif PNGopt == 1:        
         descents = _getStrikeDescents(fontpath, xsz); ascents = _getStrikeAscents(fontpath, xsz)   
         fg = (0,0,0); bg = (232,232,232); dim = (1280,1024)
@@ -2934,8 +2941,8 @@ def _image_SacFix(direct, subjID, bitmapNameList, Sac, crlSac, Fix, crlFix, RegD
             else: draw2.line((crlSac.x1_pos[ind], crlSac.y1_pos[ind], crlSac.x2_pos[ind], crlSac.y2_pos[ind]), fill=col_leftSac, width=2)
 
         # save img1 and img2
-        img1.save(os.path.join(direct, subjID, subjID + '_FixSac_trial' + str(trialID) + '.png'), 'PNG')
-        img2.save(os.path.join(direct, subjID, subjID + '_crlFixSac_trial' + str(trialID) + '.png'), 'PNG')                
+        img1.save(_os.path.join(direct, subjID, subjID + '_FixSac_trial' + str(trialID) + '.png'), 'PNG')
+        img2.save(_os.path.join(direct, subjID, subjID + '_crlFixSac_trial' + str(trialID) + '.png'), 'PNG')                
     
     elif drawType == 'SAC':
         # draw saccades on img1
@@ -2956,8 +2963,8 @@ def _image_SacFix(direct, subjID, bitmapNameList, Sac, crlSac, Fix, crlFix, RegD
             else: draw2.line((crlSac.x1_pos[ind], crlSac.y1_pos[ind], crlSac.x2_pos[ind], crlSac.y2_pos[ind]), fill=col_leftSac, width=2)
 
         # save img1 and img2
-        img1.save(os.path.join(direct, subjID, subjID + '_Sac_trial' + str(trialID) + '.png'), 'PNG')
-        img2.save(os.path.join(direct, subjID, subjID + '_crlSac_trial' + str(trialID) + '.png'), 'PNG')        
+        img1.save(_os.path.join(direct, subjID, subjID + '_Sac_trial' + str(trialID) + '.png'), 'PNG')
+        img2.save(_os.path.join(direct, subjID, subjID + '_crlSac_trial' + str(trialID) + '.png'), 'PNG')        
         
     elif drawType == 'FIX':
         radius_ratio = max_FixRadius/max(Fix.duration)
@@ -2991,8 +2998,8 @@ def _image_SacFix(direct, subjID, bitmapNameList, Sac, crlSac, Fix, crlFix, RegD
             if showFixDur: draw2.text((crlFix.x_pos[ind], crlFix.y_pos[ind]), str(crlFix.duration[ind]), font=ttf, fill=col_num)
         
         # save img1 and img2
-        img1.save(os.path.join(direct, subjID, subjID + '_Fix_trial' + str(trialID) + '.png'), 'PNG') 
-        img2.save(os.path.join(direct, subjID, subjID + '_crlFix_trial' + str(trialID) + '.png'), 'PNG') 
+        img1.save(_os.path.join(direct, subjID, subjID + '_Fix_trial' + str(trialID) + '.png'), 'PNG') 
+        img2.save(_os.path.join(direct, subjID, subjID + '_crlFix_trial' + str(trialID) + '.png'), 'PNG') 
 
 
 # main functions for drawing saccades and fixations
@@ -3042,14 +3049,14 @@ def draw_SacFix(direct, subjID, regfileNameList, bitmapNameList, drawType, max_F
         bitmapExist = True
         if len(bitmapNameList) == 0:
             # automatically gather all region files in direct
-            for file in os.listdir(direct):
-                if fnmatch.fnmatch(file, '*.png'):
+            for file in _os.listdir(direct):
+                if _fnmatch.fnmatch(file, '*.png'):
                     bitmapNameList.append(str(file))
         else:
             # check whether particular region file exists!
             for bitmapfile in bitmapNameList:
-                bitmapfileName = os.path.join(direct, bitmapfile)
-                if not os.path.isfile(bitmapfileName):
+                bitmapfileName = _os.path.join(direct, bitmapfile)
+                if not _os.path.isfile(bitmapfileName):
                     print bitmapfile + ' does not exist!'; bitmapExist = False 
                        
     # second, process the files
@@ -3095,7 +3102,7 @@ def draw_SacFix_b(direct, regfileNameList, bitmapNameList, method, max_FixRadius
             *_crlFix_trial*.png            
     """
     subjlist = []
-    for root, dirs, files in os.walk(direct):
+    for root, dirs, files in _os.walk(direct):
         for name in files:
             if name.endswith(".asc"):
                 subjlist.append(name.split('.')[0])
@@ -3109,14 +3116,14 @@ def draw_SacFix_b(direct, regfileNameList, bitmapNameList, method, max_FixRadius
         bitmapExist = True
         if len(bitmapNameList) == 0:
             # automatically gather all region files in direct
-            for file in os.listdir(direct):
-                if fnmatch.fnmatch(file, '*.png'):
+            for file in _os.listdir(direct):
+                if _fnmatch.fnmatch(file, '*.png'):
                     bitmapNameList.append(str(file))
         else:
             # check whether particular region file exists!
             for bitmapfile in bitmapNameList:
-                bitmapfileName = os.path.join(direct, bitmapfile)
-                if not os.path.isfile(bitmapfileName):
+                bitmapfileName = _os.path.join(direct, bitmapfile)
+                if not _os.path.isfile(bitmapfileName):
                     print bitmapfile + ' does not exist!'; bitmapExist = False    
     
     if regfileExist and ((PNGmethod == 0 and bitmapExist) or PNGmethod == 1):
@@ -3133,14 +3140,14 @@ def draw_blinks(direct, trialNum):
     output: histogram    
     """
     subjlist = []
-    for file in os.listdir(direct):
-        if fnmatch.fnmatch(file, '*.asc'):
+    for file in _os.listdir(direct):
+        if _fnmatch.fnmatch(file, '*.asc'):
             subjlist.append(file.split('.')[0])
             
     for trialID in range(trialNum):
         blinksdata = []
         for subj in subjlist:
-            FixDF = _pd.read_csv(os.path.join(direct, subj + '_Fix.csv'), sep=',')
+            FixDF = _pd.read_csv(_os.path.join(direct, subj + '_Fix.csv'), sep=',')
             FixDFtemp = FixDF[FixDF.trial_id==trialID].reset_index(); blinksdata.append(FixDFtemp.blinks[0])
         # draw histogram    
         fig = _plt.figure()
@@ -3162,16 +3169,16 @@ def changePNG2GIF(direct):
         direct -- directory storing PNG bitmaps, the created GIF bitmaps are also there
     """
     PNGList = []
-    for file in os.listdir(direct):
-        if fnmatch.fnmatch(file, '*.png'):
+    for file in _os.listdir(direct):
+        if _fnmatch.fnmatch(file, '*.png'):
             PNGList.append(str(file))
     if len(PNGList) == 0:
         print 'PNG bitmap is missing!'
     else:
         for PNGfile in PNGList:
-            im = Image.open(os.path.join(direct, PNGfile))
+            im = Image.open(_os.path.join(direct, PNGfile))
             im = im.convert('RGB').convert('P', palette = Image.ADAPTIVE)
-            im.save(os.path.join(direct, PNGfile.split('.')[0] + '.gif'))
+            im.save(_os.path.join(direct, PNGfile.split('.')[0] + '.gif'))
 
 
 def playWav(soundFile, cond):
@@ -3181,7 +3188,7 @@ def playWav(soundFile, cond):
         soundfile -- name of wav sound file
         cond -- 0, stop; 1, start
     """
-    if sys.platform.startswith('win'):
+    if _sys.platform.startswith('win'):
         # under Windows
         import winsound
         if cond == 0:
@@ -3189,9 +3196,9 @@ def playWav(soundFile, cond):
         elif cond == 1:
             winsound.PlaySound(soundFile,  winsound.SND_ALIAS | winsound.SND_ASYNC) # start sound
 
-    elif sys.platform.startswith('linux') > -1:
+    elif _sys.platform.startswith('linux') > -1:
         # under Linux/Mac
-        os.system("start " + soundFile)        
+        _os.system("start " + soundFile)        
 
 
 def _animate_EM(direct, subjID, bitmapFile, soundFile, Fix, trialID, max_FixRadius=3):
@@ -3209,13 +3216,13 @@ def _animate_EM(direct, subjID, bitmapFile, soundFile, Fix, trialID, max_FixRadi
     bitmapSize = Image.open(bitmapFile).size
     # create screen and turtle
     # create screen
-    screen = turtle.Screen()
+    screen = _turtle.Screen()
     screen.screensize(bitmapSize[0], bitmapSize[1]); screen.bgpic(bitmapFile)
     if len(_np.unique(Fix.eye)) == 1:
         # single eye data
         screen.title('Subject: ' +  subjID + '; Trial: ' + str(trialID+1) + ' Eye: ' + _np.unique(Fix.eye)[0])
         # create turtle        
-        fix = turtle.Turtle(); 
+        fix = _turtle.Turtle(); 
         if _np.unique(Fix.eye)[0] == 'L': fix.color('green')
         elif _np.unique(Fix.eye)[0] == 'R': fix.color('red')
         fix.shape('circle'); fix.speed(0); fix.resizemode("user")
@@ -3224,9 +3231,9 @@ def _animate_EM(direct, subjID, bitmapFile, soundFile, Fix, trialID, max_FixRadi
         # both eyes data: left eye green circle; right eye red circle
         screen.title('Subject: ' +  subjID + '; Trial: ' + str(trialID+1) + ' Left eye: Green; Right: Red')
         # create player turtle as fixation
-        fix_Left = turtle.Turtle(); fix_Left.color('green'); fix_Left.shape('circle'); fix_Left.speed(0); fix_Left.resizemode("user")
+        fix_Left = _turtle.Turtle(); fix_Left.color('green'); fix_Left.shape('circle'); fix_Left.speed(0); fix_Left.resizemode("user")
         fix_Left.penup()
-        fix_Right = turtle.Turtle(); fix_Right.color('red'); fix_Right.shape('circle'); fix_Right.speed(0); fix_Right.resizemode("user")
+        fix_Right = _turtle.Turtle(); fix_Right.color('red'); fix_Right.shape('circle'); fix_Right.speed(0); fix_Right.resizemode("user")
         fix_Right.penup()
     
     # define binding functions
@@ -3238,15 +3245,15 @@ def _animate_EM(direct, subjID, bitmapFile, soundFile, Fix, trialID, max_FixRadi
             while curTime > Fix.loc[ind, 'start_time']: ind += 1
             # start sound
             playWav(soundFile, 1)
-            st_time = time.time()   # starting time
+            st_time = _time.time()   # starting time
             # start screen and turtle player
             while ind < len(Fix) and not _np.isnan(Fix.loc[ind, 'line_no']):
                 time_diff = (Fix.loc[ind, 'start_time'] - curTime)/1000
                 curTime = Fix.loc[ind, 'start_time']    # update curTime
-                now = time.time()
+                now = _time.time()
                 if time_diff - (now - st_time) > 0:
-                    time.sleep(time_diff - (now - st_time))
-                st_time = time.time()
+                    _time.sleep(time_diff - (now - st_time))
+                st_time = _time.time()
                 # draw eye fixation
                 fix.setpos(Fix.loc[ind, 'x_pos'] - bitmapSize[0]/2, -(Fix.loc[ind, 'y_pos'] - bitmapSize[1]/2))
                 fix.shapesize(Fix.loc[ind, 'duration']/max(Fix.duration)*max_FixRadius, Fix.loc[ind, 'duration']/max(Fix.duration)*max_FixRadius)
@@ -3264,15 +3271,15 @@ def _animate_EM(direct, subjID, bitmapFile, soundFile, Fix, trialID, max_FixRadi
             LeftFinish, RightFinish = False, False
             # start sound
             playWav(soundFile, 1)
-            st_time = time.time()
+            st_time = _time.time()
             # start screen and turtle player            
             while not LeftFinish or not RightFinish:
                 while timeLeft == timeRight and not LeftFinish and not RightFinish:
                     time_diff = (FixLeft.loc[indLeft, 'start_time'] - curTime)/1000
                     curTime = FixLeft.loc[indLeft, 'start_time']    # update curTime                        
-                    now = time.time()
-                    if time_diff - (now - st_time) > 0: time.sleep(time_diff - (now - st_time))
-                    st_time = time.time()
+                    now = _time.time()
+                    if time_diff - (now - st_time) > 0: _time.sleep(time_diff - (now - st_time))
+                    st_time = _time.time()
                     # draw left eye fixation
                     fix_Left.setpos(FixLeft.loc[indLeft, 'x_pos'] - bitmapSize[0]/2, -(FixLeft.loc[indLeft, 'y_pos'] - bitmapSize[1]/2))
                     fix_Left.shapesize(FixLeft.loc[indLeft, 'duration']/max(Fix.duration)*max_FixRadius, FixLeft.loc[indLeft, 'duration']/max(Fix.duration)*max_FixRadius)
@@ -3290,9 +3297,9 @@ def _animate_EM(direct, subjID, bitmapFile, soundFile, Fix, trialID, max_FixRadi
                 while (timeLeft < timeRight and not LeftFinish and not RightFinish) or (not LeftFinish and RightFinish):
                     time_diff = (FixLeft.loc[indLeft, 'start_time'] - curTime)/1000
                     curTime = FixLeft.loc[indLeft, 'start_time']    # update curTime
-                    now = time.time()
-                    if time_diff - (now - st_time) > 0: time.sleep(time_diff - (now - st_time))
-                    st_time = time.time()
+                    now = _time.time()
+                    if time_diff - (now - st_time) > 0: _time.sleep(time_diff - (now - st_time))
+                    st_time = _time.time()
                     # draw left eye fixation
                     fix_Left.setpos(FixLeft.loc[indLeft, 'x_pos'] - bitmapSize[0]/2, -(FixLeft.loc[indLeft, 'y_pos'] - bitmapSize[1]/2))
                     fix_Left.shapesize(FixLeft.loc[indLeft, 'duration']/max(Fix.duration)*max_FixRadius, FixLeft.loc[indLeft, 'duration']/max(Fix.duration)*max_FixRadius)
@@ -3303,9 +3310,9 @@ def _animate_EM(direct, subjID, bitmapFile, soundFile, Fix, trialID, max_FixRadi
                 while (timeLeft > timeRight and not LeftFinish and not RightFinish) or (LeftFinish and not RightFinish):
                     time_diff = (FixRight.loc[indRight, 'start_time'] - curTime)/1000
                     curTime = FixRight.loc[indRight, 'start_time']
-                    now = time.time()
-                    if time_diff - (now - st_time) > 0: time.sleep(time_diff - (now - st_time))
-                    st_time = time.time()
+                    now = _time.time()
+                    if time_diff - (now - st_time) > 0: _time.sleep(time_diff - (now - st_time))
+                    st_time = _time.time()
                     # draw right eye fixation
                     fix_Right.setpos(FixRight.loc[indRight, 'x_pos'] - bitmapSize[0]/2, -(FixLeft.loc[indLeft, 'y_pos'] - bitmapSize[1]/2))
                     fix_Right.shapesize(FixRight.loc[indRight, 'duration']/max(Fix.duration)*max_FixRadius, FixRight.loc[indRight, 'duration']/max(Fix.duration)*max_FixRadius)
@@ -3316,15 +3323,15 @@ def _animate_EM(direct, subjID, bitmapFile, soundFile, Fix, trialID, max_FixRadi
                 
     def endAni():
         playWav(soundFile, 0)   # end sound            
-        turtle.exitonclick()    # end screen
+        _turtle.exitonclick()    # end screen
     
     # set keyboard bindings
-    turtle.listen()
-    turtle.onkey(startAni, 's') # key 's' to start animation
-    turtle.onkey(endAni, 'e')  # key 'e' to end animation
+    _turtle.listen()
+    _turtle.onkey(startAni, 's') # key 's' to start animation
+    _turtle.onkey(endAni, 'e')  # key 'e' to end animation
 
     playWav(soundFile, 0)   # end sound    
-    turtle.exitonclick() # click to quit
+    _turtle.exitonclick() # click to quit
 
 
 def animate(direct, subjID, trialID):
@@ -3337,8 +3344,8 @@ def animate(direct, subjID, trialID):
     """
     csvExist = False
     csvlist = []
-    for file in os.listdir(os.path.join(direct, subjID)):
-        if fnmatch.fnmatch(file, '*_Fix*.csv'):
+    for file in _os.listdir(_os.path.join(direct, subjID)):
+        if _fnmatch.fnmatch(file, '*_Fix*.csv'):
             csvlist.append(str(file))
     if len(csvlist) == 0: print 'No csv files in the directory!'        
     for csvfile in csvlist:
@@ -3348,8 +3355,8 @@ def animate(direct, subjID, trialID):
     
     bitmapExist = False
     bitmapNameList = []
-    for file in os.listdir(direct):
-        if fnmatch.fnmatch(file, '*.gif'):
+    for file in _os.listdir(direct):
+        if _fnmatch.fnmatch(file, '*.gif'):
             bitmapNameList.append(str(file))
     if len(bitmapNameList) == 0: print 'GIF bitmap is missing!'        
     if trialID < 0 or (len(bitmapNameList) > 1 and trialID >= len(bitmapNameList)):
@@ -3358,8 +3365,8 @@ def animate(direct, subjID, trialID):
     
     soundExist, trialExist = False, False    
     soundNameList = []
-    for file in os.listdir(os.path.join(direct, subjID)):
-        if fnmatch.fnmatch(file, '*.wav'):
+    for file in _os.listdir(_os.path.join(direct, subjID)):
+        if _fnmatch.fnmatch(file, '*.wav'):
             soundNameList.append(str(file))
     if len(soundNameList) == 0: print 'Sound file is missing!'        
     for soundfile in soundNameList:
@@ -3370,11 +3377,11 @@ def animate(direct, subjID, trialID):
     if not soundExist or not trialExist: print 'Sound data of ' + subjID + ' is missing!'
     
     if csvExist and bitmapExist and soundExist and trialExist:
-        csvFix = os.path.join(direct, subjID, csvfile_subj); FixDF = _pd.read_csv(csvFix, sep=',')
+        csvFix = _os.path.join(direct, subjID, csvfile_subj); FixDF = _pd.read_csv(csvFix, sep=',')
         Fix = FixDF[FixDF.trial_id == trialID].reset_index()
-        if len(bitmapNameList) == 1: bitmapFile = os.path.join(direct, bitmapNameList[0])
-        else: bitmapFile = os.path.join(direct, bitmapNameList[trialID])
-        soundFile = os.path.join(direct, subjID, soundfile_subj)    
+        if len(bitmapNameList) == 1: bitmapFile = _os.path.join(direct, bitmapNameList[0])
+        else: bitmapFile = _os.path.join(direct, bitmapNameList[trialID])
+        soundFile = _os.path.join(direct, subjID, soundfile_subj)    
         
         _animate_EM(direct, subjID, bitmapFile, soundFile, Fix, trialID)
 
@@ -3394,13 +3401,13 @@ def _animate_EM_TimeStamp(direct, subjID, bitmapFile, soundFile, Stamp, trialID,
     bitmapSize = Image.open(bitmapFile).size
     # create screen and turtle
     # create screen
-    screen = turtle.Screen()
+    screen = _turtle.Screen()
     screen.screensize(bitmapSize[0], bitmapSize[1]); screen.bgpic(bitmapFile)
     if _np.unique(Stamp.eye)[0] == 'L' or _np.unique(Stamp.eye)[0] == 'R':
         # single eye data
         screen.title('Subject: ' +  subjID + '; Trial: ' + str(trialID+1) + ' Eye: ' + _np.unique(Stamp.eye)[0])
         # create turtle        
-        stamp = turtle.Turtle(); 
+        stamp = _turtle.Turtle(); 
         if _np.unique(Stamp.eye)[0] == 'L': stamp.color('green')
         elif _np.unique(Stamp.eye)[0] == 'R': stamp.color('red')
         stamp.shape('circle'); stamp.speed(0); stamp.resizemode("user")
@@ -3409,9 +3416,9 @@ def _animate_EM_TimeStamp(direct, subjID, bitmapFile, soundFile, Stamp, trialID,
         # both eyes data: left eye green circle; right eye red circle
         screen.title('Subject: ' +  subjID + '; Trial: ' + str(trialID+1) + ' Left eye: Green; Right: Red')
         # create player turtle as fixation
-        stamp_Left = turtle.Turtle(); stamp_Left.color('green'); stamp_Left.shape('circle'); stamp_Left.speed(0); stamp_Left.resizemode("user")
+        stamp_Left = _turtle.Turtle(); stamp_Left.color('green'); stamp_Left.shape('circle'); stamp_Left.speed(0); stamp_Left.resizemode("user")
         stamp_Left.penup()
-        stamp_Right = turtle.Turtle(); stamp_Right.color('red'); stamp_Right.shape('circle'); stamp_Right.speed(0); stamp_Right.resizemode("user")
+        stamp_Right = _turtle.Turtle(); stamp_Right.color('red'); stamp_Right.shape('circle'); stamp_Right.speed(0); stamp_Right.resizemode("user")
         stamp_Right.penup()
     
     # define binding functions
@@ -3431,7 +3438,7 @@ def _animate_EM_TimeStamp(direct, subjID, bitmapFile, soundFile, Stamp, trialID,
                     stamp.shapesize(max_FixRadius, max_FixRadius)
                     ind += 1
                 else: ind += 1    # move to next fixation
-                time.sleep(time_step)   
+                _time.sleep(time_step)   
         
         else:
             # both eyes data
@@ -3451,19 +3458,19 @@ def _animate_EM_TimeStamp(direct, subjID, bitmapFile, soundFile, Stamp, trialID,
                     stamp_Right.setpos(Stamp.loc[ind, 'x_pos2'] - bitmapSize[0]/2, -(Stamp.loc[ind, 'y_pos2'] - bitmapSize[1]/2))
                     stamp_Right.shapesize(max_FixRadius, max_FixRadius)
                 ind += 1    # move to next fixation
-                time.sleep(time_step)   
+                _time.sleep(time_step)   
     
     def endAni():
         playWav(soundFile, 0)   # end sound            
-        turtle.exitonclick()    # end screen
+        _turtle.exitonclick()    # end screen
     
     # set keyboard bindings
-    turtle.listen()
-    turtle.onkey(startAni, 's') # key 's' to start animation
-    turtle.onkey(endAni, 'e')  # key 'e' to end animation
+    _turtle.listen()
+    _turtle.onkey(startAni, 's') # key 's' to start animation
+    _turtle.onkey(endAni, 'e')  # key 'e' to end animation
 
     playWav(soundFile, 0)   # end sound    
-    turtle.exitonclick() # click to quit
+    _turtle.exitonclick() # click to quit
 
 
 def animate_TimeStamp(direct, subjID, trialID):
@@ -3476,8 +3483,8 @@ def animate_TimeStamp(direct, subjID, trialID):
     """
     csvExist = False
     csvlist = []
-    for file in os.listdir(os.path.join(direct, subjID)):
-        if fnmatch.fnmatch(file, '*_Stamp.csv'):
+    for file in _os.listdir(_os.path.join(direct, subjID)):
+        if _fnmatch.fnmatch(file, '*_Stamp.csv'):
             csvlist.append(str(file))
     if len(csvlist) == 0: print 'No csv files in the directory!'        
     for csvfile in csvlist:
@@ -3487,8 +3494,8 @@ def animate_TimeStamp(direct, subjID, trialID):
     
     bitmapExist = False
     bitmapNameList = []
-    for file in os.listdir(direct):
-        if fnmatch.fnmatch(file, '*.gif'):
+    for file in _os.listdir(direct):
+        if _fnmatch.fnmatch(file, '*.gif'):
             bitmapNameList.append(str(file))
     if len(bitmapNameList) == 0: print 'GIF bitmap is missing!'        
     if trialID < 0 or (len(bitmapNameList) > 1 and trialID >= len(bitmapNameList)):
@@ -3497,8 +3504,8 @@ def animate_TimeStamp(direct, subjID, trialID):
     
     soundExist, trialExist = False, False    
     soundNameList = []
-    for file in os.listdir(os.path.join(direct, subjID)):
-        if fnmatch.fnmatch(file, '*.wav'):
+    for file in _os.listdir(_os.path.join(direct, subjID)):
+        if _fnmatch.fnmatch(file, '*.wav'):
             soundNameList.append(str(file))
     if len(soundNameList) == 0: print 'Sound file is missing!'        
     for soundfile in soundNameList:
@@ -3509,11 +3516,11 @@ def animate_TimeStamp(direct, subjID, trialID):
     if not soundExist or not trialExist: print 'Sound data of ' + subjID + ' is missing!'
     
     if csvExist and bitmapExist and soundExist and trialExist:
-        csvStamp = os.path.join(direct, subjID, csvfile_subj); StampDF = _pd.read_csv(csvStamp, sep=',')
+        csvStamp = _os.path.join(direct, subjID, csvfile_subj); StampDF = _pd.read_csv(csvStamp, sep=',')
         Stamp = StampDF[StampDF.trial_id == trialID].reset_index()
-        if len(bitmapNameList) == 1: bitmapFile = os.path.join(direct, bitmapNameList[0])
-        else: bitmapFile = os.path.join(direct, bitmapNameList[trialID])
-        soundFile = os.path.join(direct, subjID, soundfile_subj)    
+        if len(bitmapNameList) == 1: bitmapFile = _os.path.join(direct, bitmapNameList[0])
+        else: bitmapFile = _os.path.join(direct, bitmapNameList[trialID])
+        soundFile = _os.path.join(direct, subjID, soundfile_subj)    
         
         _animate_EM_TimeStamp(direct, subjID, bitmapFile, soundFile, Stamp, trialID)
         
@@ -3915,9 +3922,9 @@ def cal_write_EM(direct, subjID, regfileNameList, addCharSp=1):
                 _cal_EM(RegDF, FixDFtemp, SacDFtemp, EMDF)
                 # store results
                 if _np.unique(SacDFtemp.eye)[0] == 'L':
-                    nameEM = os.path.join(direct, subjID, subjID + '_EM_trial' + str(trialID) + '_L.csv'); EMDF.to_csv(nameEM, index=False)
+                    nameEM = _os.path.join(direct, subjID, subjID + '_EM_trial' + str(trialID) + '_L.csv'); EMDF.to_csv(nameEM, index=False)
                 elif _np.unique(SacDFtemp.eye)[0] == 'R':
-                    nameEM = os.path.join(direct, subjID, subjID + '_EM_trial' + str(trialID) + '_R.csv'); EMDF.to_csv(nameEM, index=False)   
+                    nameEM = _os.path.join(direct, subjID, subjID + '_EM_trial' + str(trialID) + '_R.csv'); EMDF.to_csv(nameEM, index=False)   
             else:
                 # double eye data
                 SacDFtemp_L = SacDFtemp[SacDFtemp.eye=='L'].reset_index(); SacDFtemp_R = SacDFtemp[SacDFtemp.eye=='R'].reset_index()                 
@@ -3937,7 +3944,7 @@ def cal_write_EM(direct, subjID, regfileNameList, addCharSp=1):
                 _modEM(EMDF_L, addCharSp) # modify EMF's mod_x1 and mod_x2
                 _cal_EM(RegDF, FixDFtemp_L, SacDFtemp_L, EMDF_L)
                 # store results
-                nameEM_L = os.path.join(direct, subjID, subjID + '_EM_trial' + str(trialID) + '_L.csv'); EMDF_L.to_csv(nameEM_L, index=False)
+                nameEM_L = _os.path.join(direct, subjID, subjID + '_EM_trial' + str(trialID) + '_L.csv'); EMDF_L.to_csv(nameEM_L, index=False)
             
                 print "Cal EM measures: Subj: " + subjID + ", Trial: " + str(trialID) + ' Right Eye'
                 # create result data frame
@@ -3953,7 +3960,7 @@ def cal_write_EM(direct, subjID, regfileNameList, addCharSp=1):
                 _modEM(EMDF_R, addCharSp) # modify EMF's mod_x1 and mod_x2
                 _cal_EM(RegDF, FixDFtemp_R, SacDFtemp_R, EMDF_R)
                 # store results
-                nameEM_R = os.path.join(direct, subjID, subjID + '_EM_trial' + str(trialID) + '_R.csv'); EMDF_R.to_csv(nameEM_R, index=False)
+                nameEM_R = _os.path.join(direct, subjID, subjID + '_EM_trial' + str(trialID) + '_R.csv'); EMDF_R.to_csv(nameEM_R, index=False)
 
 
 def cal_write_EM_b(direct, regfileNameList, addCharSp=1):
@@ -4000,8 +4007,8 @@ def mergeCSV(direct, regfileNameList, subjID):
             # get region file
             RegDF = _pd.read_csv(regfileDic[trial+'.region.csv'])
             # get ETime file    
-            aufile = os.path.join(direct, subjID, subjID + '-' + trial + '_ETime.csv')
-            if not os.path.isfile(aufile):
+            aufile = _os.path.join(direct, subjID, subjID + '-' + trial + '_ETime.csv')
+            if not _os.path.isfile(aufile):
                 print aufile + ' does not exist!' 
             else:            
                 AUDF = _pd.read_csv(aufile, sep = ',', header=None)
@@ -4034,7 +4041,7 @@ def mergeCSV(direct, regfileNameList, subjID):
             
         # store results file
         mergeDF = mergeDF.sort(['trial_id','time'], ascending=True)
-        mergefileName = os.path.join(direct, subjID, subjID + '_Merge.csv')
+        mergefileName = _os.path.join(direct, subjID, subjID + '_Merge.csv')
         mergeDF.to_csv(mergefileName, index=False)            
     
     
