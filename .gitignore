@@ -8,6 +8,9 @@
 
 ## Python debris
 *.pyc
+build/*
+dist/*
+pyemread.egg-info/*
 
 ## Documentation generated files
 

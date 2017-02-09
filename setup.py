@@ -22,17 +22,17 @@ st.setup(name='pyemread',
          zip_safe=False,
          platforms='any',   # As a source package, this should be safe.
          install_requires=[ # List package dependencies here.
-             'os',
-             'sys',
-             'fnmatch',
-             're',
-             'csv',
-             'codecs',
+#             'os',      # os is part of the python standard library
+#             'sys',     # sys is part of the python standard library
+#             'fnmatch', # fnmatch is part of the python standard library 
+#             're',      # re is part of the python standard library
+#             'csv',     # csv is part of the python standard library
+#             'codecs',  # codecs is part of the python standard library
+#             'time',    # time is part of the python standard library 
              'turtle',
-             'time',
              'pandas',
              'numpy',
-             'PIL',
+             'Pillow',
              'matplotlib'
          ]
 )
