@@ -2,3 +2,8 @@ include README.md
 include examples/*
 include docs/*
 include pyemread/*
+
+global-exclude *.py[co]
+prune build
+prune dist
+prune pyemread.egg-info
