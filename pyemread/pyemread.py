@@ -299,26 +299,36 @@ def Praster(direct, fontpath, stPos, langType, codeMethod='utf_8',
     Arguments:
         direct          : directory storing the bitmap and/or region file
         fontpath        : fully qualified path to font file
-        stPos           : starting from top left corner ('TopLeft') or center ('Center') or auto ('Auto')        
-        langType        : type of language in shown text: 'English' or 'Korean'/'Chinese'/'Japanese'
+        stPos           : starting from top left corner ('TopLeft') or 
+                          center ('Center') or auto ('Auto')        
+        langType        : type of language in shown text: 'English' or 
+                          'Korean'/'Chinese'/'Japanese'
         codeMethod      : for linux: utf_8; for Windows: cp1252
         text=[]         : text to be rasterized as a list of lines
         dim=(1280,1024) : (x,y) dimension of bitmap 
         fg=(0,0,0)      : RGB font color
         bg=(232,232,232): RGB background color
-        wfont=None      : font used for watermark. Only relevant if watermark=True.
+        wfont=None      : font used for watermark. Only relevant if 
+                          watermark=True.
         regfile=True    : create word-wise regionfile by default
         lmargin=86      : left margin in pixels
-        tmargin=86      : top margin in pixels  NOTE ORIGIN IS IN BOTTOM LEFT CORNER
+        tmargin=86      : top margin in pixels.  NOTE ORIGIN IS IN 
+                          BOTTOM LEFT CORNER
         linespace=43    : linespacing in pixels (baseline to baseline)
-        fht=18          : font height in pixels (vertical distance between highest and lowest painted pixel
-                        : considering every character in the font). Makes more sense to specify _width_,
-                        : but ImageFont.truetype() wants a ht). Not every font obeys; see, e.g., "BrowalliaUPC Regular"
-        fwd=None        : towards character width in pixels. Takes precedence over fht. 
+        fht=18          : font height in pixels (vertical distance between 
+                          highest and lowest painted pixel
+                        : considering every character in the font). Makes 
+                          more sense to specify _width_,
+                        : but ImageFont.truetype() wants a ht). Not every 
+                          font obeys; see, e.g., "BrowalliaUPC Regular"
+        fwd=None        : towards character width in pixels. Takes 
+                          precedence over fht. 
         bbox=False      : draw bounding box around each word.
         bbox_big=False  : draw bounding box around the whole line of word.        
-        ID='test'       : unique ID for stim, used to build filenames for bitmap and regions. Also included in watermark.
-        addspace        : the extra pixels you want to add above the top and below the bottom of each line of texts
+        ID='test'       : unique ID for stim, used to build filenames for 
+                          bitmap and regions. Also included in watermark.
+        addspace        : the extra pixels you want to add above the top 
+                          and below the bottom of each line of texts
         log             : log for recording intermediate result
     """
     if not isinstance(text, (list, tuple)):
