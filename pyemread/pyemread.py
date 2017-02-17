@@ -26,7 +26,8 @@ ChnLangList = ['Chinese']
 KJLangList = ['Korean', 'Japanese']
 puncList = [u'，', u'。', u'、', u'：', u'？', u'！']
 
-# functions starting with "_" are helper functions, ending with "_b" are batch user functions
+# functions starting with "_" are helper functions
+# functions ending with "_b" are batch user functions
 # make the system default codeing as "utf-8"
 reload(_sys); _sys.setdefaultencoding("utf-8")
 
@@ -64,20 +65,32 @@ def readDict(fn):
 # functions for generating bitmap used for paragraph reading
 def _InputDict(resDict, curKey, Name, langType, Word, length, height, baseline, curline, x1_pos, y1_pos, x2_pos, y2_pos, b_x1, b_y1, b_x2, b_y2):
     """
-    write result of each word into resDict: note that dictionary value may have a different sequence as in the final csv
+    Write result of each word into resDict. 
+    Note that dictionary value may have a different 
+    sequence as in the final csv
     """
-    resDict[curKey] = Name; resDict[curKey] = langType; resDict[curKey] = Word; resDict[curKey] = length; resDict[curKey] = height; resDict[curKey] = baseline; resDict[curKey] = curline
-    resDict[curKey] = x1_pos; resDict[curKey] = y1_pos; resDict[curKey] = x2_pos; resDict[curKey] = y2_pos
-    resDict[curKey] = b_x1; resDict[curKey] = b_y1; resDict[curKey] = b_x2; resDict[curKey] = b_y2    
+    resDict[curKey] = Name 
+    resDict[curKey] = langType
+    resDict[curKey] = Word
+    resDict[curKey] = length; resDict[curKey] = height
+    resDict[curKey] = baseline; resDict[curKey] = curline
+    resDict[curKey] = x1_pos; resDict[curKey] = y1_pos
+    resDict[curKey] = x2_pos; resDict[curKey] = y2_pos
+    resDict[curKey] = b_x1; resDict[curKey] = b_y1
+    resDict[curKey] = b_x2; resDict[curKey] = b_y2    
     return(resDict)
 
 
 def _writeCSV(regFile, resDict, codeMethod):
     """
-    write resDict to csv file: Name, Language, WordID, Word, length, height, baseline, line_no, x1_pos, y1_pos, x2_pos, y2_pos, b_x1, b_y1, b_x2, b_y2
+    Write resDict to csv file: 
+    Name, Language, WordID, Word, length, height, baseline, line_no, 
+    x1_pos, y1_pos, x2_pos, y2_pos, b_x1, b_y1, b_x2, b_y2
     """
     DF = _pd.DataFrame(_np.zeros((len(resDict), 16)))
-    col = ['Name', 'Language', 'WordID', 'Word', 'length', 'height', 'baseline', 'line_no', 'x1_pos', 'y1_pos', 'x2_pos', 'y2_pos', 'b_x1', 'b_y1', 'b_x2', 'b_y2']
+    col = ['Name', 'Language', 'WordID', 'Word', 'length', 'height', 
+           'baseline', 'line_no', 'x1_pos', 'y1_pos', 'x2_pos', 'y2_pos',
+           'b_x1', 'b_y1', 'b_x2', 'b_y2']
     cur = 0    
     for key in resDict.keys():
         DF.loc[cur,0] = resDict[key][0]; DF.loc[cur,1] = resDict[key][1]
@@ -95,20 +108,23 @@ class FontDict(dict):
     """ 
     Build a list of installed fonts with meta-data.
     FIXME: Look into using python bindings to fontconfig for this purpose.
-    UPDATE: I tried to install python-fontconfig package under windows and 
-            not able to do so. Did no troubleshooting.
+    UPDATE: I tried to install python-fontconfig package
+            under windows and not able to do so. 
+            Did no troubleshooting.
     """
     def __init__(self):
         """
-        This function returns a dict (fontdict) that includes a key for each font family,
-        , with subkeys for each variant in the family (e.g., fontdict['Arial']['Regular']
-        might contain u'c:\\windows\\fonts\\arial.ttf')
+        This function returns a dict (fontdict) that includes
+        a key for each font family, with subkeys for each variant
+        in the family (e.g., fontdict['Arial']['Regular'] might 
+        contain u'c:\\windows\\fonts\\arial.ttf')
         Explore functionality in font_manager to see if this is really needed.
         Especially check into borrowing functionality from createFontList().
         fl=_font_manager.createFontList(_font_manager.findSystemFonts())
         """
         dict.__init__(self)
-        fontpathlist = _font_manager.findSystemFonts(); fontpathlist.sort() # Get paths to all installed font files (any system?).
+        fontpathlist = _font_manager.findSystemFonts()
+        fontpathlist.sort() # Get paths to all installed font files (any system?).
         for fp in fontpathlist:
             fi = ImageFont.truetype(fp, 12)
             family = _re.sub('[ -._]', '', fi.getname()[0])
@@ -132,8 +148,9 @@ class FontDict(dict):
 
     def familyGet(self, family):
         """
-        Given a font family name, return a dict containing all available styles in 
-        the family (keys) and paths to relevant font files (values).
+        Given a font family name, return a dict containing 
+        all available styles in the family (keys) and paths
+        to relevant font files (values).
         """
         if not self.has_key(family):
             return(None)
@@ -142,8 +159,9 @@ class FontDict(dict):
 
     def fontGet(self, family, style):
         """
-        Given a font family name and a style name, return a u"" containing 
-        the full path to the relevant font file.
+        Given a font family name and a style name, 
+        return a u"" containing the full path to the relevant
+        font file.
         """
         if not self.has_key(family):
             print ("Family '%s' does not exist." % (family,))
@@ -159,7 +177,7 @@ class FontDict(dict):
 # functions for calculating descents and ascents of characters in words 
 def _getStrikeAscents(fontFileName, size):
     """
-    Build and return a dictionary of ascents (in pixels) for a specific font/size:
+    Build and return a dictionary of ascents (in pixels) for a font/size:
     For English:
     group1: u'bdfhijkl|()\"\''
     group2: u't'
@@ -209,18 +227,18 @@ def _getStrikeCenters(fontFileName, size):
 
 def _getStrikeDescents(fontFileName, size):
     """
-    Build and return a dictionary of descents (in pixels) for a specific font/size.
+    Build and return a dictionary of descents (in pixels) for a font/size.
     For English:
-    group1: u'gpqy'
-    group2: u'j'
-    group3: u'Q@&$'
-    group4: u','
-    group5: u';'
-    group6: (u'|()_'
+        group1: u'gpqy'
+        group2: u'j'
+        group3: u'Q@&$'
+        group4: u','
+        group5: u';'
+        group6: (u'|()_'
     For English-like languages (e.g., Spanish, French, Italian, Greek):
-    group7: u'çęŋųƍƹȝȷȿɿʅųƺņŗş'
-    group8: u'ýÿĝğġģįĵţÿĝğġģįĵţ'
-    group9: u'ÇĄĢĘĮĶĻļŅŖŞŢŲ'
+        group7: u'çęŋųƍƹȝȷȿɿʅųƺņŗş'
+        group8: u'ýÿĝğġģįĵţÿĝğġģįĵţ'
+        group9: u'ÇĄĢĘĮĶĻļŅŖŞŢŲ'
     """
     ttf = ImageFont.truetype(fontFileName, size) # init the specified font resource
     (wd_o, ht_o) = ttf.getsize(u'o')    # used as the baseline for "gpqy"    
@@ -271,7 +289,8 @@ def _getKeyVal(char, desasc_dict):
 
 def _getdesasc(w, descents, ascents):
     """
-    calculate minimum descent and maximum ascent, note that if there is no descent, no need to calculate ascent!
+    Calculate minimum descent and maximum ascent, 
+    note that if there is no descent, no need to calculate ascent!
     """
     mdes, masc = 0, 0
     for c in w:
@@ -288,8 +307,10 @@ def _cAspect(imgfont, char):
 
 # user functions for generating bitmaps and region files
 def Praster(direct, fontpath, stPos, langType, codeMethod='utf_8', 
-            text=[u'The quick brown fox jumps over the lazy dog.', u'The lazy tabby cat sleeps in the sun all afternoon.'],
-            dim=(1280,1024), fg=(0,0,0), bg=(232,232,232), wfont=None, regfile=True, lmargin=86, tmargin=86, 
+            text=[u'The quick brown fox jumps over the lazy dog.', 
+                  u'The lazy tabby cat sleeps in the sun all afternoon.'],
+            dim=(1280,1024), fg=(0,0,0), bg=(232,232,232), wfont=None, 
+            regfile=True, lmargin=86, tmargin=86, 
             linespace=43, fht=18, fwd=None, bbox=False, bbox_big=False, 
             ID='test', addspace=18, log=False):
     """
@@ -297,12 +318,13 @@ def Praster(direct, fontpath, stPos, langType, codeMethod='utf_8',
     Intended for single/multiple line texts.
     
     Arguments:
-        direct          : directory storing the bitmap and/or region file
+        direct          : directory storing the bitmap and/or 
+                          region file
         fontpath        : fully qualified path to font file
-        stPos           : starting from top left corner ('TopLeft') or 
-                          center ('Center') or auto ('Auto')        
-        langType        : type of language in shown text: 'English' or 
-                          'Korean'/'Chinese'/'Japanese'
+        stPos           : starting from top left corner ('TopLeft')
+                          or center ('Center') or auto ('Auto')        
+        langType        : type of language in shown text: 'English'
+                          or 'Korean'/'Chinese'/'Japanese'
         codeMethod      : for linux: utf_8; for Windows: cp1252
         text=[]         : text to be rasterized as a list of lines
         dim=(1280,1024) : (x,y) dimension of bitmap 
@@ -315,20 +337,24 @@ def Praster(direct, fontpath, stPos, langType, codeMethod='utf_8',
         tmargin=86      : top margin in pixels.  NOTE ORIGIN IS IN 
                           BOTTOM LEFT CORNER
         linespace=43    : linespacing in pixels (baseline to baseline)
-        fht=18          : font height in pixels (vertical distance between 
-                          highest and lowest painted pixel
-                        : considering every character in the font). Makes 
-                          more sense to specify _width_,
-                        : but ImageFont.truetype() wants a ht). Not every 
-                          font obeys; see, e.g., "BrowalliaUPC Regular"
-        fwd=None        : towards character width in pixels. Takes 
-                          precedence over fht. 
+        fht=18          : font height in pixels (vertical distance 
+                          between the highest and lowest painted pixel
+                          considering every character in the font). 
+                          Makes more sense to specify _width_,
+                          but ImageFont.truetype() wants a ht).
+                          Not every font obeys; see, 
+                          e.g., "BrowalliaUPC Regular"
+        fwd=None        : towards character width in pixels. 
+                          Takes precedence over fht. 
         bbox=False      : draw bounding box around each word.
-        bbox_big=False  : draw bounding box around the whole line of word.        
-        ID='test'       : unique ID for stim, used to build filenames for 
-                          bitmap and regions. Also included in watermark.
-        addspace        : the extra pixels you want to add above the top 
-                          and below the bottom of each line of texts
+        bbox_big=False  : draw bounding box around the whole line
+                          of word.        
+        ID='test'       : unique ID for stim, used to build 
+                          filenames for bitmap and regions. 
+                          Also included in watermark.
+        addspace        : the extra pixels you want to add above 
+                          the top and below the bottom of each 
+                          line of texts
         log             : log for recording intermediate result
     """
     if not isinstance(text, (list, tuple)):
@@ -575,30 +601,46 @@ def Praster(direct, fontpath, stPos, langType, codeMethod='utf_8',
 def Gen_Bitmap_RegFile(direct, fontName, stPos, langType, textFileNameList, genmethod=2, codeMethod='utf_8', dim=(1280,1024), fg=(0,0,0), bg=(232,232,232), 
     lmargin=215, tmargin=86, linespace=65, fht=18, fwd=None, bbox=False, bbox_big=False, ID='story', addspace=18, log=False):
     """
-    generate the bitmaps (PNG) and region files of single/multiple line story from text file
+    generate the bitmaps (PNG) and region files of single/multiple line 
+    story from text file
     arguments:
-        direct -- directory of for text files
-        fontName -- name of a font, e.g. 'LiberationMono'
-        langType -- type of language in shown text: 'English' or 'Korean'/'Chinese'/'Japanese'
-        textFileNameList -- a list of one or multiple text file for generating bitmaps
-        stPos -- starting from top left corner ('TopLeft') or center ('Center') or auto ('Auto')         
-        genmethod -- methods to generate: 0: simple test (simple texts); 1: read from one text file; 2: read from many text files;
-     the following arguments are identical to Praster    
-        codeMethod      : for linux: utf_8; for Windows: cp1252
-        dim=(1280,1024) : (x,y) dimension of bitmap 
-        fg=(0,0,0)      : RGB font color
-        bg=(232,232,232): RGB background color
-        lmargin=86      : left margin in pixels
-        tmargin=86      : top margin in pixels NOTE ORIGIN IS IN BOTTOM LEFT CORNER
-        linespace=43    : linespacing in pixels
-        fht=18          : font height in pixels (max vertical distance between highest and lowest painted pixel
-                        : considering every character in the font). Makes more sense to specify _width_,
-                        : but ImageFont.truetype() wants a ht). Not every font obeys; see, e.g., "BrowalliaUPC Regular"
-        fwd=None        : towards character width in pixels. Takes precedence over xsz. 
-        bbox=False      : draw bounding box around each word.
-        bbox_big=False  : draw bounding box around the whole line of word.        
-        addspace        : the extra pixels you want to add above the top and below the bottom of each line of texts
-        log             : log for recording intermediate result
+        direct           : directory of for text files
+        fontName         : name of a font, e.g. 'LiberationMono'
+        langType         : type of language in shown text: 'English' 
+                           or 'Korean'/'Chinese'/'Japanese'
+        textFileNameList : a list of one or multiple text file 
+                           for generating bitmaps
+        stPos            : starting from top left corner ('TopLeft')
+                           or center ('Center') or auto ('Auto')         
+        genmethod        : methods to generate: 
+                           0: simple test (simple texts); 
+                           1: read from one text file; 
+                           2: read from many text files;
+        (the following arguments are identical to Praster)    
+        codeMethod       : for linux: utf_8; for Windows: cp1252
+        dim=(1280,1024)  : (x,y) dimension of bitmap 
+        fg=(0,0,0)       : RGB font color
+        bg=(232,232,232) : RGB background color
+        lmargin=86       : left margin in pixels
+        tmargin=86       : top margin in pixels NOTE ORIGIN IS IN 
+                           BOTTOM LEFT CORNER
+        linespace=43     : linespacing in pixels
+        fht=18           : font height in pixels (max vertical 
+                           distance between highest and lowest 
+                           painted pixel considering every character
+                           in the font). Makes more sense to specify 
+                           _width_, but ImageFont.truetype() wants 
+                           a ht). Not every font obeys; see, e.g., 
+                           "BrowalliaUPC Regular"
+        fwd=None         : towards character width in pixels. 
+                           Takes precedence over xsz. 
+        bbox=False       : draw bounding box around each word.
+        bbox_big=False   : draw bounding box around the whole 
+                           line of word.        
+        addspace         : the extra pixels you want to add above 
+                           the top and below the bottom of each 
+                           line of texts
+        log              : log for recording intermediate result
     output: for genmethods = 1, generate png and region files
     """
     if langType in EngLangList:
@@ -685,9 +727,10 @@ def updReg(direct, regfileNameList, addspace):
     """
     update old style region file into new style and save
     arguments:
-        direct -- directory of the old region file
-        regfileNameList -- list of names of old region files
-        addspace -- added space for bigger boundary surrounding lines of texts
+        direct          : directory of the old region file
+        regfileNameList : list of names of old region files
+        addspace        : added space for bigger boundary 
+                          surrounding lines of texts
     """
     for trialID in range(len(regfileNameList)):
         RegDF = _pd.read_csv(_os.path.join(direct, regfileNameList[trialID]), sep=',', header=None)
@@ -731,11 +774,11 @@ def _getHeader(lines):
     """
     get header information
     argument:
-        lines -- data lines
+        lines    : data lines
     return:
-        script -- script file
-        sessdate -- session date
-        srcfile -- source file
+        script   : script file
+        sessdate : session date
+        srcfile  : source file
     """
     header = [] 
     for line in lines:
@@ -762,17 +805,18 @@ def _getLineInfo(FixRep_cur):
     """
     get time information from FixReportLines
     argument:
-        FixRep_cur -- current trial's fix report lines DF
+        FixRep_cur : current trial's fix report lines DF
     return:
-        line_idx -- fixed lines
-        line_time -- starting and ending time in each line
+        line_idx   : fixed lines
+        line_time  : starting and ending time in each line
     """
     totlines = int(max(FixRep_cur.CURRENT_FIX_LABEL))
     line_idx = []; line_time = []
     for cur in range(1,totlines):
         line_idx.append(cur)
         subFixRep = FixRep_cur[FixRep_cur.CURRENT_FIX_LABEL==cur].reset_index()
-        line_time.append([subFixRep.loc[0,'CURRENT_FIX_START'], subFixRep.loc[len(subFixRep)-1,'CURRENT_FIX_END']])        
+        line_time.append([subFixRep.loc[0,'CURRENT_FIX_START'], 
+                          subFixRep.loc[len(subFixRep)-1,'CURRENT_FIX_END']])        
     
     return line_idx, line_time
 
@@ -781,10 +825,10 @@ def _getTrialReg(lines):
     """
     get the region (line range) of each trial
     argument:
-        lines -- data lines
+        lines   : data lines
     return:
-        T_idx -- trail start and ending lines
-        T_lines -- trail start and ending line indices
+        T_idx   : trail start and ending lines
+        T_lines : trail start and ending line indices
     """
     trial_start = []; trial_start_lines = []
     trial_end = []; trial_end_lines = []
@@ -807,8 +851,9 @@ def _getBlink_Fix_Sac_SampFreq_EyeRec(triallines, datatype):
     """
     get split blink, fixation, and saccade data lines, and sampling frequency and eye recorded
     argument:
-        triallines -- data lines of a trial
-        datatype --- 0, record fixation and saccade; 1, record time stamped data
+        triallines : data lines of a trial
+        datatype   : 0, record fixation and saccade; 
+                     1, record time stamped data
     return:
         blinklines; fixlines; saclines; stamplines
         sampfreq; eyerec
@@ -838,11 +883,11 @@ def _gettdur(triallines):
     """
     get estimated trial duration
     argument:
-        triallines -- data lines of a trial
+        triallines : data lines of a trial
     return:
-        trialstart -- starting time of the trial
-        trialend -- ending time of the trial
-        tdur -- estimated trial duration 
+        trialstart : starting time of the trial
+        trialend   : ending time of the trial
+        tdur       : estimated trial duration 
         
     """
     trial_type, trialstart, trialend, tdur, recstart, recend = _np.nan, 0, 0, 0, 0, 0
@@ -867,10 +912,11 @@ def _getRegDF(regfileDic, trial_type):
     """
     get the region file data frame from regfileNameList based on trialID
     arguments:
-        regfileDic -- a dictionary of region file names and directories
-        trial_type -- current trial ID
+        regfileDic : a dictionary of region file
+                     names and directories
+        trial_type : current trial ID
     return:
-        RegDF -- region file data frame
+        RegDF      : region file data frame
     """
     regfileName = trial_type + '.region.csv'
     if not (regfileName in regfileDic.keys()):
@@ -886,10 +932,12 @@ def _getCrossLineInfo(RegDF):
     """
     get cross line information from region file
     arguments:
-        RegDF -- region file data frame (with line information)
+        RegDF         : region file data frame (with line information)
     return:
-        CrossLineInfo -- list of dictionaries marking the cross line information: 
-                        center of the last word of the previous line and center of the first word of the next line) 
+        CrossLineInfo : list of dictionaries marking the cross 
+                        line information: center of the last word 
+                        of the previous line and center of the first 
+                        word of the next line 
     """
     CrossLineInfo = []
     for ind in range(len(RegDF)-1):
@@ -950,13 +998,23 @@ def _lumpFix(Df, endindex, short_index, addtime, ln, zn):
     """
     lump fixation
     arguments:
-        Df -- fixation data for lumping 
-        short_index -- list of index of fixation having short duration
-        addtime -- adjusting time for duration, calculated based on sampling frequency
-        ln -- in lumping, maximum duration of a fixation to "lump", default = 50. Fixation <= this value is subject to lumping with adjacent and near enough (determined by zN) fixations
-        zn -- in lumping, maximum distance (in pixels) between two fixations for "lumping"; default = 50, roughly 1.5 character (12/8s)
+        Df          : fixation data for lumping 
+        short_index : list of index of fixation 
+                      having short duration
+        addtime     : adjusting time for duration, 
+                      calculated based on sampling frequency
+        ln          : in lumping, maximum duration of a 
+                      fixation to "lump", default = 50. 
+                      Fixation <= this value is subject to 
+                      lumping with adjacent and near enough 
+                      (determined by zN) fixations
+        zn          : in lumping, maximum distance (in pixels)
+                      between two fixations for "lumping"; 
+                      default = 50, roughly 1.5 character (12/8s)
     return:
-        Df -- although Df as a data frame is mutable, due to possible dropping and reindexing, we need to return Df
+        Df   : although Df as a data frame is mutable, due 
+               to possible dropping and reindexing, 
+               we need to return Df
     """
     droplist = []; cur = 0
     while cur < len(short_index):
@@ -1084,9 +1142,9 @@ def _mergeFixLines(startline, endline, Df):
     """
     merge continuous rightward and leftward fixations
     arguments:
-        startline -- search starting line
-        endline -- search ending line
-        Df -- fixation data frame
+        startline : search starting line
+        endline   : search ending line
+        Df        : fixation data frame
     """
     mergelines = []
     ind = startline
@@ -1110,15 +1168,21 @@ def _getCrosslineFix(CrossLineInfo, startline, endline, Df, diff_ratio, frontran
     """
     collect all cross-line fixations in lines
     arguments:
-        CrossLineInfo -- cross line information from region file
-        startline -- search starting line
-        endline -- search ending line
-        Df -- fixation data frame
-        diff_ratio -- for calculating crossline saccades(fixations), the ratio of maximum distance between the center of the last word and the center of the first word in a line, default = 0.6
-        frontrange_ratio -- for calculating crossline saccades(fixations), the ratio to check backward crossline saccade or fixation: such saccade or fixation usually starts around the line beginning, default = 0.2
+        CrossLineInfo    : cross line information from region file
+        startline        : search starting line
+        endline          : search ending line
+        Df               : fixation data frame
+        diff_ratio       : for calculating crossline saccades(fixations), 
+                           the ratio of maximum distance between the 
+                           center of the last word and the center of 
+                           the first word in a line, default = 0.6
+        frontrange_ratio : for calculating crossline saccades(fixations),
+                           the ratio to check backward crossline saccade
+                           or fixation: such saccade or fixation usually
+                           starts around the line beginning, default = 0.2
     return:
-        lines -- list of turples storing cross-line fixations
-        curline -- the current line in Df
+        lines   : list of turples storing cross-line fixations
+        curline : the current line in Df
     """
     # merge rightward fixations and leftward fixations
     lines = []; mergelines = _mergeFixLines(startline, endline, Df)    
@@ -1185,16 +1249,31 @@ def _getFixLine(RegDF, crlSac, FixDF, classify_method, diff_ratio, frontrange_ra
     """
     add line information for each FixDF
     arguments:
-        RegDF -- region file data frame (with line information)
-        crlSac -- data frame storing identified cross line saccades
-        FixDF -- fixation data of the trial
-        classify_method -- fixation method: 'DIFF': based on difference in x_axis; 'SAC': based on crosslineSac ('SAC' is preferred since saccade is kinda more accurate!), default = 'DIFF'
-        diff_ratio -- for calculating crossline saccades(fixations), the ratio of maximum distance between the center of the last word and the center of the first word in a line, default = 0.6
-        frontrange_ratio -- for calculating crossline saccades(fixations), the ratio to check backward crossline saccade or fixation: such saccade or fixation usually starts around the line beginning, default = 0.2
-        y_range -- for calculating crossline saccades(fixations), the biggest y difference indicating the eyes are crossing lines or moving away from that line (this must be similar to the distance between two lines), default = 60
+        RegDF            : region file data frame (with line information)
+        crlSac           : data frame storing identified 
+                           cross line saccades
+        FixDF            : fixation data of the trial
+        classify_method  : fixation method: 'DIFF': based on difference
+                           in x_axis; 'SAC': based on crosslineSac 
+                           ('SAC' is preferred since saccade is kinda
+                           more accurate!), default = 'DIFF'
+        diff_ratio       : for calculating crossline saccades(fixations),
+                           the ratio of maximum distance between the 
+                           center of the last word and the center of 
+                           the first word in a line, default = 0.6
+        frontrange_ratio : for calculating crossline saccades(fixations), 
+                           the ratio to check backward crossline saccade
+                           or fixation: such saccade or fixation usually
+                           starts around the line beginning, default = 0.2
+        y_range          : for calculating crossline saccades(fixations),
+                           the biggest y difference indicating the eyes 
+                           are crossing lines or moving away from that 
+                           line (this must be similar to the distance 
+                           between two lines), default = 60
     return:
-        line -- cross line fixations: previous fixation is in previous line, current fixation is in next line
-    FixDF as a data frame is mutable, no need to return    
+        line : cross line fixations: previous fixation is in previous line, 
+               current fixation is in next line
+        FixDF as a data frame is mutable, no need to return    
     """
     CrossLineInfo = _getCrossLineInfo(RegDF)    # get cross line information
     question = False
@@ -1337,16 +1416,30 @@ def _getcrlFix(RegDF, crlSac, FixDF, classify_method, diff_ratio, frontrange_rat
     """
     get crossline Fix
     arguments:
-        RegDF -- region file data frame
-        crlSac -- crossline saccades
-        FixDF -- fixation data of the trial
-        classify_method -- fixation method: 'DIFF': based on difference in x_axis; 'SAC': based on crosslineSac ('SAC' is preferred since saccade is kinda more accurate!), default = 'DIFF'
-        diff_ratio -- for calculating crossline saccades(fixations), the ratio of maximum distance between the center of the last word and the center of the first word in a line, default = 0.6
-        frontrange_ratio -- for calculating crossline saccades(fixations), the ratio to check backward crossline saccade or fixation: such saccade or fixation usually starts around the line beginning, default = 0.2
-        y_range -- for calculating crossline saccades(fixations), the biggest y difference indicating the eyes are crossing lines or moving away from that line (this must be similar to the distance between two lines), default = 60
+        RegDF            : region file data frame
+        crlSac           : crossline saccades
+        FixDF            : fixation data of the trial
+        classify_method  : fixation method: 
+                           'DIFF': based on difference in x_axis; 
+                           'SAC': based on crosslineSac ('SAC' is
+                           preferred since saccade is kinda more 
+                           accurate!), default = 'DIFF'
+        diff_ratio       : for calculating crossline saccades(fixations),
+                           the ratio of maximum distance between the 
+                           center of the last word and the center of 
+                           the first word in a line, default = 0.6
+        frontrange_ratio : for calculating crossline saccades(fixations),
+                           the ratio to check backward crossline saccade
+                           or fixation: such saccade or fixation usually
+                           starts around the line beginning, default = 0.2
+        y_range          : for calculating crossline saccades(fixations),
+                           the biggest y difference indicating the eyes
+                           are crossing lines or moving away from that 
+                           line (this must be similar to the distance 
+                           between two lines), default = 60
     return:
-        crlFix -- crossline fixations of the trial
-    FixDF is mutable, no need to return
+        crlFix           : crossline fixations of the trial
+        FixDF is mutable, no need to return
     """                   
     # Second, get line information of each fixation
     lines, question = _getFixLine(RegDF, crlSac, FixDF, classify_method, diff_ratio, frontrange_ratio, y_range)
@@ -1371,24 +1464,26 @@ def _recTimeStamp(ExpType, trialID, blinklines, stamplines, sampfreq, eyerec, sc
     """
     get fixation data from trials
     arguments:
-        ExpType -- type of experiments: 'RAN', 'RP'        
-        trailID -- trail ID of the data
-        blinklines -- blink lines of a trial
-        stamplines -- time stamped lines of a trial
-        sampfreq -- sampling frequency (to calculate amending time for duration)
-        eyerec -- eye recorded ('R', 'L' or 'LR')
-        script -- script file
-        sessdate -- session date
-        srcfile -- source file
-        trial_type -- type of trials
-        trialstart -- starting time of the trial
-        trialend -- ending time of the trial
-        tdur -- estimated trial duration
-        recstart -- starting time of recording
-        recend -- ending time of recording
-        error_free -- error_free of that trial; 1, free of error; 0, error; default 1
+        ExpType    : type of experiments: 'RAN', 'RP'        
+        trailID    : trail ID of the data
+        blinklines : blink lines of a trial
+        stamplines : time stamped lines of a trial
+        sampfreq   : sampling frequency 
+                     (to calculate amending time for duration)
+        eyerec     : eye recorded ('R', 'L' or 'LR')
+        script     : script file
+        sessdate   : session date
+        srcfile    : source file
+        trial_type : type of trials
+        trialstart : starting time of the trial
+        trialend   : ending time of the trial
+        tdur       : estimated trial duration
+        recstart   : starting time of recording
+        recend     : ending time of recording
+        error_free : error_free of that trial; 
+                     1, free of error; 0, error; default 1
     return:
-        StampDF -- stamp data of the trial
+        StampDF    : stamp data of the trial
     """            
     blink_number, stamp_number = len(blinklines), len(stamplines)
         
@@ -1424,28 +1519,39 @@ def _recFix(ExpType, trialID, blinklines, fixlines, sampfreq, eyerec, script, se
     """
     get fixation data from trials
     arguments:
-        ExpType -- type of experiments: 'RAN', 'RP'        
-        trailID -- trail ID of the data
-        blinklines -- blink lines of a trial
-        fixlines -- fix lines of a trial
-        sampfreq -- sampling frequency (to calculate amending time for duration)
-        eyerec -- eye recorded ('R', 'L' or 'LR')
-        script -- script file
-        sessdate -- session date
-        srcfile -- source file
-        trial_type -- trial type
-        trialstart -- starting time of the trial
-        trialend -- ending time of the trial
-        tdur -- estimated trial duration
-        recstart -- starting time of recording
-        recend -- ending time of recording
-        rec_lastFix -- whether (True)or not (False) include the last fixation of a trial and allow it to trigger regression, default = False
-        lump_Fix -- whether (True) or not (False) lump short fixations, default = True
-        ln -- in lumping, maximum duration of a fixation to "lump", default = 50. Fixation <= this value is subject to lumping with adjacent and near enough (determined by zN) fixations
-        zn -- in lumping, maximum distance (in pixels) between two fixations for "lumping"; default = 50, roughly 1.5 character (12/8s)
-        mn -- in lumping, minimum legal fixation duration, default = 50 ms
+        ExpType     : type of experiments: 'RAN', 'RP'        
+        trailID     : trail ID of the data
+        blinklines  : blink lines of a trial
+        fixlines    : fix lines of a trial
+        sampfreq    : sampling frequency 
+                      (to calculate amending time for duration)
+        eyerec      : eye recorded ('R', 'L' or 'LR')
+        script      : script file
+        sessdate    : session date
+        srcfile     : source file
+        trial_type  : trial type
+        trialstart  : starting time of the trial
+        trialend    : ending time of the trial
+        tdur        : estimated trial duration
+        recstart    : starting time of recording
+        recend      : ending time of recording
+        rec_lastFix : whether (True)or not (False) include the 
+                      last fixation of a trial and allow it to 
+                      trigger regression, default = False
+        lump_Fix    : whether (True) or not (False) lump short 
+                      fixations, default = True
+        ln          : in lumping, maximum duration of a fixation 
+                      to "lump", default = 50. 
+                      Fixation <= this value is subject to lumping
+                      with adjacent and near enough (determined by
+                      zN) fixations
+        zn          : in lumping, maximum distance (in pixels) 
+                      between two fixations for "lumping"; 
+                      default = 50, roughly 1.5 character (12/8s)
+        mn          : in lumping, minimum legal fixation duration,
+                      default = 50 ms
     return:
-        FixDF -- fixation data of the trial
+        FixDF       : fixation data of the trial
     """            
     blink_number, fix_number = len(blinklines), len(fixlines)
     addtime = 1/float(sampfreq) * 1000
@@ -1598,9 +1704,9 @@ def _mergeSacLines(startline, endline, Df):
     """
     merge continuous rightward and leftward fixations
     arguments:
-        startline -- search starting line
-        endline -- search ending line
-        Df -- fixation data frame
+        startline : search starting line
+        endline   : search ending line
+        Df        : fixation data frame
     """
     mergelines = []
     ind = startline
@@ -1624,15 +1730,21 @@ def _getCrosslineSac(CrossLineInfo, startline, endline, Df, diff_ratio, frontran
     """
     collect all cross-line fixations in lines
     arguments:
-        CrossLineInfo -- cross line information from region file
-        startline -- search starting line
-        endline -- search ending line
-        Df -- fixation data frame
-        diff_ratio -- for calculating crossline saccades(fixations), the ratio of maximum distance between the center of the last word and the center of the first word in a line, default = 0.6
-        frontrange_ratio -- for calculating crossline saccades(fixations), the ratio to check backward crossline saccade or fixation: such saccade or fixation usually starts around the line beginning, default = 0.2
+        CrossLineInfo    : cross line information from region file
+        startline        : search starting line
+        endline          : search ending line
+        Df               : fixation data frame
+        diff_ratio       : for calculating crossline saccades(fixations),
+                           the ratio of maximum distance between the 
+                           center of the last word and the center of 
+                           the first word in a line, default = 0.6
+        frontrange_ratio : for calculating crossline saccades(fixations),
+                           the ratio to check backward crossline saccade
+                           or fixation: such saccade or fixation usually
+                           starts around the line beginning, default = 0.2
     return:
-        lines -- list of turples storing cross-line fixations
-        curline -- the current line in Df
+        lines            : list of turples storing cross-line fixations
+        curline          : the current line in Df
     """
     # merge rightward fixations and leftward fixations
     lines = []; mergelines = _mergeSacLines(startline, endline, Df)    
@@ -1701,14 +1813,24 @@ def _getSacLine(RegDF, SacDF, diff_ratio, frontrange_ratio, y_range):
     """
     add line information for each SacDF
     arguments:
-        RegDF -- region file data frame
-        SacDF -- saccade data of the trial
-        diff_ratio -- for calculating crossline saccades(fixations), the ratio of maximum distance between the center of the last word and the center of the first word in a line, default = 0.6
-        frontrange_ratio -- for calculating crossline saccades(fixations), the ratio to check backward crossline saccade or fixation: such saccade or fixation usually starts around the line beginning, default = 0.2
-        y_range -- for calculating crossline saccades(fixations), the biggest y difference indicating the eyes are crossing lines or moving away from that line (this must be similar to the distance between two lines), default = 60
+        RegDF            : region file data frame
+        SacDF            : saccade data of the trial
+        diff_ratio       : for calculating crossline saccades(fixations),
+                           the ratio of maximum distance between the
+                           center of the last word and the center of 
+                           the first word in a line, default = 0.6
+        frontrange_ratio : for calculating crossline saccades(fixations),
+                           the ratio to check backward crossline saccade
+                           or fixation: such saccade or fixation usually
+                           starts around the line beginning, default = 0.2
+        y_range          : for calculating crossline saccades(fixations),
+                           the biggest y difference indicating the eyes
+                           are crossing lines or moving away from that
+                           line (this must be similar to the distance 
+                           between two lines), default = 60
     return:
-        lines -- crossline information
-    SacDF as a data frame is mutable, no need to return    
+        lines            : crossline information
+        SacDF as a data frame is mutable, no need to return    
     """
     CrossLineInfo = _getCrossLineInfo(RegDF)    # get cross line information
     question = False
@@ -1798,14 +1920,24 @@ def _getcrlSac(RegDF, SacDF, diff_ratio, frontrange_ratio, y_range):
     """
     get crossline Sac
     arguments:
-        RegDF -- region file data frame
-        SacDFtemp -- saccade data of the trial
-        diff_ratio -- for calculating crossline saccades(fixations), the ratio of maximum distance between the center of the last word and the center of the first word in a line, default = 0.6
-        frontrange_ratio -- for calculating crossline saccades(fixations), the ratio to check backward crossline saccade or fixation: such saccade or fixation usually starts around the line beginning, default = 0.2
-        y_range -- for calculating crossline saccades(fixations), the biggest y difference indicating the eyes are crossing lines or moving away from that line (this must be similar to the distance between two lines), default = 60
+        RegDF            : region file data frame
+        SacDFtemp        : saccade data of the trial
+        diff_ratio       : for calculating crossline saccades(fixations),
+                           the ratio of maximum distance between the 
+                           center of the last word and the center of 
+                           the first word in a line, default = 0.6
+        frontrange_ratio : for calculating crossline saccades(fixations),
+                           the ratio to check backward crossline saccade
+                           or fixation: such saccade or fixation usually
+                           starts around the line beginning, default = 0.2
+        y_range          : for calculating crossline saccades(fixations),
+                           the biggest y difference indicating the eyes
+                           are crossing lines or moving away from that
+                           line (this must be similar to the distance 
+                           between two lines), default = 60
     return:
-        crlSac -- crossline saccades of the trial
-    SacDF is mutable, no need to return
+        crlSac           : crossline saccades of the trial
+        SacDF is mutable, no need to return
     """            
     lines, question = _getSacLine(RegDF, SacDF, diff_ratio, frontrange_ratio, y_range)   # get line information of each saccade
     
@@ -1830,23 +1962,23 @@ def _recSac(ExpType, trialID, blinklines, saclines, sampfreq, eyerec, script, se
     """
     record saccade data from trials
     arguments:
-        ExpType -- type of experiments: 'RAN', 'RP'
-        trailID -- trail ID of the data
-        blinklines -- blink lines of a trial
-        salines -- saccade lines of a trial
-        sampfreq -- sampling frequency (to calculate amending time for duration)
-        eyerec -- eye recorded ('R', 'L' or 'LR')        
-        script -- script file
-        sessdate -- session date
-        srcfile -- source file
-        trial_type -- trial type
-        trialstart -- starting time of the trial
-        trialend -- ending time of the trial
-        tdur -- estimated trial duration
-        recstart -- starting time of recording
-        recend -- ending time of recording
+        ExpType    : type of experiments: 'RAN', 'RP'
+        trailID    : trail ID of the data
+        blinklines : blink lines of a trial
+        salines    : saccade lines of a trial
+        sampfreq   : sampling frequency (to calculate amending time for duration)
+        eyerec     : eye recorded ('R', 'L' or 'LR')        
+        script     : script file
+        sessdate   : session date
+        srcfile    : source file
+        trial_type : trial type
+        trialstart : starting time of the trial
+        trialend   : ending time of the trial
+        tdur       : estimated trial duration
+        recstart   : starting time of recording
+        recend     : ending time of recording
     return:
-        SacDF -- saccade data of the trial
+        SacDF      : saccade data of the trial
     """    
     # calculate blinks
     blink_number, sac_number = len(blinklines), len(saclines)
@@ -1910,11 +2042,13 @@ def _recSac(ExpType, trialID, blinklines, saclines, sampfreq, eyerec, script, se
 
 def _modRegDF(RegDF, addCharSp):
     """
-    modify RegDF's mod_x1 and mod_x2, add space to boundaries of line starting and ending words
+    modify RegDF's mod_x1 and mod_x2, add space to boundaries of 
+    line starting and ending words
     arguments:
-        RegDF -- region file data frame
-        addCharSp -- number of single character space added to EMF for catching overshoot fixations
-    RegDF, as a data frame, is mutable, so no return is needed    
+        RegDF     : region file data frame
+        addCharSp : number of single character space added to EMF
+                    for catching overshoot fixations
+        RegDF, as a data frame, is mutable, so no return is needed    
     """
     RegDF['mod_x1'] = RegDF.x1_pos; RegDF['mod_x2'] = RegDF.x2_pos
     addDist = addCharSp*(RegDF.loc[0,'x2_pos'] - RegDF.loc[0,'x1_pos'])/_np.float(RegDF.loc[0,'length'])
@@ -1935,12 +2069,15 @@ def _crtASC_dic(sit, direct, subjID):
     """
     create dictionary of ascii files (having the same name as subjID)
     arguments:
-        sit -- situations: 0, subjID is given; 1, no subjID
-        direct -- root directory: all ascii files should be in level subfolder whose name is the same as the ascii file
-        subjID -- subject ID (for sit=0)
+        sit          : situations: 0, subjID is given; 1, no subjID
+        direct       : root directory: all ascii files should be in
+                       level subfolder whose name is the same as the
+                       ascii file
+        subjID       : subject ID (for sit=0)
     output:
-        ascfileExist -- whether or not ascii file exists
-        ascfileDic -- dictionary with key = subject ID, value = file with directory
+        ascfileExist : whether or not ascii file exists
+        ascfileDic   : dictionary with key = subject ID, 
+                       value = file with directory
     """    
     ascfileExist = True
     ascfileDic = {}
@@ -1969,13 +2106,16 @@ def _crtCSV_dic(sit, direct, subjID, csvfiletype):
     """
     create dictionary for different types of csv files
     arguments:
-        sit -- situations 0: subjID is given; 1, no subjID
-        direct -- root directory: all csv files should be in level subfolder whose name is the same as the ascii file
-        subjID -- subject ID (for sit=0)
-        csvfiletype -- "_Stamp", "_Sac", "_crlSac", "_Fix", "_crlFix" 
+        sit          : situations 0: subjID is given; 1, no subjID
+        direct       : root directory: all csv files should be in 
+                       level subfolder whose name is the same as the
+                       ascii file
+        subjID       : subject ID (for sit=0)
+        csvfiletype  : "_Stamp", "_Sac", "_crlSac", "_Fix", "_crlFix" 
     output:
-        csvfileExist -- whether or not csv file exists
-        csvfileDic -- dictionary with key = subject ID, value = file with directory
+        csvfileExist : whether or not csv file exists
+        csvfileDic   : dictionary with key = subject ID, 
+                       value = file with directory
     """
     csvfileExist = True
     csvfileDic = {}
@@ -2005,11 +2145,14 @@ def _crtRegion_dic(direct, regfileNameList):
     """
     create region file dictionary
     arguments:
-        direct -- root directory, all region files should be there
-        regfileNameList -- list of region file names
+        direct          : root directory, all region files 
+                          should be there
+        regfileNameList : list of region file names
     output:
-        regfileExist -- whether or not all region files in regfileNameList exist in the current directory
-        regfileDic -- dictionary with key = region file name, value = file with directory
+        regfileExist    : whether or not all region files in
+                          regfileNameList exist in the current directory
+        regfileDic      : dictionary with key = region file name, 
+                          value = file with directory
     """    
     regfileExist = True
     regfileDic = {}
@@ -2039,12 +2182,15 @@ def _crtFixRepDic(sit, direct, subjID):
     """
     create dictionary for fix report txt files
     arguments:
-        sit -- situations 0: subjID is given; 1, no subjID
-        direct -- root directory: all txt files should be in level subfolder whose name is the same as the ascii file
-        subjID -- subject ID (for sit=0)
+        sit         : situations 0: subjID is given; 1, no subjID
+        direct      : root directory: all txt files should be in 
+                      level subfolder whose name is the same as 
+                      the ascii file
+        subjID      : subject ID (for sit=0)
     output:
-        FixRepExist -- whether or not txt file exists
-        FixRepDic -- dictionary with key = subject ID, value = txt file with directory
+        FixRepExist : whether or not txt file exists
+        FixRepDic   : dictionary with key = subject ID, 
+                      value = txt file with directory
     """
     FixRepExist = True
     FixRepDic = {}
@@ -2074,7 +2220,8 @@ def _calTimeStamp(align_method, trial_type, trialstart, RegDF, StampDFtemp, FixR
     """
     assign line_no based on FixRep or Fix_Sac
     arguments:
-        align_method -- 'FixRep': based on FixRepDF; 'Fix_Sac': based on SacDF, FixDF
+        align_method : 'FixRep': based on FixRepDF; 
+                       'Fix_Sac': based on SacDF, FixDF
     """
     if align_method == 'FixRep':
         # use FixRepDF
@@ -2111,17 +2258,27 @@ def read_SRRasc(direct, subjID, ExpType, rec_lastFix=False, lump_Fix=True, ln=50
     """
     read SRR ascii file and extract saccades and fixations
     arguments:
-        direct -- directory for storing output files
-        subjID -- subject ID
-        ExpType -- type of experiments: 'RAN', 'RP'
-        rec_lastFix -- whether (True)or not (False) include the last fixation of a trial and allow it to trigger regression, default = False
-        lump_Fix -- whether (True) or not (False) lump short fixations, default = True
-        ln -- for lumping fixations, maximum duration of a fixation to "lump", default = 50. Fixation <= this value is subject to lumping with adjacent and near enough (determined by zN) fixations
-        zn -- for lumping fixations, maximum distance (in pixels) between two fixations for "lumping"; default = 50, roughly 1.5 character (12/8s)
-        mn -- for lumping fixations, minimum legal fixation duration, default = 50 ms
+        direct      : directory for storing output files
+        subjID      : subject ID
+        ExpType     : type of experiments: 'RAN', 'RP'
+        rec_lastFix : whether (True)or not (False) include the last
+                      fixation of a trial and allow it to trigger 
+                      regression, default = False
+        lump_Fix    : whether (True) or not (False) lump short 
+                      fixations, default = True
+        ln          : for lumping fixations, maximum duration of a 
+                      fixation to "lump", default = 50. 
+                      Fixation <= this value is subject to lumping 
+                      with adjacent and near enough (determined by zN)
+                      fixations
+        zn          : for lumping fixations, maximum distance 
+                      (in pixels) between two fixations for "lumping";
+                      default = 50, roughly 1.5 character (12/8s)
+        mn          : for lumping fixations, minimum legal fixation 
+                      duration, default = 50 ms
     output:
-        SacDF -- saccade data in different trials
-        FixDF -- fixation data in different trials
+        SacDF       : saccade data in different trials
+        FixDF       : fixation data in different trials
     """    
     # first, check whether the ascii and region files are there:
     ascfileExist, ascfileDic = _crtASC_dic(0, direct, subjID)
@@ -2176,18 +2333,29 @@ def read_write_SRRasc(direct, subjID, ExpType, rec_lastFix=False, lump_Fix=True,
     """
     processing a subject's saccades and fixations, read them from ascii files and write them into csv files
     arguments:
-        direct -- directory containing specific asc file, the output csv files are stored there
-        subjID -- subject ID
-        ExpType -- type of experiments: 'RAN', 'RP'
-        rec_lastFix -- whether (True)or not (False) include the last fixation of a trial and allow it to trigger regression, default = False
-        lump_Fix -- whether (True) or not (False) lump short fixations, default = True
-        ln -- for lumping fixations, maximum duration of a fixation to "lump", default = 50. Fixation <= this value is subject to lumping with adjacent and near enough (determined by zN) fixations
-        zn -- for lumping fixations, maximum distance (in pixels) between two fixations for "lumping"; default = 50, roughly 1.5 character (12/8s)
-        mn -- for lumping fixations, minimum legal fixation duration, default = 50 ms
+        direct      : directory containing specific asc file, 
+                      the output csv files are stored there
+        subjID      : subject ID
+        ExpType     : type of experiments: 'RAN', 'RP'
+        rec_lastFix : whether (True)or not (False) include 
+                      the last fixation of a trial and allow it to
+                      trigger regression, default = False
+        lump_Fix    : whether (True) or not (False) lump short 
+                      fixations, default = True
+        ln          : for lumping fixations, maximum duration of a 
+                      fixation to "lump", default = 50. 
+                      Fixation <= this value is subject to lumping 
+                      with adjacent and near enough (determined by zN)
+                      fixations
+        zn          : for lumping fixations, maximum distance 
+                      (in pixels) between two fixations for "lumping";
+                      default = 50, roughly 1.5 character (12/8s)
+        mn          : for lumping fixations, minimum legal fixation
+                      duration, default = 50 ms
     output:
-        SacDF -- saccade data in different trials
-        FixDF -- fixation data in different trials   
-    All these data frames are stored into csv files    
+        SacDF       : saccade data in different trials
+        FixDF       : fixation data in different trials   
+        All these data frames are stored into csv files    
     """
     SacDF, FixDF = read_SRRasc(direct, subjID, ExpType, rec_lastFix, lump_Fix, ln, zn, mn)
     write_Sac_Report(direct, subjID, SacDF)
@@ -2198,17 +2366,27 @@ def read_write_SRRasc_b(direct, ExpType, rec_lastFix=False, lump_Fix=True, ln=50
     """
     processing all subjects' saccades and fixations, read them from ascii files and write them into csv files
     arguments:
-        direct -- directory containing all asc files
-        ExpType -- type of experiments: 'RAN', 'RP'
-        rec_lastFix -- whether (True)or not (False) include the last fixation of a trial and allow it to trigger regression, default = False
-        lump_Fix -- whether (True) or not (False) lump short fixations, default = True
-        ln -- for lumping fixations, maximum duration of a fixation to "lump", default = 50. Fixation <= this value is subject to lumping with adjacent and near enough (determined by zN) fixations
-        zn -- for lumping fixations, maximum distance (in pixels) between two fixations for "lumping"; default = 50, roughly 1.5 character (12/8s)
-        mn -- for lumping fixations, minimum legal fixation duration, default = 50 ms
+        direct      : directory containing all asc files
+        ExpType     : type of experiments: 'RAN', 'RP'
+        rec_lastFix : whether (True)or not (False) include the last
+                      fixation of a trial and allow it to trigger 
+                      regression, default = False
+        lump_Fix    : whether (True) or not (False) lump short 
+                      fixations, default = True
+        ln          : for lumping fixations, maximum duration of a 
+                      fixation to "lump", default = 50. 
+                      Fixation <= this value is subject to lumping 
+                      with adjacent and near enough (determined by zN)
+                      fixations
+        zn          : for lumping fixations, maximum distance 
+                      (in pixels) between two fixations for "lumping";
+                      default = 50, roughly 1.5 character (12/8s)
+        mn          : for lumping fixations, minimum legal fixation 
+                      duration, default = 50 ms
     output:
-        SacDF -- saccade data in different trials
-        FixDF -- fixation data in different trials
-    All these data frames are stored into csv files    
+        SacDF       : saccade data in different trials
+        FixDF       : fixation data in different trials
+        All these data frames are stored into csv files    
     """
     ascfileExist, ascfileDic = _crtASC_dic(1, direct, '')
     if ascfileExist:            
@@ -2222,11 +2400,11 @@ def read_TimeStamp(direct, subjID, ExpType):
     """
     read SRR ascii file and extract time stamped eye movements
     arguments:
-        direct -- directory for storing output files
-        subjID -- subject ID
-        ExpType -- type of experiments: 'RAN', 'RP'
+        direct  : directory for storing output files
+        subjID  : subject ID
+        ExpType : type of experiments: 'RAN', 'RP'
     output:
-        StampDF -- time stamped eye movement data in different trials
+        StampDF : time stamped eye movement data in different trials
     """    
     # first, check whether ascii file is there:
     ascfileExist, ascfileDic = _crtASC_dic(0, direct, subjID)
@@ -2254,11 +2432,11 @@ def read_Stamp(direct, subjID, ExpType):
     """
     read SRR ascii file and extract time stamped eye movements
     arguments:
-        direct -- directory for storing output files
-        subjID -- subject ID
-        ExpType -- type of experiments: 'RAN', 'RP'
+        direct  : directory for storing output files
+        subjID  : subject ID
+        ExpType : type of experiments: 'RAN', 'RP'
     output:
-        StampDF -- time stamped eye movement data in different trials
+        StampDF : time stamped eye movement data in different trials
     """    
     # first, check whether ascii file is there:
     ascfileExist, ascfileDic = _crtASC_dic(0, direct, subjID)
@@ -2294,12 +2472,12 @@ def read_write_TimeStamp(direct, subjID, ExpType):
     """
     processing a subject's time stamped data, read them from ascii files and write them into csv files
     arguments:
-        direct -- directory containing specific asc file, the output csv files are stored there
-        subjID -- subject ID
-        ExpType -- type of experiments: 'RAN', 'RP'
+        direct  : directory containing specific asc file, the output csv files are stored there
+        subjID  : subject ID
+        ExpType : type of experiments: 'RAN', 'RP'
     output:
-        StampDF -- time stamped data in different trials
-    The data frame is stored into a csv file    
+        StampDF : time stamped data in different trials
+        The data frame is stored into a csv file    
     """
     StampDF = read_TimeStamp(direct, subjID, ExpType)
     write_TimeStamp_Report(direct, subjID, StampDF)
@@ -2309,11 +2487,11 @@ def read_write_TimeStamp_b(direct, ExpType):
     """
     processing all subjects' time stamped data, read them from ascii files and write them into csv files
     arguments:
-        direct -- directory containing all asc files
-        ExpType -- type of experiments: 'RAN', 'RP'
+        direct  : directory containing all asc files
+        ExpType : type of experiments: 'RAN', 'RP'
     output:
-        StampDF -- time stamped data in different trials
-    The data frames are stored into csv files    
+        StampDF : time stamped data in different trials
+        The data frames are stored into csv files    
     """
     ascfileExist, ascfileDic = _crtASC_dic(1, direct, '')    
     if ascfileExist:
@@ -2324,23 +2502,49 @@ def read_write_TimeStamp_b(direct, ExpType):
 
 def cal_crlSacFix(direct, subjID, regfileNameList, ExpType, classify_method='DIFF', recStatus=True, diff_ratio=0.6, frontrange_ratio=0.2, y_range=60, addCharSp=1):
     """
-    read csv data file of subj and extract crossline saccades and fixations and update line numbers of original saccades and fixations
+    read csv data file of subj and extract crossline saccades and
+    fixations and update line numbers of original saccades and 
+    fixations
     arguments:
-        direct -- directory for storing csv and output files
-        subjID -- subject ID
-        regionfileNameList -- a list of region file names (trial_id will help select corresponding region files)
-        ExpType -- type of experiments: 'RAN', 'RP'
-        classify_method -- fixation method: 'DIFF': based on difference in x_axis; 'SAC': based on crosslineSac ('SAC' is preferred since saccade is kinda more accurate!), default = 'DIFF'
-        recStatus -- whether (True) or not (False) record questionable saccades and fixations, default = True
-        diff_ratio -- for calculating crossline saccades(fixations), the ratio of maximum distance between the center of the last word and the center of the first word in a line, default = 0.6
-        frontrange_ratio -- for calculating crossline saccades(fixations), the ratio to check backward crossline saccade or fixation: such saccade or fixation usually starts around the line beginning, default = 0.2
-        y_range -- for calculating crossline saccades(fixations), the biggest y difference indicating the eyes are crossing lines or moving away from that line (this must be similar to the distance between two lines), default = 60
-        addCharSp -- number of single character space added to EMF for catching overshoot fixations; default = 1
+        direct              : directory for storing csv and output
+                              files
+        subjID              : subject ID
+        regionfileNameList  : a list of region file names (trial_id 
+                              will help select corresponding region
+                              files)
+        ExpType             : type of experiments: 'RAN', 'RP'
+        classify_method     : fixation method: 
+                              'DIFF': based on difference in x_axis; 
+                              'SAC': based on crosslineSac ('SAC' is
+                              preferred since saccade is kinda more 
+                              accurate!), default = 'DIFF'
+        recStatus           : whether (True) or not (False) record 
+                              questionable saccades and fixations, 
+                              default = True
+        diff_ratio          : for calculating crossline saccades(fixations),
+                              the ratio of maximum distance between the 
+                              center of the last word and the center of 
+                              the first word in a line, default = 0.6
+        frontrange_ratio    : for calculating crossline saccades(fixations),
+                              the ratio to check backward crossline 
+                              saccade or fixation: such saccade or 
+                              fixation usually starts around the line
+                              beginning, default = 0.2
+        y_range             : for calculating crossline saccades(fixations),
+                              the biggest y difference indicating the eyes 
+                              are crossing lines or moving away from that 
+                              line (this must be similar to the distance 
+                              between two lines), default = 60
+        addCharSp           : number of single character space added to 
+                              EMF for catching overshoot fixations; 
+                              default = 1
     output:
-        newSacDF -- saccade data in different trials with updated line numbers
-        crlSac -- crossline saccade data in different trials
-        newFixDF -- fixation data in different trials with updated line numbers
-        crlFix -- crossline fixation data in different trials
+        newSacDF : saccade data in different trials with updated line
+                   numbers
+        crlSac   : crossline saccade data in different trials
+        newFixDF : fixation data in different trials with updated line
+                   numbers
+        crlFix   : crossline fixation data in different trials
     """
     # first, check whether the required files are there:
     SacfileExist, SacfileDic = _crtCSV_dic(0, direct, subjID, '_Sac')
@@ -2397,10 +2601,11 @@ def write_Sac_crlSac(direct, subjID, SacDF, crlSac):
     """
     write modified saccades and crossline saccades to csv files
     arguments:
-        direct -- directory for storing csv files
-        subjID -- subject ID
-        SacDF -- saccade data in different trials with updated line numbers
-        crlSac -- crossline saccade data in different trials
+        direct : directory for storing csv files
+        subjID : subject ID
+        SacDF  : saccade data in different trials with updated 
+                 line numbers
+        crlSac : crossline saccade data in different trials
     """            
     SacDF.to_csv(_os.path.join(direct, subjID, subjID + '_Sac.csv'), index=False)
     crlSac.to_csv(_os.path.join(direct, subjID, subjID + '_crlSac.csv'), index=False)
@@ -2410,10 +2615,11 @@ def write_Fix_crlFix(direct, subjID, FixDF, crlFix):
     """
     write modified fixations and crossline fixations to csv files
     arguments:
-        direct -- directory for storing csv files
-        subjID -- subject ID
-        FixDF -- fixation data in different trials with updated line numbers
-        crlFix -- crossline fixation data in different trials
+        direct : directory for storing csv files
+        subjID : subject ID
+        FixDF  : fixation data in different trials with updated 
+                 line numbers
+        crlFix : crossline fixation data in different trials
     """            
     FixDF.to_csv(_os.path.join(direct, subjID, subjID + '_Fix.csv'), index=False)
     crlFix.to_csv(_os.path.join(direct, subjID, subjID + '_crlFix.csv'), index=False)
@@ -2421,24 +2627,47 @@ def write_Fix_crlFix(direct, subjID, FixDF, crlFix):
 
 def cal_write_SacFix_crlSacFix(direct, subjID, regfileNameList, ExpType, classify_method='DIFF', recStatus=True, diff_ratio=0.6, frontrange_ratio=0.2, y_range=60, addCharSp=1):
     """
-    processing a subject's saccades and fixations, read them from csv files and store them into csv files
+    processing a subject's saccades and fixations, read them from csv
+    files and store them into csv files
     arguments:
-        direct -- directory containing all asc files
-        subjID -- subject ID
-        regfileNameList -- a list of region file names (trial_id will help select corresponding region files)
-        ExpType -- type of experiments: 'RAN', 'RP'
-        classify_method -- fixation method: 'DIFF': based on difference in x_axis; 'SAC': based on crosslineSac ('SAC' is preferred since saccade is kinda more accurate!), default = 'DIFF'
-        recStatus -- whether (True) or not (False) record questionable saccades and fixations, default = True 
-        diff_ratio -- for calculating crossline saccades(fixations), the ratio of maximum distance between the center of the last word and the center of the first word in a line, default = 0.6
-        frontrange_ratio -- for calculating crossline saccades(fixations), the ratio to check backward crossline saccade or fixation: such saccade or fixation usually starts around the line beginning, default = 0.2
-        y_range -- for calculating crossline saccades(fixations), the biggest y difference indicating the eyes are crossing lines or moving away from that line (this must be similar to the distance between two lines), default = 60
-        addCharSp -- number of single character space added to EMF for catching overshoot fixations; default = 1
+        direct           : directory containing all asc files
+        subjID           : subject ID
+        regfileNameList  : a list of region file names (trial_id will
+                           help select corresponding region files)
+        ExpType          : type of experiments: 'RAN', 'RP'
+        classify_method  : fixation method: 
+                           'DIFF': based on difference in x_axis; 
+                           'SAC': based on crosslineSac ('SAC' is
+                           preferred since saccade is kinda more 
+                           accurate!), default = 'DIFF'
+        recStatus        : whether (True) or not (False) record 
+                           questionable saccades and fixations, 
+                           default = True 
+        diff_ratio       : for calculating crossline saccades(fixations),
+                           the ratio of maximum distance between the 
+                           center of the last word and the center of 
+                           the first word in a line, default = 0.6
+        frontrange_ratio : for calculating crossline saccades(fixations),
+                           the ratio to check backward crossline saccade
+                           or fixation: such saccade or fixation usually
+                           starts around the line beginning, default = 0.2
+        y_range          : for calculating crossline saccades(fixations),
+                           the biggest y difference indicating the eyes 
+                           are crossing lines or moving away from that 
+                           line (this must be similar to the distance 
+                           between two lines), default = 60
+        addCharSp        : number of single character space added to EMF
+                           for catching overshoot fixations; default = 1
     output:
-        SacDF -- saccade data in different trials with updated line numbers of different subjects
-        crlSac -- crossline saccade data in different trials of different subjects
-        FixDF -- fixation data in different trials with updated line numbers of different subjects
-        crlFix -- crossline fixation data in different trials of different subjects
-    All these data frames are stored in csv files
+        SacDF  : saccade data in different trials with updated line 
+                 numbers of different subjects
+        crlSac : crossline saccade data in different trials of 
+                 different subjects
+        FixDF  : fixation data in different trials with updated line
+                 numbers of different subjects
+        crlFix : crossline fixation data in different trials of 
+                 different subjects
+        All these data frames are stored in csv files
     """
     SacDF, crlSac, FixDF, crlFix = cal_crlSacFix(direct, subjID, regfileNameList, ExpType, classify_method, recStatus, diff_ratio, frontrange_ratio, y_range, addCharSp)
     write_Sac_crlSac(direct, subjID, SacDF, crlSac); write_Fix_crlFix(direct, subjID, FixDF, crlFix)
@@ -2473,28 +2702,61 @@ def cal_write_SacFix_crlSacFix_b(direct, regfileNameList, ExpType, classify_meth
     
 def read_cal_SRRasc(direct, subjID, regfileNameList, ExpType, classify_method='DIFF', recStatus=True, diff_ratio=0.6, frontrange_ratio=0.2, y_range=60, addCharSp=1, rec_lastFix=False, lump_Fix=True, ln=50, zn=50, mn=50):
     """
-    read ASC file and extract the fixation and saccade data and calculate crossline saccades and fixations
+    read ASC file and extract the fixation and saccade data and
+    calculate crossline saccades and fixations
     arguments:
-        direct -- directory for storing output files
-        subjID -- subject ID
-        regionfileNameList -- a list of region file names (trial_id will help select corresponding region files)
-        ExpType -- type of experiments: 'RAN', 'RP'
-        classify_method -- fixation method: 'DIFF': based on difference in x_axis; 'SAC': based on crosslineSac ('SAC' is preferred since saccade is kinda more accurate!), default = 'DIFF'
-        recStatus -- whether (True) or not (False) record questionable saccades and fixations, default = True 
-        diff_ratio -- for calculating crossline saccades(fixations), the ratio of maximum distance between the center of the last word and the center of the first word in a line, default = 0.6
-        frontrange_ratio -- for calculating crossline saccades(fixations), the ratio to check backward crossline saccade or fixation: such saccade or fixation usually starts around the line beginning, default = 0.2
-        y_range -- for calculating crossline saccades(fixations), the biggest y difference indicating the eyes are crossing lines or moving away from that line (this must be similar to the distance between two lines), default = 60
-        addCharSp -- number of single character space added to RegDF for catching overshoot fixations; default = 1
-        rec_lastFix -- whether (True)or not (False) include the last fixation of a trial and allow it to trigger regression, default = False
-        lump_Fix -- whether (True) or not (False) lump short fixations, default = True
-        ln -- for lumping fixations, maximum duration of a fixation to "lump", default = 50. Fixation <= this value is subject to lumping with adjacent and near enough (determined by zN) fixations
-        zn -- for lumping fixations, maximum distance (in pixels) between two fixations for "lumping"; default = 50, roughly 1.5 character (12/8s)
-        mn -- for lumping fixations, minimum legal fixation duration, default = 50 ms
+        direct             : directory for storing output files
+        subjID             : subject ID
+        regionfileNameList : a list of region file names (trial_id 
+                             will help select corresponding region
+                             files)
+        ExpType            : type of experiments: 'RAN', 'RP'
+        classify_method    : fixation method: 
+                             'DIFF': based on difference in x_axis; 
+                             'SAC': based on crosslineSac ('SAC' is
+                             preferred since saccade is kinda more
+                             accurate!), default = 'DIFF'
+        recStatus          : whether (True) or not (False) record 
+                             questionable saccades and fixations,
+                             default = True 
+        diff_ratio         : for calculating crossline saccades(fixations),
+                             the ratio of maximum distance between the 
+                             center of the last word and the center of 
+                             the first word in a line, default = 0.6
+        frontrange_ratio   : for calculating crossline saccades(fixations),
+                             the ratio to check backward crossline saccade
+                             or fixation: such saccade or fixation usually
+                             starts around the line beginning, 
+                             default = 0.2
+        y_range            : for calculating crossline saccades(fixations),
+                             the biggest y difference indicating the eyes
+                             are crossing lines or moving away from that
+                             line (this must be similar to the distance 
+                             between two lines), default = 60
+        addCharSp          : number of single character space added to 
+                             RegDF for catching overshoot fixations; 
+                             default = 1
+        rec_lastFix        : whether (True)or not (False) include the 
+                             last fixation of a trial and allow it to
+                             trigger regression, default = False
+        lump_Fix           : whether (True) or not (False) lump short
+                             fixations, default = True
+        ln                 : for lumping fixations, maximum duration of
+                             a fixation to "lump", default = 50. 
+                             Fixation <= this value is subject to 
+                             lumping with adjacent and near enough
+                             (determined by zN) fixations
+        zn                 : for lumping fixations, maximum distance
+                             (in pixels) between two fixations for 
+                             "lumping"; default = 50, roughly 1.5 
+                             character (12/8s)
+        mn                 : for lumping fixations, minimum legal 
+                             fixation duration, default = 50 ms
     output:
-        SacDF -- saccade data in different trials
-        crlSacDF -- crossline saccade data in different trials
-        FixDF -- fixation data in different trials
-        crlFixDF -- crossline fixation data in different trials
+        SacDF    : saccade data in different trials
+        crlSacDF : crossline saccade data in different trials
+        FixDF    : fixation data in different trials
+        crlFixDF : crossline fixation data in different trials
     """
     # first, check whether the ascii and region files are there:
     ascfileExist, ascfileDic = _crtASC_dic(0, direct, subjID)
@@ -2557,27 +2819,61 @@ def read_cal_write_SRRasc(direct, subjID, regfileNameList, ExpType, classify_met
     """
     processing a subject's fixation and saccade data
     arguments:
-        direct -- directory containing all asc files
-        subjID -- subject ID
-        regfileNameList -- a list of region file names (trial_id will help select corresponding region files)
-        ExpType -- type of experiments: 'RAN', 'RP'
-        classify_method -- fixation method: 'DIFF': based on difference in x_axis; 'SAC': based on crosslineSac ('SAC' is preferred since saccade is kinda more accurate!), default = 'DIFF'
-        recStatus -- whether (True) or not (False) record questionable saccades and fixations, default = True 
-        diff_ratio -- for calculating crossline saccades(fixations), the ratio of maximum distance between the center of the last word and the center of the first word in a line, default = 0.6
-        frontrange_ratio -- for calculating crossline saccades(fixations), the ratio to check backward crossline saccade or fixation: such saccade or fixation usually starts around the line beginning, default = 0.2
-        y_range -- for calculating crossline saccades(fixations), the biggest y difference indicating the eyes are crossing lines or moving away from that line (this must be similar to the distance between two lines), default = 60
-        addCharSp -- number of single character space added to RegDF for catching overshoot fixations; default = 1
-        rec_lastFix -- whether (True)or not (False) include the last fixation of a trial and allow it to trigger regression, default = False
-        lump_Fix -- whether (True) or not (False) lump short fixations, default = True
-        ln -- for lumping fixations, maximum duration of a fixation to "lump", default = 50. Fixation <= this value is subject to lumping with adjacent and near enough (determined by zN) fixations
-        zn -- for lumping fixations, maximum distance (in pixels) between two fixations for "lumping"; default = 50, roughly 1.5 character (12/8s)
-        mn -- for lumping fixations, minimum legal fixation duration, default = 50 ms
+        direct           : directory containing all asc files
+        subjID           : subject ID
+        regfileNameList  : a list of region file names (trial_id will
+                           help select corresponding region files)
+        ExpType          : type of experiments: 'RAN', 'RP'
+        classify_method  : fixation method: 
+                           'DIFF': based on difference in x_axis; 
+                           'SAC': based on crosslineSac ('SAC' is 
+                           preferred since saccade is kinda more 
+                           accurate!), default = 'DIFF'
+        recStatus        : whether (True) or not (False) record 
+                           questionable saccades and fixations, 
+                           default = True 
+        diff_ratio       : for calculating crossline saccades(fixations),
+                           the ratio of maximum distance between the 
+                           center of the last word and the center of 
+                           the first word in a line, default = 0.6
+        frontrange_ratio : for calculating crossline saccades(fixations),
+                           the ratio to check backward crossline saccade
+                           or fixation: such saccade or fixation usually
+                           starts around the line beginning,
+                           default = 0.2
+        y_range          : for calculating crossline saccades(fixations),
+                           the biggest y difference indicating the eyes
+                           are crossing lines or moving away from that l
+                           ine (this must be similar to the distance 
+                           between two lines), default = 60
+        addCharSp        : number of single character space added to 
+                           RegDF for catching overshoot fixations; 
+                           default = 1
+        rec_lastFix      : whether (True)or not (False) include the last
+                           fixation of a trial and allow it to trigger 
+                           regression, default = False
+        lump_Fix         : whether (True) or not (False) lump short 
+                           fixations, default = True
+        ln               : for lumping fixations, maximum duration of
+                           a fixation to "lump", default = 50. 
+                           Fixation <= this value is subject to lumping
+                           with adjacent and near enough (determined by
+                           zN) fixations
+        zn               : for lumping fixations, maximum distance 
+                           (in pixels) between two fixations for "lumping";
+                           default = 50, roughly 1.5 character (12/8s)
+        mn               : for lumping fixations, minimum legal fixation
+                           duration, default = 50 ms
     output:
-        SacDF -- saccade data in different trials of different subjects
-        crlSacDF -- crossline saccade data in different trials of different subjects
-        FixDF -- fixation data in different trials of different subjects
-        crlFixDF -- crossline fixation data in different trials of different subjects
-    All these data frames are stored into csv files    
+        SacDF    : saccade data in different trials of different 
+                   subjects
+        crlSacDF : crossline saccade data in different trials of 
+                   different subjects
+        FixDF    : fixation data in different trials of different
+                   subjects
+        crlFixDF : crossline fixation data in different trials of
+                   different subjects
+        All these data frames are stored into csv files    
     """
     SacDF, crlSac, FixDF, crlFix = read_cal_SRRasc(direct, subjID, regfileNameList, ExpType, classify_method, recStatus, diff_ratio, frontrange_ratio, y_range, addCharSp, rec_lastFix, lump_Fix, ln, zn, mn)
     write_Sac_crlSac(direct, subjID, SacDF, crlSac)
@@ -2588,26 +2884,61 @@ def read_cal_write_SRRasc_b(direct, regfileNameList, ExpType, classify_method='D
     """
     processing all subjects' fixation and saccade data
     arguments:
-        direct -- directory containing all asc files
-        regfileNameList -- a list of region file names (trial_id will help select corresponding region files)
-        ExpType -- type of experiments: 'RAN', 'RP'
-        classify_method -- fixation method: 'DIFF': based on difference in x_axis; 'SAC': based on crosslineSac ('SAC' is preferred since saccade is kinda more accurate!), default = 'DIFF'
-        rec_lastFix -- whether (True)or not (False) include the last fixation of a trial and allow it to trigger regression, default = False
-        lump_Fix -- whether (True) or not (False) lump short fixations, default = True
-        ln -- for lumping fixations, maximum duration of a fixation to "lump", default = 50. Fixation <= this value is subject to lumping with adjacent and near enough (determined by zN) fixations
-        zn -- for lumping fixations, maximum distance (in pixels) between two fixations for "lumping"; default = 50, roughly 1.5 character (12/8s)
-        mn -- for lumping fixations, minimum legal fixation duration, default = 50 ms
-        recStatus -- whether (True) or not (False) record questionable saccades and fixations, default = True 
-        diff_ratio -- for calculating crossline saccades(fixations), the ratio of maximum distance between the center of the last word and the center of the first word in a line, default = 0.6
-        frontrange_ratio -- for calculating crossline saccades(fixations), the ratio to check backward crossline saccade or fixation: such saccade or fixation usually starts around the line beginning, default = 0.2
-        y_range -- for calculating crossline saccades(fixations), the biggest y difference indicating the eyes are crossing lines or moving away from that line (this must be similar to the distance between two lines), default = 60
-        addCharSp -- number of single character space added to RegDF for catching overshoot fixations; default = 1
+        direct           : directory containing all asc files
+        regfileNameList  : a list of region file names (trial_id will
+                           help select corresponding region files)
+        ExpType          : type of experiments: 'RAN', 'RP'
+        classify_method  : fixation method: 
+                           'DIFF': based on difference in x_axis; 
+                           'SAC': based on crosslineSac ('SAC' is 
+                           preferred since saccade is kinda more 
+                           accurate!), default = 'DIFF'
+        rec_lastFix      : whether (True)or not (False) include the 
+                           last fixation of a trial and allow it to 
+                           trigger regression, default = False
+        lump_Fix         : whether (True) or not (False) lump short
+                           fixations, default = True
+        ln               : for lumping fixations, maximum duration of
+                           a fixation to "lump", default = 50. 
+                           Fixation <= this value is subject to lumping
+                           with adjacent and near enough (determined by
+                           zN) fixations
+        zn               : for lumping fixations, maximum distance 
+                           (in pixels) between two fixations for 
+                           "lumping"; 
+                           default = 50, roughly 1.5 character (12/8s)
+        mn               : for lumping fixations, minimum legal fixation
+                           duration, default = 50 ms
+        recStatus        : whether (True) or not (False) record 
+                           questionable saccades and fixations, 
+                           default = True 
+        diff_ratio       : for calculating crossline saccades(fixations),
+                           the ratio of maximum distance between the 
+                           center of the last word and the center of 
+                           the first word in a line, default = 0.6
+        frontrange_ratio : for calculating crossline saccades(fixations),
+                           the ratio to check backward crossline saccade
+                           or fixation: such saccade or fixation usually
+                           starts around the line beginning, 
+                           default = 0.2
+        y_range          : for calculating crossline saccades(fixations),
+                           the biggest y difference indicating the eyes
+                           are crossing lines or moving away from that
+                           line (this must be similar to the distance 
+                           between two lines), default = 60
+        addCharSp        : number of single character space added to 
+                           RegDF for catching overshoot fixations; 
+                           default = 1
     output:
-        SacDF -- saccade data in different trials of different subjects
-        crlSacDF -- crossline saccade data in different trials of different subjects
-        FixDF -- fixation data in different trials of different subjects
-        crlFixDF -- crossline fixation data in different trials of different subjects
-    All these data frames are stored into csv files    
+        SacDF    : saccade data in different trials of different 
+                   subjects
+        crlSacDF : crossline saccade data in different trials of 
+                   different subjects
+        FixDF    : fixation data in different trials of different
+                   subjects
+        crlFixDF : crossline fixation data in different trials of
+                   different subjects
+        All these data frames are stored into csv files    
     """
     ascfileExist, ascfileDic = _crtASC_dic(1, direct, '')
     regfileExist, regfileDic = _crtRegion_dic(direct, regfileNameList)
@@ -2618,16 +2949,25 @@ def read_cal_write_SRRasc_b(direct, regfileNameList, ExpType, classify_method='D
 
 def cal_TimeStamp(direct, subjID, regfileNameList, ExpType, align_method, addCharSp=1):
     """
-    read csv time stamped data file of subj and extract crossline saccades and fixations and update line numbers of original saccades and fixations
+    read csv time stamped data file of subj and extract crossline 
+    saccades and fixations and update line numbers of original 
+    saccades and fixations
     arguments:
-        direct -- directory for storing time stamped csv and output files
-        subjID -- subject ID
-        regionfileNameList -- a list of region file names (trial_id will help select corresponding region files)
-        ExpType -- type of experiments: 'RAN', 'RP'
-        align_method -- 'FixRep': based on FixRepDF; 'Fix_Sac': based on SacDF, FixDF
-        addCharSp -- number of single character space added to EMF for catching overshoot fixations; default = 1
+        direct             : directory for storing time stamped 
+                             csv and output files
+        subjID             : subject ID
+        regionfileNameList : a list of region file names 
+                            (trial_id will help select corresponding
+                            region files)
+        ExpType            : type of experiments: 'RAN', 'RP'
+        align_method       : 'FixRep': based on FixRepDF; 
+                             'Fix_Sac': based on SacDF, FixDF
+        addCharSp          : number of single character space added
+                             to EMF for catching overshoot fixations;
+                             default = 1
     output:
-        newStampDF -- time stamped data in different trials with updated line numbers
+        newStampDF : time stamped data in different trials with 
+                     updated line numbers
         
     """
     # first, check whether the stamp and region files are there:
@@ -2671,17 +3011,23 @@ def cal_TimeStamp(direct, subjID, regfileNameList, ExpType, align_method, addCha
 
 def cal_write_TimeStamp(direct, subjID, regfileNameList, ExpType, align_method, addCharSp=1):
     """
-    processing a subject's time stamped data, read them from csv files and store them into csv files
+    processing a subject's time stamped data, read them from csv files
+    and store them into csv files
     arguments:
-        direct -- directory containing all asc files
-        subjID -- subject ID
-        regfileNameList -- a list of region file names (trial_id will help select corresponding region files)
-        ExpType -- type of experiments: 'RAN', 'RP'
-        align_method -- 'FixRep': based on FixRepDF; 'Fix_Sac': based on SacDF, FixDF
-        addCharSp -- number of single character space added to EMF for catching overshoot fixations; default = 1
+        direct          : directory containing all asc files
+        subjID          : subject ID
+        regfileNameList : a list of region file names (trial_id will 
+                          help select corresponding region files)
+        ExpType         : type of experiments: 'RAN', 'RP'
+        align_method    : 'FixRep': based on FixRepDF; 
+                          'Fix_Sac': based on SacDF, FixDF
+        addCharSp       : number of single character space added to
+                          EMF for catching overshoot fixations; 
+                          default = 1
     output:
-        StampDF -- time stamped data in different trials with updated line numbers of different subjects
-    All these data frames are stored in csv files
+        StampDF : time stamped data in different trials with updated
+                  line numbers of different subjects
+        All these data frames are stored in csv files
     """
     StampDF = cal_TimeStamp(direct, subjID, regfileNameList, ExpType, align_method, addCharSp)
     write_TimeStamp_Report(direct, subjID, StampDF)
@@ -2689,16 +3035,23 @@ def cal_write_TimeStamp(direct, subjID, regfileNameList, ExpType, align_method, 
 
 def cal_write_TimeStamp_b(direct, regfileNameList, ExpType, align_method, addCharSp=1):
     """
-    processing all subjects' time stamped data, read them from csv files and store them into csv files
+    processing all subjects' time stamped data, read them from csv 
+    files and store them into csv files
     arguments:
-        direct -- directory containing all asc files
-        regfileNameList -- a list of region file names (trial_id will help select corresponding region files)
-        ExpType -- type of experiments: 'RAN', 'RP'
-        align_method -- 'FixRep': based on FixRepDF; 'Fix_Sac': based on SacDF, FixDF
-        addCharSp -- number of single character space added to EMF for catching overshoot fixations; default = 1
+        direct          : directory containing all asc files
+        regfileNameList : a list of region file names (trial_id will
+                          help select corresponding region files)
+        ExpType         : type of experiments: 'RAN', 'RP'
+        align_method    : 'FixRep': based on FixRepDF; 
+                          'Fix_Sac': based on SacDF, FixDF
+        addCharSp       : number of single character space added to
+                          EMF for catching overshoot fixations; 
+                          default = 1
     output:
-        StampDF -- time stamped data in different trials with updated line numbers of different subjects
-        crlStampDF -- crossline time stamped data in different trials of different subjects
+        StampDF    : time stamped data in different trials with 
+                     updated line numbers of different subjects
+        crlStampDF : crossline time stamped data in different trials
+                     of different subjects
     """
     StampfileExist, StampfileDic = _crtCSV_dic(1, direct, '', '_Stamp')
     regfileExist, regfileDic = _crtRegion_dic(direct, regfileNameList)
@@ -2710,16 +3063,23 @@ def cal_write_TimeStamp_b(direct, regfileNameList, ExpType, align_method, addCha
 
 def read_cal_TimeStamp(direct, subjID, regfileNameList, ExpType, align_method, addCharSp=1):
     """
-    read ASC file and extract the time stamped data and calculate crossline time stamped data
+    read ASC file and extract the time stamped data and calculate 
+    crossline time stamped data
     arguments:
-        direct -- directory for storing output files
-        subjID -- subject ID
-        regionfileNameList -- a list of region file names (trial_id will help select corresponding region files)
-        ExpType -- type of experiments: 'RAN', 'RP'
-        align_method -- 'FixRep': using fixation report data; 'Fix_Sac': using fixation data extracted and aligned automatically
-        addCharSp -- number of single character space added to RegDF for catching overshoot fixations; default = 1
+        direct             : directory for storing output files
+        subjID             : subject ID
+        regionfileNameList : a list of region file names (trial_id
+                             will help select corresponding region 
+                             files)
+        ExpType            : type of experiments: 'RAN', 'RP'
+        align_method       : 'FixRep': using fixation report data;
+                             'Fix_Sac': using fixation data extracted
+                             and aligned automatically
+        addCharSp          : number of single character space added 
+                             to RegDF for catching overshoot 
+                             fixations; default = 1
     output:
-        StampDF -- time stamped data in different trials
+        StampDF : time stamped data in different trials
     """
     # first, check whether the ascii and region files are there:
     ascfileExist, ascfileDic = _crtASC_dic(0, direct, subjID)
@@ -2777,15 +3137,21 @@ def read_cal_write_TimeStamp(direct, subjID, regfileNameList, ExpType, align_met
     """
     processing a subject's time stamped data
     arguments:
-        direct -- directory containing all asc files
-        subjID -- subject ID
-        regfileNameList -- a list of region file names (trial_id will help select corresponding region files)
-        ExpType -- type of experiments: 'RAN', 'RP'
-        align_method -- 'FixRep': using fixation report data; 'Fix_Sac': using fixation data extracted and aligned automatically
-        addCharSp -- number of single character space added to RegDF for catching overshoot fixations; default = 1
+        direct          : directory containing all asc files
+        subjID          : subject ID
+        regfileNameList : a list of region file names (trial_id will
+                          help select corresponding region files)
+        ExpType         : type of experiments: 'RAN', 'RP'
+        align_method    : 'FixRep': using fixation report data; 
+                          'Fix_Sac': using fixation data extracted
+                          and aligned automatically
+        addCharSp       : number of single character space added to
+                          RegDF for catching overshoot fixations;
+                          default = 1
     output:
-        StampDF -- time stamped data in different trials of different subjects
-    All these data frames are stored into csv files    
+        StampDF : time stamped data in different trials of different
+                  subjects
+        All these data frames are stored into csv files    
     """
     StampDF = read_cal_TimeStamp(direct, subjID, regfileNameList, ExpType, align_method, addCharSp)
     write_TimeStamp_Report(direct, subjID, StampDF)
@@ -2795,15 +3161,22 @@ def read_cal_write_TimeStamp_b(direct, regfileNameList, ExpType, align_method, a
     """
     processing all subjects' time stamped data
     arguments:
-        direct -- directory containing all asc files
-        regfileNameList -- a list of region file names (trial_id will help select corresponding region files)
-        ExpType -- type of experiments: 'RAN', 'RP'
-        align_method -- 'FixRep': using fixation report data; 'Fix_Sac': using fixation data extracted and aligned automatically
-        addCharSp -- number of single character space added to RegDF for catching overshoot fixations; default = 1
+        direct          : directory containing all asc files
+        regfileNameList : a list of region file names (trial_id will
+                          help select corresponding region files)
+        ExpType         : type of experiments: 'RAN', 'RP'
+        align_method    : 'FixRep': using fixation report data; 
+                          'Fix_Sac': using fixation data extracted 
+                          and aligned automatically
+        addCharSp       : number of single character space added to 
+                          RegDF for catching overshoot fixations; 
+                          default = 1
     output:
-        StampDF -- time stamped data in different trials of different subjects
-        crlStampDF -- crossline time stamped data in different trials of different subjects
-    All these data frames are stored into csv files    
+        StampDF    : time stamped data in different trials of different
+                     subjects
+        crlStampDF : crossline time stamped data in different trials of
+                     different subjects
+        All these data frames are stored into csv files    
     """
     ascfileExist, ascfileDic = _crtASC_dic(1, direct, '')  
     regfileExist, regfileDic = _crtRegion_dic(direct, regfileNameList)
@@ -2826,23 +3199,30 @@ def _image_SacFix(direct, subjID, bitmapNameList, Sac, crlSac, Fix, crlFix, RegD
     """
     draw saccade and fixation data of a trial
     arguments:
-        direct -- directory to store drawn figures
-        subjID -- subject ID
-        bitmapNameList -- list of the bitmap files as backgrounds
-        Sac -- saccade data of the trail
-        crlSac -- cross line saccade data of the trial
-        Fix -- fixation data of the trial
-        crlFix -- cross line fixation data of the trial
-        RegDF -- region file of the trail
-        trialID -- trial ID
-        drawType -- type of drawing:
-            'ALL': draw all results (mixing saccade with fixation, and mixing crossline saccade with crossline fixation)
-            'SAC': draw saccade results (saccades and crossline saccades)
-            'FIX': draw fixation results (fixation and crossline fixations)
-        max_FixRadius -- maximum radius of fixation circles for showing 
-        drawFinal -- whether (True) or not (False) draw fixations and saccades after the ending of reading     
-        showFixDur -- whether (True) or not (False) show number for fixations 
-        PNGopt -- 0: use png file as background; 1: draw texts from region file    
+        direct         : directory to store drawn figures
+        subjID         : subject ID
+        bitmapNameList : list of the bitmap files as backgrounds
+        Sac            : saccade data of the trail
+        crlSac         : cross line saccade data of the trial
+        Fix            : fixation data of the trial
+        crlFix         : cross line fixation data of the trial
+        RegDF          : region file of the trail
+        trialID        : trial ID
+        drawType       : type of drawing:
+                         'ALL': draw all results (mixing saccade 
+                                with fixation, and mixing crossline
+                                saccade with crossline fixation)
+                         'SAC': draw saccade results (saccades and
+                                crossline saccades)
+                         'FIX': draw fixation results (fixation and
+                                crossline fixations)
+        max_FixRadius  : maximum radius of fixation circles shown 
+        drawFinal      : whether (True) or not (False) draw fixations
+                         and saccades after the ending of reading     
+        showFixDur     : whether (True) or not (False) show number 
+                         for fixations 
+        PNGopt         : 0: use png file as background; 
+                         1: draw texts from region file    
     the results are saved in png file    
     """
     # prepare bitmaps for displaying saccades and fixations
@@ -3017,22 +3397,37 @@ def draw_SacFix(direct, subjID, regfileNameList, bitmapNameList, drawType, max_F
     """
     read and draw saccade and fixation data
     arguments:
-        direct -- directory storing csv and region files
-        subjID -- subject ID
-        regfileNameList -- a list of region files (trial_id will help select corresponding region files)
-        bitmapNameList -- a list of png bitmaps showing the paragraphs shown to the subject
-        drawType -- type of drawing:
-            'ALL': draw all results (mixing saccade with fixation, and mixing crossline saccade with crossline fixation)
-            'SAC': draw saccade results (saccades and crossline saccades)
-            'FIX': draw fixation results (fixation and crossline fixations)
-        max_FixRadius -- maximum radius of fixation circles for showing, default = 30 
-        drawFinal -- whether (True) or not (False) draw fixations and saccades after the ending of reading, default = False
-        showFixDur -- whether (True) or not (False) show number for fixations, default = False 
-        PNGopt -- 0: use png file as background; 1: draw texts from region file; default = 0 
+        direct          : directory storing csv and region files
+        subjID          : subject ID
+        regfileNameList : a list of region files (trial_id will 
+                          help select corresponding region files)
+        bitmapNameList  : a list of png bitmaps showing the 
+                          paragraphs shown to the subject
+        drawType        : type of drawing:
+                          'ALL': draw all results (mixing saccade 
+                                 with fixation, and mixing crossline
+                                 saccade with crossline fixation)
+                          'SAC': draw saccade results (saccades and
+                                 crossline saccades)
+                          'FIX': draw fixation results (fixation and
+                                 crossline fixations)
+        max_FixRadius   : maximum radius of fixation circles for 
+                          showing, default = 30 
+        drawFinal       : whether (True) or not (False) draw 
+                          fixations and saccades after the ending of
+                          reading, default = False
+        showFixDur      : whether (True) or not (False) show number 
+                          for fixations, default = False 
+        PNGopt          : 0: use png file as background; 
+                          1: draw texts from region file; default = 0 
     output:
         when drawOpt == 'ALL'
-            subj_FixSac_trial*.png -- showing the fixations and saccades of subj in different trials
-            subj_crlFixSac_trial*.png -- showing the crossline fixations and saccades of subj in different trials
+            subj_FixSac_trial*.png    : showing the fixations and 
+                                        saccades of subj in different
+                                        trials
+            subj_crlFixSac_trial*.png : showing the crossline fixations
+                                        and saccades of subj in 
+                                        different trials
         when drawType == 'SAC':
             subj_Sac_trial*.png
             subj_crlSac_trial*.png
@@ -3088,22 +3483,39 @@ def draw_SacFix_b(direct, regfileNameList, bitmapNameList, method, max_FixRadius
     """
     drawing of all subjects' fixation and saccade data figures
     arguments:
-        direct -- directory containing all csv files
-        regfileNameList -- a list of region file names (trial_id will help select corresponding region files)
-        bitmapNameList -- a list of png bitmaps showing the paragraphs shown to the subject
-        drawFinal -- whether (True) or not (False) draw fixations and saccades after the ending of reading     
-        method -- drawing method:
-            'ALL': draw all results (mixing saccade with fixation, and mixing crossline saccade with crossline fixation)
-            'SAC': draw saccade results (saccades and crossline saccades)
-            'FIX': draw fixation results (fixation and crossline fixations)
-        max_FixRadius -- maximum radius of fixation circles for showing, default = 30 
-        drawFinal -- whether (True) or not (False) draw fixations and saccades after the ending of reading, default = False
-        showNum -- whether (True) or not (False) show number for fixations, default = False
-        PNGmethod -- whether use png file as background (0) or draw texts from region file (1), default = 0     
+        direct          : directory containing all csv files
+        regfileNameList : a list of region file names (trial_id will
+                          help select corresponding region files)
+        bitmapNameList  : a list of png bitmaps showing the paragraphs
+                          shown to the subject
+        drawFinal       : whether (True) or not (False) draw fixations
+                          and saccades after the ending of reading     
+        method          : drawing method:
+                          'ALL': draw all results (mixing saccade with
+                                 fixation, and mixing crossline saccade
+                                 with crossline fixation)
+                          'SAC': draw saccade results (saccades and
+                                 crossline saccades)
+                          'FIX': draw fixation results (fixation and
+                                 crossline fixations)
+        max_FixRadius   : maximum radius of fixation circles for 
+                          showing, default = 30 
+        drawFinal       : whether (True) or not (False) draw fixations
+                          and saccades after the ending of reading, 
+                          default = False
+        showNum         : whether (True) or not (False) show number 
+                          for fixations, default = False
+        PNGmethod       : whether use png file as background (0) or 
+                          draw texts from region file (1),
+                          default = 0     
     output:
         when method == 'ALL'
-            *_FixSac_trial*.png -- showing the fixations and saccades of all subjects in different trials
-            *_crlFixSac_trial*.png -- showing the crossline fixations and saccades of all subjects in different trials
+            *_FixSac_trial*.png    : showing the fixations and 
+                                     saccades of all subjects in 
+                                     different trials
+            *_crlFixSac_trial*.png : showing the crossline fixations
+                                     and saccades of all subjects in
+                                     different trials
         when method == 'SAC':
             *_Sac_trial*.png
             *_crlSac_trial*.png
@@ -3145,8 +3557,8 @@ def draw_blinks(direct, trialNum):
     """
     draw histogram of individual blinks
     arguments: 
-        direct -- directory storing csv files
-        trialNum -- number of trials in each subject's data
+        direct   : directory storing csv files
+        trialNum : number of trials in each subject's data
     output: histogram    
     """
     subjlist = []
@@ -3176,7 +3588,8 @@ def changePNG2GIF(direct):
     """
     change PNG bitmaps in direct to GIF bitmaps for animation
     argument:
-        direct -- directory storing PNG bitmaps, the created GIF bitmaps are also there
+        direct : directory storing PNG bitmaps, the created GIF
+                 bitmaps are also there
     """
     PNGList = []
     for file in _os.listdir(direct):
@@ -3195,8 +3608,8 @@ def playWav(soundFile, cond):
     """
     play a sound in background
     arguments:
-        soundfile -- name of wav sound file
-        cond -- 0, stop; 1, start
+        soundfile : name of wav sound file
+        cond      : 0, stop; 1, start
     """
     if _sys.platform.startswith('win'):
         # under Windows
@@ -3215,13 +3628,15 @@ def _animate_EM(direct, subjID, bitmapFile, soundFile, Fix, trialID, max_FixRadi
     """
     animation of eye-movement of a trial
     arguments:
-        direct -- directory to store bitmaps
-        subjID -- subject ID
-        bitmapNameList -- list of the bitmap files as backgrounds
-        soundNameList -- list of the sound files to be played during animation
-        Fix -- fixation data of the trial
-        trialID -- trial ID
-        max_FixRadius -- maximum radius of the circle for fixation; default is 3
+        direct         : directory to store bitmaps
+        subjID         : subject ID
+        bitmapNameList : list of the bitmap files as backgrounds
+        soundNameList  : list of the sound files to be played during
+                         animation
+        Fix            : fixation data of the trial
+        trialID        : trial ID
+        max_FixRadius  : maximum radius of the circle for fixation; 
+                         default is 3
     """
     bitmapSize = Image.open(bitmapFile).size
     # create screen and turtle
@@ -3348,9 +3763,10 @@ def animate(direct, subjID, trialID):
     """
     draw animation of a trial
     arguments: 
-        direct -- directory storing bitmaps, sound files, and fixation csv files
-        subjID -- subject ID        
-        trialID -- trial ID
+        direct  : directory storing bitmaps, sound files, 
+                  and fixation csv files
+        subjID  : subject ID        
+        trialID : trial ID
     """
     csvExist = False
     csvlist = []
@@ -3400,13 +3816,15 @@ def _animate_EM_TimeStamp(direct, subjID, bitmapFile, soundFile, Stamp, trialID,
     """
     animation of eye-movement of a trial based on time stamped data
     arguments:
-        direct -- directory to store bitmaps
-        subjID -- subject ID
-        bitmapNameList -- list of the bitmap files as backgrounds
-        soundNameList -- list of the sound files to be played during animation
-        Stamp -- time stamped data of the trial
-        trialID -- trial ID
-        max_FixRadius -- maximum radius of the circle for fixation; default is 3
+        direct         : directory to store bitmaps
+        subjID         : subject ID
+        bitmapNameList : list of the bitmap files as backgrounds
+        soundNameList  : list of the sound files to be played during
+                         animation
+        Stamp          : time stamped data of the trial
+        trialID        : trial ID
+        max_FixRadius  : maximum radius of the circle for fixation; 
+                         default is 3
     """
     bitmapSize = Image.open(bitmapFile).size
     # create screen and turtle
@@ -3487,9 +3905,10 @@ def animate_TimeStamp(direct, subjID, trialID):
     """
     draw animation of a trial using time stamped data
     arguments: 
-        direct -- directory storing bitmaps, sound files, and time stamped csv files
-        subjID -- subject ID        
-        trialID -- trial ID
+        direct  : directory storing bitmaps, sound files,
+                  and time stamped csv files
+        subjID  : subject ID        
+        trialID : trial ID
     """
     csvExist = False
     csvlist = []
@@ -3540,11 +3959,13 @@ def animate_TimeStamp(direct, subjID, trialID):
 # functions for calculating eye-movement measures
 def _modEM(EMDF, addCharSp):
     """
-    modify MFDF's mod_x1 and mod_x2, add space to boundaries of line starting and ending words
+    modify MFDF's mod_x1 and mod_x2, add space to boundaries of line
+    starting and ending words
     arguments:
-        EMDF -- result data frame
-        addCharSp -- number of single character space added to EMF for catching overshoot fixations
-    EMDF, as a data frame, is mutable, no need to return    
+        EMDF      : result data frame
+        addCharSp : number of single character space added to EMF for
+                    catching overshoot fixations
+        EMDF, as a data frame, is mutable, no need to return    
     """
     EMDF.mod_x1 = EMDF.x1_pos; EMDF.mod_x2 = EMDF.x2_pos
     addDist = addCharSp*(EMDF.loc[0,'x2_pos'] - EMDF.loc[0,'x1_pos'])/_np.float(EMDF.loc[0,'reglen'])
@@ -3563,24 +3984,36 @@ def _modEM(EMDF, addCharSp):
 
 def _chk_fp_fix(FixDF, EMDF, curFix, curEM):
     """
-    calculate fist pass fixation measures:
-        fpurt -- first-pass fixation time. It is the sum of the durations of one or more first-pass fixations falling into the word region. 
-                By default, we only record fixations of 50 ms or longer; shorter fixations are subject to the lumping operation. 
-                If there is no first-pass fixation laying within the word region, 'fpurt' is 'NaN' (missing value) (first-pass fixation measure)
-        fpcount -- number of first-pass fixations falling into the word region. If there is no first-pass fixation in the word region, 'fpcount' is 'NaN' (first-pass fixation measure)
-        ffos -- offset in characters of the first first-pass fixation in the word region from the first character of the region. 
-                If there is no first-pass fixation in the word region, 'ffos' is 'NaN' (first-pass fixation measure).
-        ffixurt -- duration of the first first-pass fixation in the word region. 
-                   If there is no first-pass fixation in the word region, 'ffixurt' is 'NaN' (first-pass fixation measure).
-        spilover -- duration of the first fixation falling beyond (either left or right) the word region. 
-                    If there is no first-pass fixation in the word region, 'spilover' is 'NaN' (first-pass fixation measure).
+    calculate fist-pass fixation measures:
+        fpurt    : first-pass fixation time. It is the sum of the 
+                   durations of one or more first-pass fixations 
+                   falling into the word region. By default, we 
+                   only record fixations of 50 ms or longer; 
+                   shorter fixations are subject to the lumping 
+                   operation. If there is no first-pass fixation 
+                   laying within the word region, 'fpurt' is 
+                   'NaN' (missing value)                   
+        fpcount  : number of first-pass fixations falling into the 
+                   word region. If there is no first-pass fixation 
+                   in the word region, 'fpcount' is 'NaN'
+        ffos     : offset in characters of the first first-pass 
+                   fixation in the word region from the first 
+                   character of the region. If there is no first-pass
+                   fixation in the word region, 'ffos' is 'NaN'
+        ffixurt  : duration of the first first-pass fixation in the 
+                   word region. If there is no first-pass fixation in
+                   the word region, 'ffixurt' is 'NaN' 
+        spilover : duration of the first fixation falling beyond
+                   (either left or right) the word region. If there 
+                   is no first-pass fixation in the word region, 
+                   'spilover' is 'NaN' 
     arguments:
-        FixDF -- fixation data of the trial
-        EMDF -- result data frame
-        curFix -- current fixation in the region
-        curEM -- current region in the result data frame      
+        FixDF  : fixation data of the trial
+        EMDF   : result data frame
+        curFix : current fixation in the region
+        curEM  : current region in the result data frame      
     returns:
-        stFix, endFix -- starting and ending fixation indices of the first reading
+        stFix, endFix : starting and ending fixation indices of the first reading
     """
     EMDF.loc[curEM,'fpurt'] += FixDF.loc[curFix,'duration']  # fpurt: first pass fixation time
     EMDF.loc[curEM,'fpcount'] += 1 # fpcount: number of first pass fixation
@@ -3602,18 +4035,30 @@ def _chk_fp_fix(FixDF, EMDF, curFix, curEM):
 
 def _chk_fp_reg(FixDF, EMDF, stFix, endFix, curEM):
     """
-    calculate first pass regression measures:
-        fpregres -- whether there is a first-pass regression starting from the current word region; if so, 'fpregres' is 1, otherwise, 'fpregres' is 0. If there is no first-pass fixation in the word region, ‘fpregres’ is ‘NaN’ (first-pass regression measure)..
-        fpregreg -- word region where the first-pass regression ends. If there is no first-pass regression ('fpregres' is 0), 'fpregreg' is 0. 
-                    If there is no first-pass fixation in the word region, 'fpregreg' is 'NaN' (first-pass regression measure)
-        fpregchr -- offset in characters in the word region where the first-pass regression ends. 
-                    If there is no first-pass regression ('fpregres' is 0), 'fpregchr' is set to a value large enough to be out of boundaries of any possible string (in the current version, it is set as the total number of characters of the text). 
-                    If there is no first-pass fixation in the word region, 'fpregchr' is 'NaN' (first-pass regression measure).
+    calculate first-pass regression measures:
+        fpregres : whether there is a first-pass regression starting 
+                   from the current word region; if so, 'fpregres' 
+                   is 1, otherwise, 'fpregres' is 0. If there is no 
+                   first-pass fixation in the word region, 
+                   ‘fpregres’ is ‘NaN’
+        fpregreg : word region where the first-pass regression ends. 
+                   If there is no first-pass regression ('fpregres' 
+                   is 0), 'fpregreg' is 0. If there is no first-pass
+                   fixation in the word region, 'fpregreg' is 'NaN'
+        fpregchr : offset in characters in the word region where the
+                   first-pass regression ends. If there is no 
+                   first-pass regression ('fpregres' is 0), 'fpregchr'
+                   is set to a value large enough to be out of 
+                   boundaries of any possible string (in the current
+                   version, it is set as the total number of 
+                   characters of the text). If there is no first-pass
+                   fixation in the word region, 'fpregchr' is 'NaN'
     arguments:
-        FixDF -- fixation data of the trial
-        EMDF -- result data frame
-        stFix, endFix -- starting and ending fixation indices of the first reading
-        curEM -- current region in the result data frame              
+        FixDF         : fixation data of the trial
+        EMDF          : result data frame
+        stFix, endFix : starting and ending fixation indices of the
+                        first reading
+        curEM         : current region in the result data frame              
     """
     if FixDF.loc[endFix,'line_no'] == EMDF.loc[curEM,'line_no']:
         # the fixation after the first pass reading is within the same line of the current word
@@ -3651,9 +4096,9 @@ def _getReg(FixDF, curFix, EMDF):
     """
     search EMF to locate which region that FixDF.loc[curFix] falls into
     arguments:
-        FixDF -- fixation data of the trial
-        curFix -- current fixation index
-        EMDF -- result data frame containing all region information
+        FixDF  : fixation data of the trial
+        curFix : current fixation index
+        EMDF   : result data frame containing all region information
     return: index in EMF    
     """
     if _np.isnan(FixDF.line_no[curFix]) or _np.isnan(FixDF.region_no[curFix]): return 0
@@ -3666,22 +4111,41 @@ def _getReg(FixDF, curFix, EMDF):
 def _chk_rp_reg(FixDF, EMDF, stFix, endFix, curEM):
     """
     calculate regression path measures:
-        rpurt -- sum of durations of all fixations in the regression path. A regression path starts from the first fixation falling into the current word region and ends at the first fixation falling into the immediately next word region.
-                If there is a first-pass regression ('fpregres' is 1), the regression path includes the fixations in the current region and those outside the current word region but falling into only the word regions before the current region.
-                If there is no first-pass regression ('fpregres' is 0), 'rpurt' equals to 'fpurt'. 
-                If there is no first-pass fixation in the word region, 'rpurt' is 'NaN' (regression path measure).
-        rpcount -- number of fixations in the regression path. If there is no first-pass fixation in the word region, 'rpcount' is 'NaN' (regression path measure).
-        rpregreg -- the smallest index of the word region visited by the regression path. 
-                    If there is no regression path ('fpregres' is 0), 'rpregreg' is 0. 
-                    If there is no first-pass fixation in the word region, 'rpregreg' is 'NaN' (regression path measure).
-        rpregchr -- offset in characters in the smallest word region visited by the regression path. 
-                    If there is no first-pass regression ('fpregres' is 'NA'), 'rpregchr' is set to a value large enough to be out of boundaries of any possible string (in the current version, it is set as the total number of characters of the text). 
-                    If there is no first-pass fixation in the word region, 'rpregreg' is 'NaN' (regression path measure).
+        rpurt    : sum of durations of all fixations in the regression
+                   path. A regression path starts from the first 
+                   fixation falling into the current word region 
+                   and ends at the first fixation falling into the
+                   immediately next word region. If there is a 
+                   first-pass regression ('fpregres' is 1), the 
+                   regression path includes the fixations in the 
+                   current region and those outside the current word 
+                   region but falling into only the word regions 
+                   before the current region. If there is no first-pass
+                   regression ('fpregres' is 0), 'rpurt' equals to 
+                   'fpurt'. If there is no first-pass fixation in the 
+                   word region, 'rpurt' is 'NaN'
+        rpcount  : number of fixations in the regression path. 
+                   If there is no first-pass fixation in the word 
+                   region, 'rpcount' is 'NaN'
+        rpregreg : the smallest index of the word region visited by
+                   the regression path. If there is no regression path
+                   ('fpregres' is 0), 'rpregreg' is 0. If there is no 
+                   first-pass fixation in the word region, 'rpregreg'
+                   is 'NaN'
+        rpregchr : offset in characters in the smallest word region 
+                   visited by the regression path. If there is no 
+                   first-pass regression ('fpregres' is 'NA'), 
+                   'rpregchr' is set to a value large enough to be out
+                   of boundaries of any possible string (in the 
+                   current version, it is set as the total number of
+                   characters of the text). If there is no first-pass
+                   fixation in the word region, 'rpregreg' is 'NaN'
     arguments:
-        FixDF -- fixation data of the trial
-        EMDF -- result data frame
-        stFix, endFix -- starting and ending fixation indices of the first reading
-        curEM -- current region in the result data frame            
+        FixDF         : fixation data of the trial
+        EMDF          : result data frame
+        stFix, endFix : starting and ending fixation indices of the 
+                        first reading
+        curEM         : current region in the result data frame            
     """
     if EMDF.loc[curEM,'fpregres'] == 0:
         # there is no regression, so no regression path
@@ -3738,15 +4202,18 @@ def _chk_rp_reg(FixDF, EMDF, stFix, endFix, curEM):
 
 def _chk_sp_fix(FixDF, EMDF, endFix, curEM):
     """
-    calculate second pass fixation measures:
-        spurt -- second-pass fixation time. It is the sum of durations of all fixations falling again into the current word region after the first-pass reading.
-                If there is no second-pass fixation, 'spurt' is 'NaN' (second-pass fixation measure)
-        spcount -- number of second-pass fixations. If there is no second-pass fixation, 'spcount' is 'NA' (second-pass fixation measure).
+    calculate second-pass fixation measures:
+        spurt   : second-pass fixation time. It is the sum of durations
+                  of all fixations falling again into the current word
+                  region after the first-pass reading. If there is no 
+                  second-pass fixation, 'spurt' is 'NaN'
+        spcount : number of second-pass fixations. If there is no 
+                  second-pass fixation, 'spcount' is 'NA'
     arguments:
-        FixDF -- fixation data of the trial
-        EMDF -- result data frame
-        endFix -- ending fixation index of the first reading
-        curEM -- current region in the result data frame            
+        FixDF  : fixation data of the trial
+        EMDF   : result data frame
+        endFix : ending fixation index of the first reading
+        curEM  : current region in the result data frame            
     """
     for curFix in range(endFix, len(FixDF)):
         if FixDF.loc[curFix,'region_no'] == EMDF.loc[curEM,'region']:
@@ -3756,9 +4223,10 @@ def _chk_sp_fix(FixDF, EMDF, endFix, curEM):
 
 def _chk_tffixos(EMDF):
     """
-    calculate tffixos: offset of the first fixation in trial in letters from the beginning of the sentence
+    calculate tffixos: offset of the first fixation in trial in 
+    letters from the beginning of the sentence
     arguments:
-        EMDF -- result data frame
+        EMDF : result data frame
     """
     tffixos = 0
     for ind in range(len(EMDF)):
@@ -3773,7 +4241,7 @@ def _chk_tregrcnt(SacDF):
     """
     calculate tregrecnt: total number of regressive saccades in trial
     arguments:
-        SacDF -- saccade data of teh trial
+        SacDF : saccade data of teh trial
     """
     totregr = 0
     for ind in range(len(SacDF)):
@@ -3793,48 +4261,97 @@ def _cal_EM(RegDF, FixDF, SacDF, EMDF):
     """
     calculate eye-movement measures of the trial
     arguments:
-        RegDF -- region file
-        FixDF -- fixation data of the trial
-        SacDF -- saccade data of the trial
-        EMDF -- result data frame 
-    EMDF, as a data frame, is mutable, no need to return
+        RegDF : region file
+        FixDF : fixation data of the trial
+        SacDF : saccade data of the trial
+        EMDF  : result data frame 
+        EMDF, as a data frame, is mutable, no need to return
     eye-movement measures:
       whole trial measures:
-        tffixos -- total offset of the first-pass fixation of each word from the beginning of the first sentence of the text (whole-text eye-movement measure).
-        tffixurt -- total duration of the first pass fixation of each word in the text (whole-text eye-movement measure).
-        tfixcnt -- total number of valid fixations in the trial (whole-text eye-movement measure).
-        tregrcnt -- total number of regressive saccades (a saccade is a regressive saccade if it starts at one word region in the text and ends at an earlier word region) in the trial (whole-text EM measure).
+        tffixos  : total offset of the first-pass fixation of each 
+                   word from the beginning of the first sentence of
+                   the text
+        tffixurt : total duration of the first pass fixation of each
+                   word in the text
+        tfixcnt  : total number of valid fixations in the trial
+        tregrcnt : total number of regressive saccades (a saccade is
+                   a regressive saccade if it starts at one word 
+                   region in the text and ends at an earlier word 
+                   region) in the trial
       region (each word) measures:  
-        fpurt -- first-pass fixation time. It is the sum of the durations of one or more first-pass fixations falling into the word region. 
-                By default, we only record fixations of 50 ms or longer; shorter fixations are subject to the lumping operation. 
-                If there is no first-pass fixation laying within the word region, 'fpurt' is 'NaN' (missing value) (first-pass fixation measure)
-        fpcount -- number of first-pass fixations falling into the word region. If there is no first-pass fixation in the word region, 'fpcount' is 'NaN' (first-pass fixation measure)
-        fpregres -- whether there is a first-pass regression starting from the current word region; if so, 'fpregres' is 1, otherwise, 'fpregres' is 0. If there is no first-pass fixation in the word region, ‘fpregres’ is ‘NaN’ (first-pass regression measure)..
-        fpregreg -- word region where the first-pass regression ends. If there is no first-pass regression ('fpregres' is 0), 'fpregreg' is 0. 
-                    If there is no first-pass fixation in the word region, 'fpregreg' is 'NaN' (first-pass regression measure)
-        fpregchr -- offset in characters in the word region where the first-pass regression ends. 
-                    If there is no first-pass regression ('fpregres' is 0), 'fpregchr' is set to a value large enough to be out of boundaries of any possible string (in the current version, it is set as the total number of characters of the text). 
-                    If there is no first-pass fixation in the word region, 'fpregchr' is 'NaN' (first-pass regression measure).
-        ffos -- offset in characters of the first first-pass fixation in the word region from the first character of the region. 
-                If there is no first-pass fixation in the word region, 'ffos' is 'NaN' (first-pass fixation measure).
-        ffixurt -- duration of the first first-pass fixation in the word region. 
-                   If there is no first-pass fixation in the word region, 'ffixurt' is 'NaN' (first-pass fixation measure).
-        spilover -- duration of the first fixation falling beyond (either left or right) the word region. 
-                    If there is no first-pass fixation in the word region, 'spilover' is 'NaN' (first-pass fixation measure).
-        rpurt -- sum of durations of all fixations in the regression path. A regression path starts from the first fixation falling into the current word region and ends at the first fixation falling into the immediately next word region.
-                If there is a first-pass regression ('fpregres' is 1), the regression path includes the fixations in the current region and those outside the current word region but falling into only the word regions before the current region.
-                If there is no first-pass regression ('fpregres' is 0), 'rpurt' equals to 'fpurt'. 
-                If there is no first-pass fixation in the word region, 'rpurt' is 'NaN' (regression path measure).
-        rpcount -- number of fixations in the regression path. If there is no first-pass fixation in the word region, 'rpcount' is 'NaN' (regression path measure).
-        rpregreg -- the smallest index of the word region visited by the regression path. 
-                    If there is no regression path ('fpregres' is 0), 'rpregreg' is 0. 
-                    If there is no first-pass fixation in the word region, 'rpregreg' is 'NaN' (regression path measure).
-        rpregchr -- offset in characters in the smallest word region visited by the regression path. 
-                    If there is no first-pass regression ('fpregres' is 'NA'), 'rpregchr' is set to a value large enough to be out of boundaries of any possible string (in the current version, it is set as the total number of characters of the text). 
-                    If there is no first-pass fixation in the word region, 'rpregreg' is 'NaN' (regression path measure).
-        spurt -- second-pass fixation time. It is the sum of durations of all fixations falling again into the current word region after the first-pass reading.
-                If there is no second-pass fixation, 'spurt' is 'NaN' (second-pass fixation measure)
-        spcount -- number of second-pass fixations. If there is no second-pass fixation, 'spcount' is 'NA' (second-pass fixation measure).
+        fpurt    : first-pass fixation time. It is the sum of the 
+                   durations of one or more first-pass fixations 
+                   falling into the word region. By default, we only
+                   record fixations of 50 ms or longer; shorter 
+                   fixations are subject to the lumping operation. 
+                   If there is no first-pass fixation laying within
+                   the word region, 'fpurt' is 'NaN' (missing value)
+        fpcount  : number of first-pass fixations falling into the 
+                   word region. If there is no first-pass fixation in
+                   the word region, 'fpcount' is 'NaN' 
+        fpregres : whether there is a first-pass regression starting
+                   from the current word region; if so, 'fpregres' is
+                   1, otherwise, 'fpregres' is 0. If there is no 
+                   first-pass fixation in the word region, 
+                   ‘fpregres’ is ‘NaN’
+        fpregreg : word region where the first-pass regression ends. 
+                   If there is no first-pass regression ('fpregres' 
+                   is 0), 'fpregreg' is 0. If there is no first-pass
+                   fixation in the word region, 'fpregreg' is 'NaN'
+        fpregchr : offset in characters in the word region where the
+                   first-pass regression ends. If there is no 
+                   first-pass regression ('fpregres' is 0), 'fpregchr'
+                   is set to a value large enough to be out of 
+                   boundaries of any possible string (in the current
+                   version, it is set as the total number of 
+                   characters of the text). If there is no first-pass
+                   fixation in the word region, 'fpregchr' is 'NaN'
+        ffos     : offset in characters of the first first-pass 
+                   fixation in the word region from the first 
+                   character of the region. If there is no first-pass
+                   fixation in the word region, 'ffos' is 'NaN'
+        ffixurt  : duration of the first first-pass fixation in the 
+                   word region. If there is no first-pass fixation in
+                   the word region, 'ffixurt' is 'NaN'
+        spilover : duration of the first fixation falling beyond 
+                   (either left or right) the word region. If there is
+                   no first-pass fixation in the word region, 
+                   'spilover' is 'NaN'
+        rpurt    : sum of durations of all fixations in the regression
+                   path. A regression path starts from the first 
+                   fixation falling into the current word region and
+                   ends at the first fixation falling into the 
+                   immediately next word region. If there is a 
+                   first-pass regression ('fpregres' is 1), the 
+                   regression path includes the fixations in the 
+                   current region and those outside the current word
+                   region but falling into only the word regions 
+                   before the current region. If there is no first-pass
+                   regression ('fpregres' is 0), 'rpurt' equals to 'fpurt'. 
+                   If there is no first-pass fixation in the word 
+                   region, 'rpurt' is 'NaN'
+        rpcount  : number of fixations in the regression path. If there
+                   is no first-pass fixation in the word region, 
+                   'rpcount' is 'NaN'
+        rpregreg : the smallest index of the word region visited by the
+                   regression path. If there is no regression path 
+                   ('fpregres' is 0), 'rpregreg' is 0. If there is no 
+                   first-pass fixation in the word region, 'rpregreg'
+                   is 'NaN'
+        rpregchr : offset in characters in the smallest word region 
+                   visited by the regression path. If there is no \
+                   first-pass regression ('fpregres' is 'NA'), 
+                   'rpregchr' is set to a value large enough to be out
+                   of boundaries of any possible string (in the current
+                   version, it is set as the total number of characters
+                   of the text). If there is no first-pass fixation in
+                   the word region, 'rpregreg' is 'NaN'
+        spurt    : second-pass fixation time. It is the sum of durations
+                   of all fixations falling again into the current word
+                   region after the first-pass reading. If there is no 
+                   second-pass fixation, 'spurt' is 'NaN'
+        spcount  : number of second-pass fixations. If there is no 
+                   second-pass fixation, 'spcount' is 'NA'
     """
     # default values
     EMDF.ffos = _np.nan  # for first pass fixation measures
@@ -3891,12 +4408,16 @@ def _cal_EM(RegDF, FixDF, SacDF, EMDF):
     
 def cal_write_EM(direct, subjID, regfileNameList, addCharSp=1):
     """
-    read fixation and saccade data of subj and calculate eye-movement measures
+    read fixation and saccade data of subj and calculate 
+    eye-movement measures
     arguments:
-        direct -- directory for storing csv and output files
-        subjID -- subject ID
-        regionfileNameList -- a list of region file names (trial_id will help select corresponding region files)
-        addCharSp -- number of single character space added to EMF for catching overshoot fixations, default = 1
+        direct             : directory for storing csv and output files
+        subjID             : subject ID
+        regionfileNameList : a list of region file names (trial_id
+                             will help select corresponding region files)
+        addCharSp          : number of single character space added 
+                             to EMF for catching overshoot fixations,
+                             default = 1
     output:
         write each trial's results to csv files
     """
@@ -3977,9 +4498,12 @@ def cal_write_EM_b(direct, regfileNameList, addCharSp=1):
     """
     batch calculating all subjects' EMF measures
     arguments:
-        direct -- directory containing all csv files
-        regfileNameList -- a list of region file names (trial_id will help select corresponding region files)
-        addCharSp -- number of single character space added to EMF for catching overshoot fixations, default = 1
+        direct          : directory containing all csv files
+        regfileNameList : a list of region file names (trial_id will
+                          help select corresponding region files)
+        addCharSp       : number of single character space added to 
+                          EMF for catching overshoot fixations, 
+                          default = 1
     output:
         write each subject's each trial's results to csv files        
     """
@@ -3995,9 +4519,11 @@ def mergeCSV(direct, regfileNameList, subjID):
     """
     merge csv files of eye-movement stamped data and audio csv file
     arguments:
-        direct -- current directory storing results, each subject's data are in one subfolder with the same name of subject ID
-        regfileNameList -- list of region files
-        subjID -- subject ID
+        direct          : current directory storing results, each 
+                          subject's data are in one subfolder with
+                          the same name of subject ID
+        regfileNameList : list of region files
+        subjID          : subject ID
     output:
         subjID_merge.csv
     """    
@@ -4057,10 +4583,13 @@ def mergeCSV(direct, regfileNameList, subjID):
     
 def mergeCSV_b(direct, regfileNameList):
     """
-    merge csv files of eye-movement stamped data and audio csv file of all agents
+    merge csv files of eye-movement stamped data and audio csv file
+    of all agents
     arguments:
-        direct -- current directory storing results, each subject's data are in one subfolder with the same name of subject ID
-        regfileNameList -- list of region files
+        direct          : current directory storing results, each 
+                          subject's data are in one subfolder with
+                          the same name of subject ID
+        regfileNameList : list of region files
     output:
         subjID_merge.csv for each subject
     """
