@@ -24,7 +24,7 @@ st.setup(name='pyemread',
          install_requires=[ # List package dependencies here. Only
                             # include those that are not part of the
                             # python standard library
-             'turtle',
+             'turtle',		
              'pandas',
              'numpy',
              'Pillow',

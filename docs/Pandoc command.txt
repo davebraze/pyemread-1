@@ -1,0 +1,1 @@
+pandoc -f docx -t markdown Doc_20170222.docx -o Doc_20170222.md
