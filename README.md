@@ -1,18 +1,23 @@
 ## pyemread
 
+***
+
 This is a set of functions designed for assisting with stimulus
 creation and eye-movement (EM) data analysis of single/multi-line text
 reading experiments. 
 
 The package contains of three modules each involving a set of functions:
-(a) gen: functions in this module help to generate bitmaps of 
+
+* *gen*: functions in this module help to generate bitmaps of 
 single/multi-line texts for reading, including txt/csv files specifying 
 word-wise regions of interest, and visualize saccades, fixations, and 
-ime-stamped eye-movement data on bitmaps; 
-(b)	ext: functions in this module aim to extract saccades and fixations 
+ime-stamped EM data on bitmaps; 
+
+* *ext*: functions in this module aim to extract saccades and fixations 
 detected by eye trackers (SRR eyelink devices) during reading and 
 classifying them into different text lines (module); 
-(c)	cal: functions in this module can calculate regional summaries of 
+
+* *cal*: functions in this module can calculate regional summaries of 
 widely-adopted EM measures used in reading research (module).
 
 ### Installation
