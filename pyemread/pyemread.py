@@ -36,7 +36,7 @@ Then, one can call all functions in the package using the namespace py.
 """
 
 # import helper functions from _helperfunc_.py
-#from _helperfunc_ import *
+from _helperfunc_ import *
 import codecs as _codecs
 import matplotlib.pyplot as _plt
 
