@@ -276,7 +276,7 @@ def _writeCSV(regFile, resDict, codeMethod):
         for i in _np.arange(3,15):
             DF.loc[cur,i+1] = int(resDict[key][i])
         cur += 1
-    DF.columns = col; DF.sort(columns='WordID')
+    DF.columns = col; DF.sort_values(by='WordID')
     DF.to_csv(regFile, index=False)
 
 

@@ -719,7 +719,7 @@ def mergeCSV(direct, regfileNameList, subjID):
                 mergeDF = mergeDF.append(EMDFtemp, ignore_index=True)
             
         # store results file
-        mergeDF = mergeDF.sort(['trial_id','time'], ascending=True)
+        mergeDF = mergeDF.sort_values(by=['trial_id','time'], ascending=True)
         mergefileName = _os.path.join(direct, subjID, subjID + '_Merge.csv')
         mergeDF.to_csv(mergefileName, index=False)            
     
